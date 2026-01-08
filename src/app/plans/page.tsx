@@ -1,142 +1,215 @@
+"use client";
+
 import Link from "next/link";
-import { Plus, Target, Calendar, Users } from "lucide-react";
+import { Plus, Target, Calendar, Users, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { createClient } from "@/lib/supabase/server";
+import { usePlans, useCreatePlan } from "@/features/plans/hooks";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-// Mock data for demonstration (will be replaced with real data)
-const mockPlans = [
-  {
-    id: "2026",
-    name: "2026 Plan",
-    year: 2026,
-    objectives: 6,
-    keyResults: 24,
-    progress: 12,
-    status: "active",
-    members: 1,
-  },
-  {
-    id: "2025",
-    name: "2025 Plan",
-    year: 2025,
-    objectives: 5,
-    keyResults: 20,
-    progress: 78,
-    status: "completed",
-    members: 2,
-  },
-];
+export default function PlansPage() {
+  const { data: plans, isLoading, error } = usePlans();
+  const createPlan = useCreatePlan();
+  
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newPlanName, setNewPlanName] = useState("");
+  const [newPlanYear, setNewPlanYear] = useState(new Date().getFullYear());
+  const [newPlanDescription, setNewPlanDescription] = useState("");
 
-export default async function PlansPage() {
-  const supabase = await createClient();
-  
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // Get profile data
-  let fullName: string | null = null;
-  let avatarUrl: string | null = null;
-  
-  if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("id", user.id)
-      .single();
-    
-    if (data) {
-      fullName = (data as { full_name: string | null; avatar_url: string | null }).full_name;
-      avatarUrl = (data as { full_name: string | null; avatar_url: string | null }).avatar_url;
-    }
+  async function handleCreatePlan(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newPlanName.trim()) return;
+
+    await createPlan.mutateAsync({
+      name: newPlanName,
+      year: newPlanYear,
+      description: newPlanDescription || null,
+    });
+
+    setCreateDialogOpen(false);
+    setNewPlanName("");
+    setNewPlanDescription("");
   }
 
-  const userData = user ? {
-    email: user.email!,
-    fullName,
-    avatarUrl,
-  } : null;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-bg-1">
+        <Navbar showPlanSwitcher={false} />
+        <main className="container-main py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-bg-1">
+        <Navbar showPlanSwitcher={false} />
+        <main className="container-main py-8">
+          <div className="text-center py-12">
+            <p className="text-status-danger">Error loading plans: {error.message}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg-1">
-      <Navbar showPlanSwitcher={false} user={userData} />
+      <Navbar showPlanSwitcher={false} />
 
       <main className="container-main py-8">
         <PageHeader
           title="Your OKR Plans"
           description="Create and manage your annual OKR plans"
         >
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="w-4 h-4" />
             New Plan
           </Button>
         </PageHeader>
 
-        {/* Plans Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockPlans.map((plan) => (
-            <Link key={plan.id} href={`/plans/${plan.id}`}>
-              <Card className="card-hover h-full">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-card bg-bg-1 flex items-center justify-center">
-                      <Target className="w-6 h-6 text-text-muted" />
+        {plans && plans.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No plans yet"
+            description="Create your first OKR plan to get started tracking your goals."
+            action={{
+              label: "Create Plan",
+              onClick: () => setCreateDialogOpen(true),
+            }}
+          />
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {plans?.map((plan) => (
+              <Link key={plan.id} href={`/plans/${plan.id}`}>
+                <Card className="card-hover h-full">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-start justify-between">
+                      <div className="w-12 h-12 rounded-card bg-bg-1 flex items-center justify-center">
+                        <Target className="w-6 h-6 text-text-muted" />
+                      </div>
+                      <Badge variant={plan.role === "owner" ? "success" : "secondary"}>
+                        {plan.role === "owner" ? "Owner" : plan.role === "editor" ? "Editor" : "Viewer"}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={plan.status === "active" ? "success" : "default"}
-                    >
-                      {plan.status === "active" ? "Active" : "Completed"}
-                    </Badge>
-                  </div>
-                  <CardTitle className="mt-4">{plan.name}</CardTitle>
-                  <CardDescription>
-                    {plan.objectives} Objectives • {plan.keyResults} Key Results
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Progress */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between text-small mb-2">
-                      <span className="text-text-muted">Overall Progress</span>
-                      <span className="font-medium">{plan.progress}%</span>
+                    <CardTitle className="mt-4">{plan.name}</CardTitle>
+                    <CardDescription>
+                      {plan.description || `${plan.year} OKR Plan`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Meta */}
+                    <div className="flex items-center gap-4 text-small text-text-muted">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>{plan.year}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5" />
+                        <span>
+                          {plan.role === "owner" ? "Owner" : "Member"}
+                        </span>
+                      </div>
                     </div>
-                    <Progress value={plan.progress} />
-                  </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
 
-                  {/* Meta */}
-                  <div className="flex items-center gap-4 text-small text-text-muted">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>{plan.year}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5" />
-                      <span>
-                        {plan.members} {plan.members === 1 ? "member" : "members"}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-
-          {/* Create New Plan Card */}
-          <Card className="card-hover border-dashed flex flex-col items-center justify-center min-h-[280px] cursor-pointer group">
-            <div className="w-16 h-16 rounded-card bg-bg-1 flex items-center justify-center mb-4 group-hover:bg-accent-muted transition-colors">
-              <Plus className="w-8 h-8 text-text-muted group-hover:text-accent transition-colors" />
-            </div>
-            <CardTitle className="text-h5 mb-1">Create New Plan</CardTitle>
-            <CardDescription className="text-center max-w-[200px]">
-              Start a new annual OKR plan for {new Date().getFullYear() + 1}
-            </CardDescription>
-          </Card>
-        </div>
+            {/* Create New Plan Card */}
+            <Card 
+              className="card-hover border-dashed flex flex-col items-center justify-center min-h-[220px] cursor-pointer group"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <div className="w-16 h-16 rounded-card bg-bg-1 flex items-center justify-center mb-4 group-hover:bg-accent-muted transition-colors">
+                <Plus className="w-8 h-8 text-text-muted group-hover:text-accent transition-colors" />
+              </div>
+              <CardTitle className="text-h5 mb-1">Create New Plan</CardTitle>
+              <CardDescription className="text-center max-w-[200px]">
+                Start a new annual OKR plan for {new Date().getFullYear()}
+              </CardDescription>
+            </Card>
+          </div>
+        )}
       </main>
+
+      {/* Create Plan Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Create New Plan</DialogTitle>
+            <DialogDescription>
+              Create a new OKR plan to start tracking your goals.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreatePlan} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="plan-name">Plan Name *</Label>
+              <Input
+                id="plan-name"
+                value={newPlanName}
+                onChange={(e) => setNewPlanName(e.target.value)}
+                placeholder="e.g., 2026 OKRs"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-year">Year</Label>
+              <Input
+                id="plan-year"
+                type="number"
+                value={newPlanYear}
+                onChange={(e) => setNewPlanYear(parseInt(e.target.value))}
+                min={2020}
+                max={2100}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="plan-description">Description</Label>
+              <Input
+                id="plan-description"
+                value={newPlanDescription}
+                onChange={(e) => setNewPlanDescription(e.target.value)}
+                placeholder="Optional description..."
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setCreateDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createPlan.isPending || !newPlanName.trim()}>
+                {createPlan.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Create Plan
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

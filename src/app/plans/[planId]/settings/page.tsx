@@ -1,9 +1,28 @@
-import { Settings, Users, Shield, Trash2, Copy, Mail, UserPlus } from "lucide-react";
+"use client";
+
+import { useState, use } from "react";
+import {
+  Settings,
+  Users,
+  Shield,
+  Trash2,
+  Copy,
+  Mail,
+  UserPlus,
+  Loader2,
+  X,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,31 +33,111 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  usePlan,
+  usePlanRole,
+  usePlanMembers,
+  usePlanInvites,
+  useUpdatePlan,
+  useDeletePlan,
+  useCreatePlanInvite,
+  useRemovePlanMember,
+  useDeletePlanInvite,
+} from "@/features";
+import type { OkrRole } from "@/lib/supabase/types";
+import { useRouter } from "next/navigation";
 
-// Mock members data
-const mockMembers = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "owner",
-    avatar: "",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "editor",
-    avatar: "",
-  },
-];
-
-export default async function SettingsPage({
+export default function SettingsPage({
   params,
 }: {
   params: Promise<{ planId: string }>;
 }) {
-  const { planId } = await params;
+  const { planId } = use(params);
+  const router = useRouter();
+
+  const { data: plan, isLoading: isLoadingPlan } = usePlan(planId);
+  const { data: role } = usePlanRole(planId);
+  const { data: members = [], isLoading: isLoadingMembers } = usePlanMembers(planId);
+  const { data: invites = [], isLoading: isLoadingInvites } = usePlanInvites(planId);
+
+  const updatePlan = useUpdatePlan();
+  const deletePlan = useDeletePlan();
+  const createInvite = useCreatePlanInvite();
+  const removeMember = useRemovePlanMember();
+  const deleteInvite = useDeletePlanInvite();
+
+  const isOwner = role === "owner";
+
+  // Form state for plan details
+  const [planName, setPlanName] = useState("");
+  const [planYear, setPlanYear] = useState<string>("");
+  const [planDescription, setPlanDescription] = useState("");
+
+  // Initialize form state when plan data loads
+  useState(() => {
+    if (plan) {
+      setPlanName(plan.name);
+      setPlanYear(plan.year.toString());
+      setPlanDescription(plan.description || "");
+    }
+  });
+
+  // Invite form state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<OkrRole>("viewer");
+
+  const handleSaveSettings = async () => {
+    if (!plan) return;
+    await updatePlan.mutateAsync({
+      planId: plan.id,
+      updates: {
+        name: planName || plan.name,
+        year: planYear ? parseInt(planYear) : plan.year,
+        description: planDescription || null,
+      },
+    });
+  };
+
+  const handleDeletePlan = async () => {
+    if (!plan) return;
+    if (
+      confirm(
+        `Are you sure you want to delete "${plan.name}"? This action cannot be undone.`
+      )
+    ) {
+      await deletePlan.mutateAsync(plan.id);
+      router.push("/plans");
+    }
+  };
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    await createInvite.mutateAsync({
+      planId,
+      email: inviteEmail.trim(),
+      role: inviteRole,
+    });
+    setInviteEmail("");
+    setInviteRole("viewer");
+  };
+
+  const handleRemoveMember = async (userId: string, memberName: string) => {
+    if (confirm(`Are you sure you want to remove ${memberName} from this plan?`)) {
+      await removeMember.mutateAsync({ planId, userId });
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    await deleteInvite.mutateAsync({ inviteId, planId });
+  };
+
+  if (isLoadingPlan) {
+    return (
+      <div className="flex justify-center py-16">
+        <Loader2 className="h-10 w-10 animate-spin text-text-muted" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -76,11 +175,20 @@ export default async function SettingsPage({
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="plan-name">Plan Name</Label>
-                  <Input id="plan-name" defaultValue="2026 Plan" />
+                  <Input
+                    id="plan-name"
+                    value={planName || plan?.name || ""}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    disabled={!isOwner}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="plan-year">Year</Label>
-                  <Select defaultValue="2026">
+                  <Select
+                    value={planYear || plan?.year?.toString() || ""}
+                    onValueChange={setPlanYear}
+                    disabled={!isOwner}
+                  >
                     <SelectTrigger id="plan-year">
                       <SelectValue />
                     </SelectTrigger>
@@ -89,6 +197,7 @@ export default async function SettingsPage({
                       <SelectItem value="2025">2025</SelectItem>
                       <SelectItem value="2026">2026</SelectItem>
                       <SelectItem value="2027">2027</SelectItem>
+                      <SelectItem value="2028">2028</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -96,48 +205,72 @@ export default async function SettingsPage({
                   <Label htmlFor="plan-description">Description (optional)</Label>
                   <Input
                     id="plan-description"
+                    value={planDescription || plan?.description || ""}
+                    onChange={(e) => setPlanDescription(e.target.value)}
                     placeholder="Personal and professional goals for the year"
+                    disabled={!isOwner}
                   />
                 </div>
-                <Button>Save Changes</Button>
+                {isOwner && (
+                  <Button
+                    onClick={handleSaveSettings}
+                    disabled={updatePlan.isPending}
+                  >
+                    {updatePlan.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
             {/* Danger Zone */}
-            <Card className="border-status-danger/20">
-              <CardHeader>
-                <CardTitle className="text-status-danger">Danger Zone</CardTitle>
-                <CardDescription>
-                  Irreversible actions for this plan
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-card bg-status-danger/5 border border-status-danger/20">
-                  <div>
-                    <p className="font-medium text-body-sm">Duplicate Plan</p>
-                    <p className="text-small text-text-muted">
-                      Create a copy of this plan with all objectives and KRs
-                    </p>
+            {isOwner && (
+              <Card className="border-status-danger/20">
+                <CardHeader>
+                  <CardTitle className="text-status-danger">Danger Zone</CardTitle>
+                  <CardDescription>
+                    Irreversible actions for this plan
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-card bg-status-danger/5 border border-status-danger/20">
+                    <div>
+                      <p className="font-medium text-body-sm">Duplicate Plan</p>
+                      <p className="text-small text-text-muted">
+                        Create a copy of this plan with all objectives and KRs
+                      </p>
+                    </div>
+                    <Button variant="secondary" className="gap-2" disabled>
+                      <Copy className="w-4 h-4" />
+                      Duplicate
+                    </Button>
                   </div>
-                  <Button variant="secondary" className="gap-2">
-                    <Copy className="w-4 h-4" />
-                    Duplicate
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 rounded-card bg-status-danger/5 border border-status-danger/20">
-                  <div>
-                    <p className="font-medium text-body-sm">Delete Plan</p>
-                    <p className="text-small text-text-muted">
-                      Permanently delete this plan and all its data
-                    </p>
+                  <div className="flex items-center justify-between p-4 rounded-card bg-status-danger/5 border border-status-danger/20">
+                    <div>
+                      <p className="font-medium text-body-sm">Delete Plan</p>
+                      <p className="text-small text-text-muted">
+                        Permanently delete this plan and all its data
+                      </p>
+                    </div>
+                    <Button
+                      variant="danger"
+                      className="gap-2"
+                      onClick={handleDeletePlan}
+                      disabled={deletePlan.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </Button>
                   </div>
-                  <Button variant="danger" className="gap-2">
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
@@ -152,70 +285,146 @@ export default async function SettingsPage({
                     Manage who has access to this plan
                   </CardDescription>
                 </div>
-                <Button className="gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Invite Member
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
-              {/* Invite Form */}
-              <div className="flex gap-3 mb-6 p-4 rounded-card bg-bg-1/50 border border-border-soft">
-                <div className="flex-1">
-                  <Input placeholder="Enter email address" type="email" />
+              {/* Invite Form - only for owner */}
+              {isOwner && (
+                <div className="flex gap-3 mb-6 p-4 rounded-card bg-bg-1/50 border border-border-soft">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Enter email address"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                    />
+                  </div>
+                  <Select
+                    value={inviteRole}
+                    onValueChange={(v) => setInviteRole(v as OkrRole)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="viewer">Viewer</SelectItem>
+                      <SelectItem value="editor">Editor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleSendInvite}
+                    disabled={!inviteEmail.trim() || createInvite.isPending}
+                  >
+                    {createInvite.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Mail className="w-4 h-4 mr-2" />
+                        Send Invite
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <Select defaultValue="viewer">
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="viewer">Viewer</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Invite
-                </Button>
-              </div>
+              )}
+
+              {/* Pending Invites */}
+              {invites.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-body-sm font-medium text-text-muted mb-3">
+                    Pending Invites
+                  </h4>
+                  <div className="space-y-2">
+                    {invites.map((invite) => (
+                      <div
+                        key={invite.id}
+                        className="flex items-center justify-between p-3 rounded-card bg-bg-1/30 border border-border-soft"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-bg-1 flex items-center justify-center">
+                            <Mail className="w-4 h-4 text-text-muted" />
+                          </div>
+                          <div>
+                            <p className="text-body-sm">{invite.email}</p>
+                            <p className="text-small text-text-muted">
+                              Invited as {invite.role}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">Pending</Badge>
+                          {isOwner && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCancelInvite(invite.id)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Members List */}
-              <div className="space-y-3">
-                {mockMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-4 rounded-card bg-bg-1/30 border border-border-soft"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={member.avatar} />
-                        <AvatarFallback>
-                          {member.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-body-sm">{member.name}</p>
-                        <p className="text-small text-text-muted">{member.email}</p>
+              {isLoadingMembers ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {members.map((member) => (
+                    <div
+                      key={member.user_id}
+                      className="flex items-center justify-between p-4 rounded-card bg-bg-1/30 border border-border-soft"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarImage src={member.profile?.avatar_url || ""} />
+                          <AvatarFallback>
+                            {member.profile?.full_name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("") || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-body-sm">
+                            {member.profile?.full_name || "Unknown"}
+                          </p>
+                          <p className="text-small text-text-muted">
+                            {member.profile?.email || ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge
+                          variant={member.role === "owner" ? "default" : "outline"}
+                        >
+                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        </Badge>
+                        {isOwner && member.role !== "owner" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-text-muted hover:text-status-danger"
+                            onClick={() =>
+                              handleRemoveMember(
+                                member.user_id,
+                                member.profile?.full_name || "this member"
+                              )
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={member.role === "owner" ? "default" : "outline"}
-                      >
-                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                      </Badge>
-                      {member.role !== "owner" && (
-                        <Button variant="ghost" size="sm" className="text-text-muted">
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -256,7 +465,9 @@ export default async function SettingsPage({
 
                 {/* Editor */}
                 <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
-                  <Badge variant="outline" className="mb-3">Editor</Badge>
+                  <Badge variant="outline" className="mb-3">
+                    Editor
+                  </Badge>
                   <ul className="space-y-2 text-body-sm">
                     <li className="flex items-center gap-2 text-text-muted">
                       <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
@@ -279,7 +490,9 @@ export default async function SettingsPage({
 
                 {/* Viewer */}
                 <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
-                  <Badge variant="outline" className="mb-3">Viewer</Badge>
+                  <Badge variant="outline" className="mb-3">
+                    Viewer
+                  </Badge>
                   <ul className="space-y-2 text-body-sm">
                     <li className="flex items-center gap-2 text-text-muted">
                       <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
