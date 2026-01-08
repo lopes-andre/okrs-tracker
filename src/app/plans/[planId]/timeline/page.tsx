@@ -130,6 +130,11 @@ const formatEventTitle = (event: ActivityEventWithUser): string => {
 };
 
 const formatEventDescription = (event: ActivityEventWithUser): string => {
+  // Handle null/undefined payload
+  if (!event.payload) {
+    return "";
+  }
+  
   const payload = event.payload as Record<string, unknown>;
   
   if (event.event_type === "checkin_created") {
