@@ -78,7 +78,9 @@ export async function createPlan(plan: Omit<PlanInsert, "created_by">): Promise<
   const supabase = createClient();
 
   // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  
+  if (authError) throw new Error("Authentication failed");
   if (!user) throw new Error("Not authenticated");
 
   return handleSupabaseError(

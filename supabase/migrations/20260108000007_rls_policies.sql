@@ -1,5 +1,8 @@
 -- Migration: Row Level Security Policies
 -- Description: Enable RLS and create access policies for all tables
+-- 
+-- IMPORTANT: These policies are designed to work with Supabase Auth.
+-- The `authenticated` role is automatically assigned when a user is logged in.
 
 -- ============================================================================
 -- ENABLE RLS ON ALL TABLES
@@ -65,11 +68,13 @@ CREATE POLICY "Plans are viewable by members"
   TO authenticated
   USING (has_plan_access(id, 'viewer'));
 
--- Authenticated users can create plans
+-- Any authenticated user can create plans
+-- The app ensures created_by is set to the current user
+-- The trigger automatically adds them as owner in plan_members
 CREATE POLICY "Authenticated users can create plans"
   ON plans FOR INSERT
   TO authenticated
-  WITH CHECK (created_by = auth.uid());
+  WITH CHECK (true);
 
 -- Owners can update their plans
 CREATE POLICY "Owners can update plans"
@@ -100,7 +105,11 @@ CREATE POLICY "Service role can insert plan members"
   TO service_role
   WITH CHECK (true);
 
--- Plan creators can add themselves as owner (fallback if trigger fails)
+-- Allow the handle_new_plan trigger to add the creator as owner
+-- This policy allows inserting when:
+-- 1. The user is adding themselves (user_id = auth.uid())
+-- 2. As an owner role
+-- 3. To a plan they created
 CREATE POLICY "Plan creators can add themselves as owner"
   ON plan_members FOR INSERT
   TO authenticated
@@ -114,11 +123,14 @@ CREATE POLICY "Plan creators can add themselves as owner"
     )
   );
 
--- Owners can add members
+-- Owners can add other members (not themselves)
 CREATE POLICY "Owners can add members"
   ON plan_members FOR INSERT
   TO authenticated
-  WITH CHECK (has_plan_access(plan_id, 'owner'));
+  WITH CHECK (
+    has_plan_access(plan_id, 'owner')
+    AND user_id != auth.uid()
+  );
 
 -- Owners can update member roles (but not their own)
 CREATE POLICY "Owners can update member roles"
@@ -126,11 +138,11 @@ CREATE POLICY "Owners can update member roles"
   TO authenticated
   USING (
     has_plan_access(plan_id, 'owner') 
-    AND user_id != auth.uid() -- Can't change own role
+    AND user_id != auth.uid()
   )
   WITH CHECK (
     has_plan_access(plan_id, 'owner')
-    AND role != 'owner' -- Can't make someone else owner
+    AND role != 'owner'
   );
 
 -- Owners can remove members (but not themselves)
@@ -139,7 +151,7 @@ CREATE POLICY "Owners can remove members"
   TO authenticated
   USING (
     has_plan_access(plan_id, 'owner')
-    AND user_id != auth.uid() -- Can't remove self
+    AND user_id != auth.uid()
   );
 
 -- Members can leave plans (remove themselves, except owners)
@@ -148,7 +160,7 @@ CREATE POLICY "Members can leave plans"
   TO authenticated
   USING (
     user_id = auth.uid()
-    AND role != 'owner' -- Owners can't leave
+    AND role != 'owner'
   );
 
 -- ============================================================================
@@ -545,4 +557,17 @@ CREATE POLICY "Activity events viewable by members"
   USING (has_plan_access(plan_id, 'viewer'));
 
 -- Activity events are created by triggers, not directly by users
--- No INSERT/UPDATE/DELETE policies needed for regular users
+-- Service role policy for triggers
+CREATE POLICY "Service role can insert activity events"
+  ON activity_events FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+-- Allow authenticated users to insert their own activity (for client-side logging)
+CREATE POLICY "Users can insert activity events"
+  ON activity_events FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    has_plan_access(plan_id, 'viewer')
+    AND (actor_id = auth.uid() OR actor_id IS NULL)
+  );

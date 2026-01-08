@@ -30,6 +30,7 @@ A premium personal OKR (Objectives and Key Results) tracking web application. De
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix-based)
 - **Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth + RLS)
+- **Data Fetching**: [TanStack Query](https://tanstack.com/query)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Fonts**: Plus Jakarta Sans (headings) + Inter (body)
 
@@ -50,73 +51,44 @@ npm install
 
 ### 2. Set Up Supabase
 
-#### Option A: Using Supabase Cloud (Recommended)
+#### Create a Supabase Project
 
-1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+1. **Create a project** at [supabase.com](https://supabase.com)
 
 2. **Copy your environment variables**:
    - Go to Project Settings → API Keys
-   - Copy the Project URL, Publishable key, and Secret key
+   - Copy the Project URL, Publishable key (anon), and Secret key (service_role)
 
 3. **Create `.env.local`** in the project root:
    ```env
    NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
-   SUPABASE_SECRET_KEY=your-secret-key
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-anon-key
+   SUPABASE_SECRET_KEY=your-service-role-secret-key
    ```
 
-4. **Run migrations**:
-   - Go to Supabase Dashboard → SQL Editor
-   - Run each migration file in order (from `supabase/migrations/`):
-     1. `20260108000001_enums_and_functions.sql`
-     2. `20260108000002_core_tables.sql`
-     3. `20260108000003_okr_tables.sql`
-     4. `20260108000004_tracking_tables.sql`
-     5. `20260108000005_ui_tables.sql`
-     6. `20260108000006_activity_events.sql`
-     7. `20260108000007_rls_policies.sql`
-     8. `20260108000008_views.sql`
+4. **Run migrations** in Supabase Dashboard → SQL Editor.
+   
+   Run each migration file **in order** (copy-paste the contents):
+   
+   | Order | File | Description |
+   |-------|------|-------------|
+   | 1 | `20260108000001_enums_and_functions.sql` | Enums and helper functions |
+   | 2 | `20260108000002_core_tables.sql` | Profiles, plans, members, invites |
+   | 3 | `20260108000003_okr_tables.sql` | Objectives, KRs, quarter targets, tasks |
+   | 4 | `20260108000004_tracking_tables.sql` | Check-ins, tags |
+   | 5 | `20260108000005_ui_tables.sql` | Mindmap, dashboards, saved views |
+   | 6 | `20260108000006_activity_events.sql` | Activity timeline + triggers |
+   | 7 | `20260108000007_rls_policies.sql` | Row Level Security policies |
+   | 8 | `20260108000008_views.sql` | Database views |
 
-#### Option B: Using Supabase CLI (Local Development)
+   **Important**: Run them in order! Each migration depends on the previous ones.
 
-1. **Install Supabase CLI**:
-   ```bash
-   brew install supabase/tap/supabase
-   ```
+5. **Configure Auth** (optional but recommended):
+   - Go to Authentication → URL Configuration
+   - Set Site URL to `http://localhost:3000` (dev) or your production URL
+   - Add redirect URLs: `http://localhost:3000/auth/callback`
 
-2. **Start local Supabase**:
-   ```bash
-   supabase start
-   ```
-
-3. **Apply migrations**:
-   ```bash
-   supabase db push
-   ```
-
-4. **Use local credentials** in `.env.local`:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<local-publishable-key>
-   ```
-
-### 3. Seed Demo Data (Optional)
-
-After signing up with your first user:
-
-1. Get your user ID from Supabase Dashboard → Authentication → Users
-2. Run the seed script in SQL Editor:
-   ```sql
-   -- The seed.sql file automatically finds the first user
-   -- Just run supabase/seed.sql in the SQL Editor
-   ```
-
-Or via CLI:
-```bash
-supabase db seed
-```
-
-### 4. Run Development Server
+### 3. Run Development Server
 
 ```bash
 npm run dev
@@ -124,37 +96,55 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### 4. Create Your First Account
+
+1. Go to `/login`
+2. Sign up with your email
+3. Check your email for confirmation (or disable email confirmation in Supabase Auth settings for dev)
+4. Sign in
+5. Create your first OKR plan!
+
 ## Project Structure
 
 ```
 ├── src/
 │   ├── app/                      # Next.js App Router pages
+│   │   ├── (auth)/              # Auth actions
+│   │   ├── auth/callback/       # OAuth callback
 │   │   ├── login/               # Authentication page
 │   │   ├── plans/               # Plans listing
 │   │   └── plans/[planId]/      # Plan-specific pages
 │   │       ├── okrs/            # OKR editor
+│   │       ├── tasks/           # Tasks management
 │   │       ├── timeline/        # Activity feed
 │   │       ├── analytics/       # Charts & insights
 │   │       ├── mindmap/         # Visual hierarchy
 │   │       └── settings/        # Plan configuration
 │   ├── components/
 │   │   ├── layout/              # Layout components
+│   │   ├── okr/                 # OKR-specific components
+│   │   ├── tasks/               # Task components
 │   │   └── ui/                  # shadcn/ui components
-│   ├── lib/
-│   │   ├── supabase/            # Supabase client & types
-│   │   ├── design-tokens.ts     # Design system values
-│   │   └── utils.ts             # Utility functions
-│   └── middleware.ts            # Auth middleware
+│   ├── features/                # Data access layer
+│   │   ├── plans/               # Plans API & hooks
+│   │   ├── objectives/          # Objectives API & hooks
+│   │   ├── annual-krs/          # Annual KRs API & hooks
+│   │   ├── quarter-targets/     # Quarter targets API & hooks
+│   │   ├── tasks/               # Tasks API & hooks
+│   │   ├── check-ins/           # Check-ins API & hooks
+│   │   ├── tags/                # Tags & groups API & hooks
+│   │   ├── timeline/            # Timeline API & hooks
+│   │   ├── dashboards/          # Dashboards API & hooks
+│   │   └── mindmap/             # Mindmap API & hooks
+│   └── lib/
+│       ├── supabase/            # Supabase clients & types
+│       ├── design-tokens.ts     # Design system values
+│       ├── query-client.tsx     # TanStack Query setup
+│       ├── api-utils.ts         # API helper functions
+│       ├── toast-utils.ts       # Toast notifications
+│       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations
-│   │   ├── 001_enums_and_functions.sql
-│   │   ├── 002_core_tables.sql
-│   │   ├── 003_okr_tables.sql
-│   │   ├── 004_tracking_tables.sql
-│   │   ├── 005_ui_tables.sql
-│   │   ├── 006_activity_events.sql
-│   │   ├── 007_rls_policies.sql
-│   │   └── 008_views.sql
+│   ├── migrations/              # Database migrations (8 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -163,7 +153,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Database Schema
 
 ### Core Tables
-- `profiles` - User profiles (synced from auth.users)
+- `profiles` - User profiles (auto-created on signup)
 - `plans` - Annual OKR plans
 - `plan_members` - Membership with roles (owner/editor/viewer)
 - `plan_invites` - Pending invitations
@@ -178,29 +168,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### Tracking Tables
 - `check_ins` - Time-series progress updates
 - `tags` - Flexible tags (platform, funnel stage, etc.)
-- `annual_kr_tags` - KR-tag associations
-- `task_tags` - Task-tag associations
-- `activity_events` - Timeline/audit log
-
-### UI Persistence Tables
-- `mindmap_views` - User's mindmap viewport
-- `mindmap_nodes` - Node positions
-- `mindmap_edges` - Custom connections
-- `dashboards` - Custom dashboards
-- `dashboard_widgets` - Widget configurations
-- `saved_views` - Saved filter/sort settings
+- `activity_events` - Timeline/audit log (auto-populated by triggers)
 
 ### Views
 - `v_plan_timeline` - Activity events with user info
-- `v_plan_checkins_by_day` - Check-ins aggregated by day
+- `v_plan_stats` - High-level plan statistics
 - `v_objective_progress` - Calculated objective progress
 - `v_kr_progress` - Detailed KR progress
-- `v_plan_stats` - High-level plan statistics
-- `v_quarter_overview` - Quarter targets overview
 
 ## Row Level Security (RLS)
 
-All tables have RLS enabled with policies:
+All tables have RLS enabled with role-based policies:
 
 | Role | Can View | Can Create | Can Edit | Can Delete |
 |------|----------|------------|----------|------------|
@@ -208,15 +186,36 @@ All tables have RLS enabled with policies:
 | **Editor** | ✅ All plan data | ✅ OKRs, tasks, check-ins | ✅ OKRs, tasks | ✅ OKRs, tasks |
 | **Owner** | ✅ All plan data | ✅ Everything | ✅ Everything | ✅ Everything + members |
 
-### RLS Validation
+## Data Access Layer
 
-To verify RLS is working:
+The app uses a clean, typed data access layer:
 
-1. Create two users (User A and User B)
-2. Have User A create a plan
-3. Log in as User B and try to access User A's plan → Should fail
-4. Have User A invite User B as viewer
-5. User B can now view but not edit
+### API Functions (`features/*/api.ts`)
+- Supabase queries with proper error handling
+- Type-safe with TypeScript
+
+### React Query Hooks (`features/*/hooks.ts`)
+- Automatic caching and revalidation
+- Optimistic updates
+- Loading and error states
+
+### Example Usage
+
+```tsx
+import { usePlans, useCreatePlan } from "@/features";
+
+function MyComponent() {
+  const { data: plans, isLoading } = usePlans();
+  const createPlan = useCreatePlan();
+  
+  const handleCreate = () => {
+    createPlan.mutate({ name: "2026 OKRs", year: 2026 });
+  };
+  
+  if (isLoading) return <Spinner />;
+  return <PlansList plans={plans} onCreate={handleCreate} />;
+}
+```
 
 ## Available Scripts
 
@@ -226,6 +225,24 @@ To verify RLS is working:
 | `npm run build` | Build for production |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+
+## Troubleshooting
+
+### "Permission denied" when creating a plan
+- Make sure you ran **all 8 migration files** in order
+- Check that your `.env.local` has the correct Supabase keys
+- Verify you're logged in (check browser cookies)
+
+### Styles not loading
+- Make sure `autoprefixer` is installed: `npm install autoprefixer`
+- Restart the dev server after installing dependencies
+
+### Email confirmation not working
+- For development, you can disable email confirmation in Supabase Dashboard → Authentication → Settings → Email Auth → Toggle off "Confirm email"
+
+### Empty data on pages
+- Make sure you're accessing a valid plan (use the plan ID from the URL, not just "2026")
+- Check browser console for API errors
 
 ## Design System
 
@@ -252,16 +269,21 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Next.js + TypeScript + Tailwind setup
 - [x] Design system implementation
 - [x] shadcn/ui component library
-- [x] All placeholder pages
 - [x] Supabase schema with migrations
 - [x] Row Level Security policies
 - [x] Activity timeline triggers
 - [x] Database views
-- [x] Authentication UI (sign up, sign in, sign out)
-- [x] User profile auto-creation on signup
+- [x] Authentication (sign up, sign in, sign out)
+- [x] User profile auto-creation
+- [x] Data access layer (TanStack Query)
+- [x] Plans CRUD
+- [x] Objectives & KRs management
+- [x] Tasks management
+- [x] Timeline page with real data
+- [x] Settings page with member management
+- [x] Analytics overview
 
 ### 🔜 Coming Next
-- [ ] CRUD operations for OKRs
 - [ ] Check-in functionality
 - [ ] Real-time updates
 - [ ] Analytics charts (Recharts)
