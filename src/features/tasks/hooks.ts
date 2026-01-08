@@ -87,22 +87,25 @@ export function useTask(taskId: string) {
 // ============================================================================
 
 /**
- * Create a task
+ * Create a task (scoped to a plan)
  */
-export function useCreateTask() {
+export function useCreateTask(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (task: TaskInsert) => api.createTask(task),
+    mutationFn: (task: Omit<TaskInsert, "plan_id">) => 
+      api.createTask({ ...task, plan_id: planId }),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(data.plan_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       if (data.objective_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byObjective(data.objective_id) });
       }
       if (data.quarter_target_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byQuarterTarget(data.quarter_target_id) });
       }
+      // Invalidate timeline for activity events
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
       toast(successMessages.taskCreated);
     },
     onError: (error) => {
@@ -112,19 +115,26 @@ export function useCreateTask() {
 }
 
 /**
- * Update a task
+ * Update a task (scoped to a plan for cache invalidation)
  */
-export function useUpdateTask() {
+export function useUpdateTask(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ taskId, updates }: { taskId: string; updates: TaskUpdate }) =>
-      api.updateTask(taskId, updates),
+    mutationFn: ({ id, data }: { id: string; data: TaskUpdate }) =>
+      api.updateTask(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(data.plan_id) });
-      toast(successMessages.taskUpdated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      // Invalidate timeline for activity events
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      
+      if (data.status === "completed") {
+        toast(successMessages.taskCompleted);
+      } else {
+        toast(successMessages.taskUpdated);
+      }
     },
     onError: (error) => {
       toast(formatErrorMessage(error));
@@ -133,9 +143,9 @@ export function useUpdateTask() {
 }
 
 /**
- * Update task status
+ * Update task status (convenience hook)
  */
-export function useUpdateTaskStatus() {
+export function useUpdateTaskStatus(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -144,7 +154,10 @@ export function useUpdateTaskStatus() {
       api.updateTaskStatus(taskId, status),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(data.plan_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      // Invalidate timeline for activity events
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      
       if (data.status === "completed") {
         toast(successMessages.taskCompleted);
       } else {
@@ -160,7 +173,7 @@ export function useUpdateTaskStatus() {
 /**
  * Complete a task
  */
-export function useCompleteTask() {
+export function useCompleteTask(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -168,7 +181,9 @@ export function useCompleteTask() {
     mutationFn: (taskId: string) => api.completeTask(taskId),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(data.plan_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      // Invalidate timeline for activity events
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
       toast(successMessages.taskCompleted);
     },
     onError: (error) => {
@@ -178,17 +193,18 @@ export function useCompleteTask() {
 }
 
 /**
- * Delete a task
+ * Delete a task (scoped to a plan)
  */
-export function useDeleteTask() {
+export function useDeleteTask(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ taskId, planId }: { taskId: string; planId: string }) =>
-      api.deleteTask(taskId),
-    onSuccess: (_, { planId }) => {
+    mutationFn: (taskId: string) => api.deleteTask(taskId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      // Invalidate timeline for activity events
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
       toast(successMessages.taskDeleted);
     },
     onError: (error) => {
@@ -200,13 +216,12 @@ export function useDeleteTask() {
 /**
  * Reorder tasks
  */
-export function useReorderTasks() {
+export function useReorderTasks(planId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ planId, taskIds }: { planId: string; taskIds: string[] }) =>
-      api.reorderTasks(planId, taskIds),
-    onSuccess: (_, { planId }) => {
+    mutationFn: (taskIds: string[]) => api.reorderTasks(planId, taskIds),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
     },
   });
@@ -215,7 +230,7 @@ export function useReorderTasks() {
 /**
  * Set tags for a task
  */
-export function useSetTaskTags() {
+export function useSetTaskTags(planId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -223,6 +238,7 @@ export function useSetTaskTags() {
       api.setTaskTags(taskId, tagIds),
     onSuccess: (_, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
     },
   });
 }

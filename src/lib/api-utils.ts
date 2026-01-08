@@ -39,11 +39,18 @@ export class ApiError extends Error {
   }
 }
 
+// Type for Supabase query results
+interface SupabaseQueryResult<T> {
+  data: T | null;
+  error: PostgrestError | null;
+}
+
 // Wrapper to handle Supabase errors consistently
 export async function handleSupabaseError<T>(
-  promise: Promise<{ data: T | null; error: PostgrestError | null }>
+  query: PromiseLike<SupabaseQueryResult<T>>
 ): Promise<T> {
-  const { data, error } = await promise;
+  const result = await query;
+  const { data, error } = result as SupabaseQueryResult<T>;
 
   if (error) {
     throw new ApiError(error);
@@ -58,9 +65,10 @@ export async function handleSupabaseError<T>(
 
 // For queries that can return null (single item fetch)
 export async function handleSupabaseQuery<T>(
-  promise: Promise<{ data: T | null; error: PostgrestError | null }>
+  query: PromiseLike<SupabaseQueryResult<T>>
 ): Promise<T | null> {
-  const { data, error } = await promise;
+  const result = await query;
+  const { data, error } = result as SupabaseQueryResult<T>;
 
   if (error) {
     throw new ApiError(error);

@@ -81,7 +81,7 @@ export const queryKeys = {
   // Tasks
   tasks: {
     all: ["tasks"] as const,
-    list: (planId: string, filters?: Record<string, unknown>) => 
+    list: (planId: string, filters?: object) => 
       [...queryKeys.tasks.all, "list", planId, filters] as const,
     detail: (taskId: string) => [...queryKeys.tasks.all, "detail", taskId] as const,
     byObjective: (objectiveId: string) => [...queryKeys.tasks.all, "byObjective", objectiveId] as const,
@@ -92,7 +92,7 @@ export const queryKeys = {
   // Check-ins
   checkIns: {
     all: ["checkIns"] as const,
-    list: (planId: string, filters?: Record<string, unknown>) => 
+    list: (planId: string, filters?: object) => 
       [...queryKeys.checkIns.all, "list", planId, filters] as const,
     byKr: (annualKrId: string) => [...queryKeys.checkIns.all, "byKr", annualKrId] as const,
     recent: (planId: string, limit?: number) => 
@@ -114,7 +114,7 @@ export const queryKeys = {
   // Timeline / Activity Events
   timeline: {
     all: ["timeline"] as const,
-    list: (planId: string, filters?: Record<string, unknown>) => 
+    list: (planId: string, filters?: object) => 
       [...queryKeys.timeline.all, "list", planId, filters] as const,
     recent: (planId: string, limit?: number) => 
       [...queryKeys.timeline.all, "recent", planId, limit] as const,

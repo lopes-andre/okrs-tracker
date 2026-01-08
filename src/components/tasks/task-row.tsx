@@ -1,0 +1,205 @@
+"use client";
+
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  AlertCircle,
+  Calendar,
+  Target,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { Task, TaskStatus, TaskPriority, OkrRole } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
+
+interface TaskRowProps {
+  task: Task & {
+    objective?: { code: string; name: string } | null;
+    quarter_target?: { quarter: number } | null;
+    assigned_user?: { full_name: string | null; avatar_url: string | null } | null;
+  };
+  role: OkrRole;
+  onStatusChange: (status: TaskStatus) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
+  high: { label: "High", color: "text-status-danger bg-status-danger/10 border-status-danger/20" },
+  medium: { label: "Medium", color: "text-status-warning bg-status-warning/10 border-status-warning/20" },
+  low: { label: "Low", color: "text-text-muted bg-bg-1 border-border-soft" },
+};
+
+// Status icons for potential future use
+// const statusConfig: Record<TaskStatus, { label: string; icon: typeof Circle }> = {
+//   pending: { label: "To Do", icon: Circle },
+//   in_progress: { label: "In Progress", icon: Clock },
+//   completed: { label: "Done", icon: CheckCircle2 },
+//   cancelled: { label: "Cancelled", icon: AlertCircle },
+// };
+
+function formatDueDate(dateStr: string | null): { text: string; isOverdue: boolean; isDueSoon: boolean } {
+  if (!dateStr) return { text: "", isOverdue: false, isDueSoon: false };
+  
+  const date = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays < 0) {
+    return { text: `${Math.abs(diffDays)}d overdue`, isOverdue: true, isDueSoon: false };
+  } else if (diffDays === 0) {
+    return { text: "Today", isOverdue: false, isDueSoon: true };
+  } else if (diffDays === 1) {
+    return { text: "Tomorrow", isOverdue: false, isDueSoon: true };
+  } else if (diffDays <= 7) {
+    return { text: `${diffDays}d`, isOverdue: false, isDueSoon: true };
+  } else {
+    return { 
+      text: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), 
+      isOverdue: false, 
+      isDueSoon: false 
+    };
+  }
+}
+
+export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRowProps) {
+  const canEdit = role === "owner" || role === "editor";
+  const isCompleted = task.status === "completed";
+  const dueDate = formatDueDate(task.due_date);
+
+  function handleToggleComplete() {
+    if (!canEdit) return;
+    onStatusChange(isCompleted ? "pending" : "completed");
+  }
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-3 px-4 py-3 border-b border-border-soft last:border-b-0",
+        "hover:bg-bg-1/50 transition-colors",
+        isCompleted && "opacity-60"
+      )}
+    >
+      {/* Checkbox */}
+      {canEdit && (
+        <button
+          onClick={handleToggleComplete}
+          className="shrink-0 text-text-muted hover:text-text-strong transition-colors"
+        >
+          {isCompleted ? (
+            <CheckCircle2 className="w-5 h-5 text-status-success" />
+          ) : (
+            <Circle className="w-5 h-5" />
+          )}
+        </button>
+      )}
+
+      {/* Title & Description */}
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "text-body-sm font-medium text-text-strong truncate",
+          isCompleted && "line-through text-text-muted"
+        )}>
+          {task.title}
+        </p>
+        {(task.objective || task.description) && (
+          <p className="text-small text-text-muted truncate mt-0.5">
+            {task.objective && (
+              <span className="inline-flex items-center gap-1">
+                <Target className="w-3 h-3" />
+                {task.objective.code}
+                {task.description && " · "}
+              </span>
+            )}
+            {task.description}
+          </p>
+        )}
+      </div>
+
+      {/* Quarter Badge */}
+      {task.quarter_target && (
+        <Badge variant="secondary" className="shrink-0">
+          Q{task.quarter_target.quarter}
+        </Badge>
+      )}
+
+      {/* Priority Badge */}
+      <Badge
+        variant="outline"
+        className={cn("shrink-0 text-xs", priorityConfig[task.priority].color)}
+      >
+        {priorityConfig[task.priority].label}
+      </Badge>
+
+      {/* Due Date */}
+      {dueDate.text && (
+        <span
+          className={cn(
+            "text-small shrink-0 flex items-center gap-1",
+            dueDate.isOverdue && "text-status-danger font-medium",
+            dueDate.isDueSoon && !dueDate.isOverdue && "text-status-warning",
+            !dueDate.isOverdue && !dueDate.isDueSoon && "text-text-muted"
+          )}
+        >
+          <Calendar className="w-3 h-3" />
+          {dueDate.text}
+        </span>
+      )}
+
+      {/* Actions */}
+      {canEdit && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit Task
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {task.status !== "completed" && (
+              <DropdownMenuItem onClick={() => onStatusChange("completed")}>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Mark Complete
+              </DropdownMenuItem>
+            )}
+            {task.status === "pending" && (
+              <DropdownMenuItem onClick={() => onStatusChange("in_progress")}>
+                <Clock className="w-4 h-4 mr-2" />
+                Start Task
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-status-danger focus:text-status-danger"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Task
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
+  );
+}

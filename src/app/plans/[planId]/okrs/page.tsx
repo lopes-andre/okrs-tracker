@@ -21,7 +21,6 @@ import {
   useCreateObjective,
   useUpdateObjective,
   useDeleteObjective,
-  useAnnualKrWithDetails,
   useCreateAnnualKr,
   useUpdateAnnualKr,
   useDeleteAnnualKr,
@@ -31,7 +30,15 @@ import {
   useTags,
   useQuarterTargetsByKr,
 } from "@/features";
-import type { Objective, AnnualKr, ObjectiveWithKrs } from "@/lib/supabase/types";
+import type { 
+  Objective, 
+  AnnualKr, 
+  ObjectiveWithKrs, 
+  ObjectiveInsert, 
+  ObjectiveUpdate,
+  AnnualKrInsert,
+  AnnualKrUpdate,
+} from "@/lib/supabase/types";
 
 // Stats Card Component
 function StatsCard({
@@ -170,33 +177,31 @@ export default function OKRsPage({
     setQuarterTargetsDialogOpen(true);
   }
 
-  async function handleObjectiveSubmit(data: Parameters<typeof createObjective.mutateAsync>[0]) {
+  async function handleObjectiveSubmit(data: ObjectiveInsert | ObjectiveUpdate) {
     if (editingObjective) {
       await updateObjective.mutateAsync({
         objectiveId: editingObjective.id,
-        updates: data,
+        updates: data as ObjectiveUpdate,
       });
     } else {
-      await createObjective.mutateAsync(data as Parameters<typeof createObjective.mutateAsync>[0]);
+      await createObjective.mutateAsync(data as ObjectiveInsert);
     }
   }
 
   async function handleKrSubmit(
-    data: Parameters<typeof createAnnualKr.mutateAsync>[0],
+    data: AnnualKrInsert | AnnualKrUpdate,
     tagIds: string[]
   ) {
     if (editingKr) {
       await updateAnnualKr.mutateAsync({
         krId: editingKr.id,
-        updates: data,
+        updates: data as AnnualKrUpdate,
       });
       if (tagIds.length > 0 || krSelectedTags.length > 0) {
         await setKrTags.mutateAsync({ krId: editingKr.id, tagIds });
       }
     } else {
-      const newKr = await createAnnualKr.mutateAsync(
-        data as Parameters<typeof createAnnualKr.mutateAsync>[0]
-      );
+      const newKr = await createAnnualKr.mutateAsync(data as AnnualKrInsert);
       if (tagIds.length > 0) {
         await setKrTags.mutateAsync({ krId: newKr.id, tagIds });
       }
@@ -314,12 +319,12 @@ export default function OKRsPage({
               : "No objectives have been created for this plan yet"
           }
           action={
-            canEdit && (
-              <Button onClick={handleCreateObjective} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create Objective
-              </Button>
-            )
+            canEdit
+              ? {
+                  label: "Create Objective",
+                  onClick: handleCreateObjective,
+                }
+              : undefined
           }
         />
       )}

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { handleSupabaseError, handleSupabaseQuery } from "@/lib/api-utils";
 import type {
   Objective,
@@ -47,12 +47,12 @@ export async function getObjectivesWithKrs(planId: string): Promise<ObjectiveWit
   return (data || []).map((obj) => {
     const krs = obj.annual_krs || [];
     const progress = krs.length > 0
-      ? krs.reduce((sum, kr) => {
+      ? krs.reduce((sum: number, kr: { target_value: number; current_value: number; start_value: number; weight?: number }) => {
           const krProgress = kr.target_value > 0
             ? ((kr.current_value - kr.start_value) / (kr.target_value - kr.start_value)) * 100
             : 0;
           return sum + krProgress * (kr.weight || 1);
-        }, 0) / krs.reduce((sum, kr) => sum + (kr.weight || 1), 0)
+        }, 0) / krs.reduce((sum: number, kr: { weight?: number }) => sum + (kr.weight || 1), 0)
       : 0;
 
     return {

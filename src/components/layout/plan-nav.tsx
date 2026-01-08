@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Target,
+  ListTodo,
   History,
   BarChart3,
   Map,
@@ -19,6 +20,7 @@ interface PlanNavProps {
 const navItems = [
   { label: "Overview", href: "", icon: LayoutDashboard },
   { label: "OKRs", href: "/okrs", icon: Target },
+  { label: "Tasks", href: "/tasks", icon: ListTodo },
   { label: "Timeline", href: "/timeline", icon: History },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Mindmap", href: "/mindmap", icon: Map },

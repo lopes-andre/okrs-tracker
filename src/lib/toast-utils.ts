@@ -1,12 +1,12 @@
 import { ApiError } from "./api-utils";
 
-// Toast types that match our UI toast system
-export type ToastType = "default" | "success" | "error" | "warning";
+// Toast variants that match our UI toast system
+export type ToastVariant = "default" | "success" | "warning" | "destructive";
 
 export interface ToastMessage {
   title: string;
   description?: string;
-  type: ToastType;
+  variant?: ToastVariant;
 }
 
 // ============================================================================
@@ -18,7 +18,7 @@ export function formatErrorMessage(error: unknown): ToastMessage {
     return {
       title: "Error",
       description: error.userMessage,
-      type: "error",
+      variant: "destructive",
     };
   }
 
@@ -26,14 +26,14 @@ export function formatErrorMessage(error: unknown): ToastMessage {
     return {
       title: "Error",
       description: error.message,
-      type: "error",
+      variant: "destructive",
     };
   }
 
   return {
     title: "Error",
     description: "An unexpected error occurred. Please try again.",
-    type: "error",
+    variant: "destructive",
   };
 }
 
@@ -43,59 +43,59 @@ export function formatErrorMessage(error: unknown): ToastMessage {
 
 export const successMessages = {
   // Plans
-  planCreated: { title: "Plan created", description: "Your new plan is ready.", type: "success" as const },
-  planUpdated: { title: "Plan updated", description: "Your changes have been saved.", type: "success" as const },
-  planDeleted: { title: "Plan deleted", description: "The plan has been removed.", type: "success" as const },
+  planCreated: { title: "Plan created", description: "Your new plan is ready.", variant: "success" as const },
+  planUpdated: { title: "Plan updated", description: "Your changes have been saved.", variant: "success" as const },
+  planDeleted: { title: "Plan deleted", description: "The plan has been removed.", variant: "success" as const },
 
   // Members
-  memberInvited: { title: "Invitation sent", description: "They'll receive an email invitation.", type: "success" as const },
-  memberRemoved: { title: "Member removed", description: "They no longer have access.", type: "success" as const },
-  roleUpdated: { title: "Role updated", description: "Member permissions have been changed.", type: "success" as const },
+  memberInvited: { title: "Invitation sent", description: "They'll receive an email invitation.", variant: "success" as const },
+  memberRemoved: { title: "Member removed", description: "They no longer have access.", variant: "success" as const },
+  roleUpdated: { title: "Role updated", description: "Member permissions have been changed.", variant: "success" as const },
 
   // Objectives
-  objectiveCreated: { title: "Objective created", type: "success" as const },
-  objectiveUpdated: { title: "Objective updated", type: "success" as const },
-  objectiveDeleted: { title: "Objective deleted", type: "success" as const },
+  objectiveCreated: { title: "Objective created", variant: "success" as const },
+  objectiveUpdated: { title: "Objective updated", variant: "success" as const },
+  objectiveDeleted: { title: "Objective deleted", variant: "success" as const },
 
   // Key Results
-  krCreated: { title: "Key Result created", type: "success" as const },
-  krUpdated: { title: "Key Result updated", type: "success" as const },
-  krDeleted: { title: "Key Result deleted", type: "success" as const },
+  krCreated: { title: "Key Result created", variant: "success" as const },
+  krUpdated: { title: "Key Result updated", variant: "success" as const },
+  krDeleted: { title: "Key Result deleted", variant: "success" as const },
 
   // Quarter Targets
-  targetCreated: { title: "Quarterly target set", type: "success" as const },
-  targetUpdated: { title: "Target updated", type: "success" as const },
+  targetCreated: { title: "Quarterly target set", variant: "success" as const },
+  targetUpdated: { title: "Target updated", variant: "success" as const },
 
   // Tasks
-  taskCreated: { title: "Task created", type: "success" as const },
-  taskUpdated: { title: "Task updated", type: "success" as const },
-  taskDeleted: { title: "Task deleted", type: "success" as const },
-  taskCompleted: { title: "Task completed", description: "Great work! 🎉", type: "success" as const },
+  taskCreated: { title: "Task created", variant: "success" as const },
+  taskUpdated: { title: "Task updated", variant: "success" as const },
+  taskDeleted: { title: "Task deleted", variant: "success" as const },
+  taskCompleted: { title: "Task completed", description: "Great work! 🎉", variant: "success" as const },
 
   // Check-ins
-  checkInRecorded: { title: "Check-in recorded", description: "Progress has been updated.", type: "success" as const },
+  checkInRecorded: { title: "Check-in recorded", description: "Progress has been updated.", variant: "success" as const },
 
   // Tags & Groups
-  tagCreated: { title: "Tag created", type: "success" as const },
-  tagDeleted: { title: "Tag deleted", type: "success" as const },
-  groupCreated: { title: "Group created", type: "success" as const },
-  groupUpdated: { title: "Group updated", type: "success" as const },
-  groupDeleted: { title: "Group deleted", type: "success" as const },
+  tagCreated: { title: "Tag created", variant: "success" as const },
+  tagDeleted: { title: "Tag deleted", variant: "success" as const },
+  groupCreated: { title: "Group created", variant: "success" as const },
+  groupUpdated: { title: "Group updated", variant: "success" as const },
+  groupDeleted: { title: "Group deleted", variant: "success" as const },
 
   // Dashboards
-  dashboardCreated: { title: "Dashboard created", type: "success" as const },
-  dashboardUpdated: { title: "Dashboard updated", type: "success" as const },
-  dashboardDeleted: { title: "Dashboard deleted", type: "success" as const },
-  widgetAdded: { title: "Widget added", type: "success" as const },
-  widgetRemoved: { title: "Widget removed", type: "success" as const },
+  dashboardCreated: { title: "Dashboard created", variant: "success" as const },
+  dashboardUpdated: { title: "Dashboard updated", variant: "success" as const },
+  dashboardDeleted: { title: "Dashboard deleted", variant: "success" as const },
+  widgetAdded: { title: "Widget added", variant: "success" as const },
+  widgetRemoved: { title: "Widget removed", variant: "success" as const },
 
   // Mindmap
-  layoutSaved: { title: "Layout saved", description: "Your mindmap layout has been saved.", type: "success" as const },
+  layoutSaved: { title: "Layout saved", description: "Your mindmap layout has been saved.", variant: "success" as const },
 
   // General
-  saved: { title: "Saved", type: "success" as const },
-  deleted: { title: "Deleted", type: "success" as const },
-  copied: { title: "Copied to clipboard", type: "success" as const },
+  saved: { title: "Saved", variant: "success" as const },
+  deleted: { title: "Deleted", variant: "success" as const },
+  copied: { title: "Copied to clipboard", variant: "success" as const },
 } as const;
 
 // ============================================================================
@@ -103,7 +103,7 @@ export const successMessages = {
 // ============================================================================
 
 export const warningMessages = {
-  unsavedChanges: { title: "Unsaved changes", description: "You have unsaved changes that will be lost.", type: "warning" as const },
-  offline: { title: "You're offline", description: "Changes will sync when you're back online.", type: "warning" as const },
-  slowConnection: { title: "Slow connection", description: "This might take a moment.", type: "warning" as const },
+  unsavedChanges: { title: "Unsaved changes", description: "You have unsaved changes that will be lost.", variant: "warning" as const },
+  offline: { title: "You're offline", description: "Changes will sync when you're back online.", variant: "warning" as const },
+  slowConnection: { title: "Slow connection", description: "This might take a moment.", variant: "warning" as const },
 } as const;

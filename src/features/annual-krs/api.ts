@@ -1,5 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
-import { handleSupabaseError, handleSupabaseQuery } from "@/lib/api-utils";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import type {
   AnnualKr,
   AnnualKrInsert,
@@ -18,16 +17,25 @@ import type {
 export async function getAnnualKrs(planId: string): Promise<AnnualKr[]> {
   const supabase = createClient();
 
-  return handleSupabaseError(
-    supabase
-      .from("annual_krs")
-      .select(`
-        *,
-        objectives!inner(plan_id)
-      `)
-      .eq("objectives.plan_id", planId)
-      .order("sort_order", { ascending: true })
-  );
+  // First get objectives for this plan, then get their KRs
+  const { data: objectives, error: objError } = await supabase
+    .from("objectives")
+    .select("id")
+    .eq("plan_id", planId) as { data: { id: string }[] | null; error: unknown };
+
+  if (objError) throw objError;
+  if (!objectives || objectives.length === 0) return [];
+
+  const objectiveIds = objectives.map((o) => o.id);
+
+  const { data, error } = await supabase
+    .from("annual_krs")
+    .select("*")
+    .in("objective_id", objectiveIds)
+    .order("sort_order", { ascending: true }) as { data: AnnualKr[] | null; error: unknown };
+
+  if (error) throw error;
+  return data || [];
 }
 
 /**
@@ -36,13 +44,14 @@ export async function getAnnualKrs(planId: string): Promise<AnnualKr[]> {
 export async function getAnnualKrsByObjective(objectiveId: string): Promise<AnnualKr[]> {
   const supabase = createClient();
 
-  return handleSupabaseError(
-    supabase
-      .from("annual_krs")
-      .select("*")
-      .eq("objective_id", objectiveId)
-      .order("sort_order", { ascending: true })
-  );
+  const { data, error } = await supabase
+    .from("annual_krs")
+    .select("*")
+    .eq("objective_id", objectiveId)
+    .order("sort_order", { ascending: true }) as { data: AnnualKr[] | null; error: unknown };
+
+  if (error) throw error;
+  return data || [];
 }
 
 /**
@@ -54,12 +63,13 @@ export async function getKrProgress(planId: string): Promise<(AnnualKr & {
 })[]> {
   const supabase = createClient();
 
-  return handleSupabaseError(
-    supabase
-      .from("v_kr_progress")
-      .select("*")
-      .eq("plan_id", planId)
-  );
+  const { data, error } = await supabase
+    .from("v_kr_progress")
+    .select("*")
+    .eq("plan_id", planId) as { data: (AnnualKr & { progress: number; objective_code: string })[] | null; error: unknown };
+
+  if (error) throw error;
+  return data || [];
 }
 
 /**
@@ -68,13 +78,14 @@ export async function getKrProgress(planId: string): Promise<(AnnualKr & {
 export async function getAnnualKr(krId: string): Promise<AnnualKr | null> {
   const supabase = createClient();
 
-  return handleSupabaseQuery(
-    supabase
-      .from("annual_krs")
-      .select("*")
-      .eq("id", krId)
-      .single()
-  );
+  const { data, error } = await supabase
+    .from("annual_krs")
+    .select("*")
+    .eq("id", krId)
+    .single() as { data: AnnualKr | null; error: { code: string } | null };
+
+  if (error && error.code !== "PGRST116") throw error;
+  return data;
 }
 
 /**
@@ -93,7 +104,15 @@ export async function getAnnualKrWithDetails(krId: string): Promise<AnnualKrWith
       annual_kr_tags(tag:tags(*))
     `)
     .eq("id", krId)
-    .single();
+    .single() as { 
+      data: (AnnualKr & { 
+        objective?: unknown; 
+        group?: unknown; 
+        quarter_targets?: unknown[]; 
+        annual_kr_tags?: { tag: Tag }[] 
+      }) | null; 
+      error: { code: string; message: string } | null 
+    };
 
   if (error && error.code !== "PGRST116") throw error;
   if (!data) return null;
@@ -105,7 +124,7 @@ export async function getAnnualKrWithDetails(krId: string): Promise<AnnualKrWith
 
   return {
     ...data,
-    tags: data.annual_kr_tags?.map((t: { tag: Tag }) => t.tag) || [],
+    tags: data.annual_kr_tags?.map((t) => t.tag) || [],
     annual_kr_tags: undefined,
     progress: Math.min(Math.max(progress, 0), 100),
   } as AnnualKrWithDetails;
@@ -117,13 +136,15 @@ export async function getAnnualKrWithDetails(krId: string): Promise<AnnualKrWith
 export async function createAnnualKr(kr: AnnualKrInsert): Promise<AnnualKr> {
   const supabase = createClient();
 
-  return handleSupabaseError(
-    supabase
-      .from("annual_krs")
-      .insert(kr)
-      .select()
-      .single()
-  );
+  const { data, error } = await supabase
+    .from("annual_krs")
+    .insert(kr)
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error("No data returned");
+  return data;
 }
 
 /**
@@ -135,14 +156,16 @@ export async function updateAnnualKr(
 ): Promise<AnnualKr> {
   const supabase = createClient();
 
-  return handleSupabaseError(
-    supabase
-      .from("annual_krs")
-      .update(updates)
-      .eq("id", krId)
-      .select()
-      .single()
-  );
+  const { data, error } = await supabase
+    .from("annual_krs")
+    .update(updates)
+    .eq("id", krId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error("No data returned");
+  return data;
 }
 
 /**

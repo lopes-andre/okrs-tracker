@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { 
   handleSupabaseError,
   getPaginationRange,
@@ -199,7 +199,7 @@ export async function getActivityByDate(
 
   // Convert to array and sort by date descending
   return Object.entries(grouped)
-    .map(([date, events]) => ({ date, events }))
+    .map(([date, events]) => ({ date, events: events as ActivityEventWithUser[] }))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 

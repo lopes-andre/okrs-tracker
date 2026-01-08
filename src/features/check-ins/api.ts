@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { 
   handleSupabaseError, 
   getPaginationRange,
@@ -244,9 +244,9 @@ export async function quickCheckIn(
   return createCheckIn({
     annual_kr_id: annualKrId,
     value,
-    note,
-    evidence_url: evidenceUrl,
-    quarter_target_id: quarterTargetId,
+    note: note || null,
+    evidence_url: evidenceUrl || null,
+    quarter_target_id: quarterTargetId || null,
     recorded_at: new Date().toISOString(),
     recorded_by: "", // Will be set by createCheckIn
   });

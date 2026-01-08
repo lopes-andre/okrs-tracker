@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { handleSupabaseError, handleSupabaseQuery } from "@/lib/api-utils";
 import type {
   Plan,

@@ -54,7 +54,7 @@ export function ObjectiveCard({
   const getStatus = () => {
     if (progress >= 70) return { label: "On Track", variant: "success" as const };
     if (progress >= 40) return { label: "At Risk", variant: "warning" as const };
-    return { label: "Behind", variant: "destructive" as const };
+    return { label: "Behind", variant: "danger" as const };
   };
 
   const status = getStatus();
