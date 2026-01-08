@@ -1,211 +1,396 @@
-import { Plus, Search, Filter, Target, ChevronRight } from "lucide-react";
+"use client";
+
+import { useState, use } from "react";
+import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  ObjectiveCard,
+  ObjectiveDialog,
+  AnnualKrDialog,
+  QuarterTargetsDialog,
+  DeleteConfirmationDialog,
+} from "@/components/okr";
+import {
+  usePlan,
+  usePlanRole,
+  usePlanStats,
+  useObjectivesWithKrs,
+  useCreateObjective,
+  useUpdateObjective,
+  useDeleteObjective,
+  useAnnualKrWithDetails,
+  useCreateAnnualKr,
+  useUpdateAnnualKr,
+  useDeleteAnnualKr,
+  useSetKrTags,
+  useUpsertQuarterTargets,
+  useKrGroups,
+  useTags,
+  useQuarterTargetsByKr,
+} from "@/features";
+import type { Objective, AnnualKr, ObjectiveWithKrs } from "@/lib/supabase/types";
 
-// Mock objectives data
-const mockObjectives = [
-  {
-    id: "o1",
-    code: "O1",
-    name: "Grow audience across all platforms",
-    description: "Build a sustainable audience that grows month over month",
-    progress: 45,
-    status: "on-track",
-    keyResults: [
-      {
-        id: "kr1",
-        name: "LinkedIn followers",
-        current: 12500,
-        target: 30000,
-        unit: "followers",
-        progress: 42,
-      },
-      {
-        id: "kr2",
-        name: "YouTube subscribers",
-        current: 8200,
-        target: 25000,
-        unit: "subscribers",
-        progress: 33,
-      },
-      {
-        id: "kr3",
-        name: "Newsletter subscribers",
-        current: 4500,
-        target: 10000,
-        unit: "subscribers",
-        progress: 45,
-      },
-    ],
-  },
-  {
-    id: "o2",
-    code: "O2",
-    name: "Build sustainable content engine",
-    description: "Create a repeatable process for high-quality content production",
-    progress: 28,
-    status: "at-risk",
-    keyResults: [
-      {
-        id: "kr4",
-        name: "Long-form posts published",
-        current: 12,
-        target: 48,
-        unit: "posts",
-        progress: 25,
-      },
-      {
-        id: "kr5",
-        name: "YouTube videos published",
-        current: 8,
-        target: 24,
-        unit: "videos",
-        progress: 33,
-      },
-    ],
-  },
-];
+// Stats Card Component
+function StatsCard({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  subtext?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-card bg-bg-1 flex items-center justify-center shrink-0">
+            <Icon className="w-5 h-5 text-text-muted" />
+          </div>
+          <div>
+            <p className="text-small text-text-muted">{label}</p>
+            <p className="text-h4 font-heading font-bold">{value}</p>
+            {subtext && <p className="text-xs text-text-subtle">{subtext}</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
-export default async function OKRsPage({
+export default function OKRsPage({
   params,
 }: {
   params: Promise<{ planId: string }>;
 }) {
-  const { planId } = await params;
+  const { planId } = use(params);
+
+  // Data fetching
+  const { data: plan, isLoading: planLoading } = usePlan(planId);
+  const { data: role, isLoading: roleLoading } = usePlanRole(planId);
+  const { data: stats } = usePlanStats(planId);
+  const { data: objectives, isLoading: objectivesLoading } = useObjectivesWithKrs(planId);
+  const { data: groups = [] } = useKrGroups(planId);
+  const { data: tags = [] } = useTags(planId);
+
+  // Mutations
+  const createObjective = useCreateObjective();
+  const updateObjective = useUpdateObjective();
+  const deleteObjective = useDeleteObjective();
+  const createAnnualKr = useCreateAnnualKr();
+  const updateAnnualKr = useUpdateAnnualKr();
+  const deleteAnnualKr = useDeleteAnnualKr();
+  const setKrTags = useSetKrTags();
+  const upsertQuarterTargets = useUpsertQuarterTargets();
+
+  // Dialog states
+  const [objectiveDialogOpen, setObjectiveDialogOpen] = useState(false);
+  const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
+
+  const [krDialogOpen, setKrDialogOpen] = useState(false);
+  const [editingKr, setEditingKr] = useState<AnnualKr | null>(null);
+  const [krObjectiveId, setKrObjectiveId] = useState<string>("");
+  const [krSelectedTags, setKrSelectedTags] = useState<string[]>([]);
+
+  const [quarterTargetsDialogOpen, setQuarterTargetsDialogOpen] = useState(false);
+  const [quarterTargetsKr, setQuarterTargetsKr] = useState<AnnualKr | null>(null);
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: "objective" | "kr";
+    id: string;
+    name: string;
+    objectiveId?: string;
+  } | null>(null);
+
+  // Permission check
+  const canEdit = role === "owner" || role === "editor";
+  const isLoading = planLoading || roleLoading || objectivesLoading;
+
+  // Get existing objective codes
+  const existingCodes = objectives?.map((o) => o.code) || [];
+
+  // Calculate overall progress
+  const overallProgress = objectives && objectives.length > 0
+    ? objectives.reduce((sum, obj) => sum + (obj.progress || 0), 0) / objectives.length
+    : 0;
+
+  // Handlers
+  function handleCreateObjective() {
+    setEditingObjective(null);
+    setObjectiveDialogOpen(true);
+  }
+
+  function handleEditObjective(objective: Objective) {
+    setEditingObjective(objective);
+    setObjectiveDialogOpen(true);
+  }
+
+  function handleDeleteObjective(objective: ObjectiveWithKrs) {
+    setDeleteTarget({
+      type: "objective",
+      id: objective.id,
+      name: `${objective.code}: ${objective.name}`,
+    });
+    setDeleteDialogOpen(true);
+  }
+
+  function handleAddKr(objectiveId: string) {
+    setEditingKr(null);
+    setKrObjectiveId(objectiveId);
+    setKrSelectedTags([]);
+    setKrDialogOpen(true);
+  }
+
+  function handleEditKr(kr: AnnualKr, objectiveId: string) {
+    setEditingKr(kr);
+    setKrObjectiveId(objectiveId);
+    // TODO: Fetch current tags for the KR
+    setKrSelectedTags([]);
+    setKrDialogOpen(true);
+  }
+
+  function handleDeleteKr(kr: AnnualKr, objectiveId: string) {
+    setDeleteTarget({
+      type: "kr",
+      id: kr.id,
+      name: kr.name,
+      objectiveId,
+    });
+    setDeleteDialogOpen(true);
+  }
+
+  function handleEditQuarterTargets(kr: AnnualKr) {
+    setQuarterTargetsKr(kr);
+    setQuarterTargetsDialogOpen(true);
+  }
+
+  async function handleObjectiveSubmit(data: Parameters<typeof createObjective.mutateAsync>[0]) {
+    if (editingObjective) {
+      await updateObjective.mutateAsync({
+        objectiveId: editingObjective.id,
+        updates: data,
+      });
+    } else {
+      await createObjective.mutateAsync(data as Parameters<typeof createObjective.mutateAsync>[0]);
+    }
+  }
+
+  async function handleKrSubmit(
+    data: Parameters<typeof createAnnualKr.mutateAsync>[0],
+    tagIds: string[]
+  ) {
+    if (editingKr) {
+      await updateAnnualKr.mutateAsync({
+        krId: editingKr.id,
+        updates: data,
+      });
+      if (tagIds.length > 0 || krSelectedTags.length > 0) {
+        await setKrTags.mutateAsync({ krId: editingKr.id, tagIds });
+      }
+    } else {
+      const newKr = await createAnnualKr.mutateAsync(
+        data as Parameters<typeof createAnnualKr.mutateAsync>[0]
+      );
+      if (tagIds.length > 0) {
+        await setKrTags.mutateAsync({ krId: newKr.id, tagIds });
+      }
+    }
+  }
+
+  async function handleQuarterTargetsSubmit(
+    targets: { quarter: 1 | 2 | 3 | 4; target_value: number; notes?: string }[]
+  ) {
+    if (!quarterTargetsKr) return;
+    await upsertQuarterTargets.mutateAsync({
+      annualKrId: quarterTargetsKr.id,
+      targets,
+    });
+  }
+
+  async function handleDelete() {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "objective") {
+      await deleteObjective.mutateAsync({
+        objectiveId: deleteTarget.id,
+        planId,
+      });
+    } else {
+      await deleteAnnualKr.mutateAsync({
+        krId: deleteTarget.id,
+        objectiveId: deleteTarget.objectiveId!,
+      });
+    }
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
+      </div>
+    );
+  }
 
   return (
     <>
+      {/* Header */}
       <PageHeader
         title="Objectives & Key Results"
-        description="Define and track your annual OKRs"
+        description={plan ? `${plan.name} • ${plan.year}` : "Define and track your annual OKRs"}
       >
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          New Objective
-        </Button>
+        {canEdit && (
+          <Button onClick={handleCreateObjective} className="gap-2">
+            <Plus className="w-4 h-4" />
+            New Objective
+          </Button>
+        )}
       </PageHeader>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <Input
-            placeholder="Search objectives and key results..."
-            className="pl-10"
-          />
-        </div>
-        <Button variant="secondary" className="gap-2">
-          <Filter className="w-4 h-4" />
-          Filters
-        </Button>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatsCard
+          icon={Target}
+          label="Objectives"
+          value={stats?.objective_count || 0}
+        />
+        <StatsCard
+          icon={TrendingUp}
+          label="Key Results"
+          value={stats?.kr_count || 0}
+        />
+        <StatsCard
+          icon={CheckCircle2}
+          label="Overall Progress"
+          value={`${Math.round(overallProgress)}%`}
+        />
+        <StatsCard
+          icon={ListTodo}
+          label="Tasks"
+          value={stats?.task_count || 0}
+          subtext={stats ? `${stats.completed_task_count} completed` : undefined}
+        />
       </div>
 
-      {/* Tabs for view modes */}
-      <Tabs defaultValue="list" className="mb-6">
-        <TabsList>
-          <TabsTrigger value="list">List View</TabsTrigger>
-          <TabsTrigger value="board">Board View</TabsTrigger>
-          <TabsTrigger value="tree">Tree View</TabsTrigger>
-        </TabsList>
+      {/* Objectives List */}
+      {objectives && objectives.length > 0 ? (
+        <div className="space-y-4">
+          {objectives.map((objective) => (
+            <ObjectiveCard
+              key={objective.id}
+              objective={objective}
+              role={role || "viewer"}
+              onEdit={() => handleEditObjective(objective)}
+              onDelete={() => handleDeleteObjective(objective)}
+              onAddKr={() => handleAddKr(objective.id)}
+              onEditKr={(krId) => {
+                const kr = objective.annual_krs?.find((k) => k.id === krId);
+                if (kr) handleEditKr(kr, objective.id);
+              }}
+              onDeleteKr={(krId) => {
+                const kr = objective.annual_krs?.find((k) => k.id === krId);
+                if (kr) handleDeleteKr(kr, objective.id);
+              }}
+              onEditQuarterTargets={(krId) => {
+                const kr = objective.annual_krs?.find((k) => k.id === krId);
+                if (kr) handleEditQuarterTargets(kr);
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={Target}
+          title="No objectives yet"
+          description={
+            canEdit
+              ? "Create your first objective to start tracking your OKRs"
+              : "No objectives have been created for this plan yet"
+          }
+          action={
+            canEdit && (
+              <Button onClick={handleCreateObjective} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Create Objective
+              </Button>
+            )
+          }
+        />
+      )}
 
-        <TabsContent value="list" className="mt-6">
-          {/* Objectives List */}
-          <div className="space-y-6">
-            {mockObjectives.map((objective) => (
-              <Card key={objective.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-card bg-bg-1 flex items-center justify-center shrink-0">
-                        <span className="font-heading font-bold text-body text-text-muted">
-                          {objective.code}
-                        </span>
-                      </div>
-                      <div>
-                        <CardTitle className="text-h5 mb-1">
-                          {objective.name}
-                        </CardTitle>
-                        <p className="text-body-sm text-text-muted">
-                          {objective.description}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={
-                          objective.status === "on-track" ? "success" : "warning"
-                        }
-                      >
-                        {objective.status === "on-track" ? "On Track" : "At Risk"}
-                      </Badge>
-                      <span className="font-heading font-bold text-h4">
-                        {objective.progress}%
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {objective.keyResults.map((kr) => (
-                      <div
-                        key={kr.id}
-                        className="flex items-center gap-4 p-3 rounded-button bg-bg-1/50 border border-border-soft hover:border-border transition-colors cursor-pointer group"
-                      >
-                        <Target className="w-4 h-4 text-text-subtle shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-body-sm font-medium text-text-strong truncate">
-                            {kr.name}
-                          </p>
-                          <p className="text-small text-text-muted">
-                            {kr.current.toLocaleString()} / {kr.target.toLocaleString()} {kr.unit}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 w-48">
-                          <Progress value={kr.progress} className="flex-1" />
-                          <span className="text-small font-medium w-10 text-right">
-                            {kr.progress}%
-                          </span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-text-subtle opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-text-muted hover:text-text-strong"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Key Result
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+      {/* Dialogs */}
+      <ObjectiveDialog
+        open={objectiveDialogOpen}
+        onOpenChange={setObjectiveDialogOpen}
+        planId={planId}
+        objective={editingObjective}
+        existingCodes={existingCodes}
+        onSubmit={handleObjectiveSubmit}
+      />
 
-        <TabsContent value="board">
-          <EmptyState
-            icon={Target}
-            title="Board View Coming Soon"
-            description="Drag and drop your objectives and key results across different status columns."
-          />
-        </TabsContent>
+      <AnnualKrDialog
+        open={krDialogOpen}
+        onOpenChange={setKrDialogOpen}
+        objectiveId={krObjectiveId}
+        kr={editingKr}
+        groups={groups}
+        tags={tags}
+        selectedTags={krSelectedTags}
+        onSubmit={handleKrSubmit}
+      />
 
-        <TabsContent value="tree">
-          <EmptyState
-            icon={Target}
-            title="Tree View Coming Soon"
-            description="View your OKRs in a hierarchical tree structure showing parent-child relationships."
-          />
-        </TabsContent>
-      </Tabs>
+      {quarterTargetsKr && (
+        <QuarterTargetsDialogWrapper
+          open={quarterTargetsDialogOpen}
+          onOpenChange={setQuarterTargetsDialogOpen}
+          kr={quarterTargetsKr}
+          onSubmit={handleQuarterTargetsSubmit}
+        />
+      )}
+
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={deleteTarget?.type === "objective" ? "Delete Objective" : "Delete Key Result"}
+        description={
+          deleteTarget?.type === "objective"
+            ? "This will also delete all associated key results and quarter targets."
+            : "This will also delete all associated quarter targets and check-ins."
+        }
+        itemName={deleteTarget?.name || ""}
+        onConfirm={handleDelete}
+      />
     </>
+  );
+}
+
+// Wrapper component to fetch quarter targets
+function QuarterTargetsDialogWrapper({
+  open,
+  onOpenChange,
+  kr,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  kr: AnnualKr;
+  onSubmit: (targets: { quarter: 1 | 2 | 3 | 4; target_value: number; notes?: string }[]) => Promise<void>;
+}) {
+  const { data: quarterTargets = [] } = useQuarterTargetsByKr(kr.id);
+
+  return (
+    <QuarterTargetsDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      kr={kr}
+      quarterTargets={quarterTargets}
+      onSubmit={onSubmit}
+    />
   );
 }
