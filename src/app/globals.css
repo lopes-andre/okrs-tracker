@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+ * OKRs Tracker - Global Styles
+ * Based on Kympler's design system: premium, minimalist, executive-grade
+ */
+
+@layer base {
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Body defaults */
+  body {
+    @apply bg-bg-1 text-text-strong font-body antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Headings use Plus Jakarta Sans */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  /* Focus visible styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-accent/20 ring-offset-2 ring-offset-bg-0;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-accent/10 text-text-strong;
+  }
+
+  /* Scrollbar styling (subtle) */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-border-strong;
+  }
+}
+
+@layer components {
+  /* Container */
+  .container-main {
+    @apply mx-auto max-w-container px-5 md:px-8;
+  }
+
+  .container-narrow {
+    @apply mx-auto max-w-content px-5 md:px-8;
+  }
+
+  /* Section spacing */
+  .section {
+    @apply py-12 md:py-20;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-bg-0 rounded-card border border-border-soft shadow-card;
+  }
+
+  .card-hover {
+    @apply transition-all duration-normal hover:shadow-hover hover:-translate-y-0.5;
+  }
+
+  .card-padding {
+    @apply p-5 md:p-6;
+  }
+
+  /* Button base styles */
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 rounded-button font-medium
+           transition-all duration-normal focus-visible:ring-2 
+           focus-visible:ring-accent/20 focus-visible:ring-offset-2
+           disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply btn-base bg-accent text-white hover:bg-accent-hover
+           active:scale-[0.98];
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply btn-base bg-bg-0 text-text-strong border border-border
+           hover:bg-bg-1 active:scale-[0.98];
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply btn-base text-text-strong hover:bg-accent-muted active:bg-accent/10;
+  }
+
+  /* Badge / Pill */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-pill 
+           text-small font-medium bg-bg-1 text-text-muted border border-border-soft;
+  }
+
+  .badge-success {
+    @apply bg-status-success/10 text-status-success border-status-success/20;
+  }
+
+  .badge-warning {
+    @apply bg-status-warning/10 text-status-warning border-status-warning/20;
+  }
+
+  .badge-danger {
+    @apply bg-status-danger/10 text-status-danger border-status-danger/20;
+  }
+
+  /* Input styles */
+  .input-base {
+    @apply w-full bg-bg-0 border border-border rounded-input px-4 py-2.5
+           text-body text-text-strong placeholder:text-text-subtle
+           shadow-input transition-all duration-fast
+           focus:border-border-strong focus:shadow-input-focus focus:outline-none;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply h-2 bg-bg-1 rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-accent rounded-full transition-all duration-slow;
+  }
+
+  /* Divider */
+  .divider {
+    @apply h-px bg-border-soft;
+  }
+
+  /* Text utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Fade in animation class */
+  .animate-in {
+    @apply animate-fade-in-up;
+  }
+
+  /* Stagger delays for lists */
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-text-strong to-text-muted bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-bg-0/80 backdrop-blur-md;
+  }
+}
