@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { createClient } from "@/lib/supabase/server";
 
-// Mock data for demonstration
+// Mock data for demonstration (will be replaced with real data)
 const mockPlans = [
   {
     id: "2026",
@@ -31,10 +32,38 @@ const mockPlans = [
   },
 ];
 
-export default function PlansPage() {
+export default async function PlansPage() {
+  const supabase = await createClient();
+  
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Get profile data
+  let fullName: string | null = null;
+  let avatarUrl: string | null = null;
+  
+  if (user) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", user.id)
+      .single();
+    
+    if (data) {
+      fullName = (data as { full_name: string | null; avatar_url: string | null }).full_name;
+      avatarUrl = (data as { full_name: string | null; avatar_url: string | null }).avatar_url;
+    }
+  }
+
+  const userData = user ? {
+    email: user.email!,
+    fullName,
+    avatarUrl,
+  } : null;
+
   return (
     <div className="min-h-screen bg-bg-1">
-      <Navbar showPlanSwitcher={false} />
+      <Navbar showPlanSwitcher={false} user={userData} />
 
       <main className="container-main py-8">
         <PageHeader

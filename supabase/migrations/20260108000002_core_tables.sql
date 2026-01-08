@@ -145,9 +145,14 @@ COMMENT ON FUNCTION has_plan_access IS 'Check if current user has access to a pl
 -- ============================================================================
 -- FUNCTION: Auto-create profile on user signup
 -- ============================================================================
+-- NOTE: SET search_path = public is REQUIRED for Supabase SECURITY DEFINER functions
 
 CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, avatar_url)
   VALUES (
@@ -157,11 +162,19 @@ BEGIN
     NEW.raw_user_meta_data->>'avatar_url'
   );
   RETURN NEW;
+EXCEPTION
+  WHEN unique_violation THEN
+    -- Profile already exists, just return
+    RETURN NEW;
+  WHEN OTHERS THEN
+    -- Log error but don't fail user creation
+    RAISE WARNING 'Failed to create profile for user %: %', NEW.id, SQLERRM;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger to create profile on signup
-CREATE OR REPLACE TRIGGER on_auth_user_created
+CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION handle_new_user();
@@ -171,13 +184,17 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION handle_new_plan()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO plan_members (plan_id, user_id, role)
   VALUES (NEW.id, NEW.created_by, 'owner');
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger to add owner on plan creation
 CREATE TRIGGER on_plan_created
@@ -190,7 +207,11 @@ CREATE TRIGGER on_plan_created
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION accept_pending_invites()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   -- Find pending invites for this user's email
   INSERT INTO plan_members (plan_id, user_id, role)
@@ -210,7 +231,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Trigger to accept pending invites on profile creation
 CREATE TRIGGER on_profile_created_accept_invites

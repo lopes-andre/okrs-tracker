@@ -36,6 +36,18 @@ CREATE POLICY "Profiles are viewable by authenticated users"
   TO authenticated
   USING (true);
 
+-- Users can insert their own profile (fallback if trigger fails)
+CREATE POLICY "Users can insert own profile"
+  ON profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (id = auth.uid());
+
+-- Service role can insert profiles (used by auth triggers)
+CREATE POLICY "Service role can insert profiles"
+  ON profiles FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"
   ON profiles FOR UPDATE

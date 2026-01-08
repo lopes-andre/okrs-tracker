@@ -257,9 +257,10 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Row Level Security policies
 - [x] Activity timeline triggers
 - [x] Database views
+- [x] Authentication UI (sign up, sign in, sign out)
+- [x] User profile auto-creation on signup
 
 ### 🔜 Coming Next
-- [ ] Authentication UI integration
 - [ ] CRUD operations for OKRs
 - [ ] Check-in functionality
 - [ ] Real-time updates
