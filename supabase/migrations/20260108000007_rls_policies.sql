@@ -94,6 +94,26 @@ CREATE POLICY "Plan members are viewable by plan members"
   TO authenticated
   USING (has_plan_access(plan_id, 'viewer'));
 
+-- Service role can insert plan members (used by triggers)
+CREATE POLICY "Service role can insert plan members"
+  ON plan_members FOR INSERT
+  TO service_role
+  WITH CHECK (true);
+
+-- Plan creators can add themselves as owner (fallback if trigger fails)
+CREATE POLICY "Plan creators can add themselves as owner"
+  ON plan_members FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    user_id = auth.uid() 
+    AND role = 'owner'
+    AND EXISTS (
+      SELECT 1 FROM plans 
+      WHERE plans.id = plan_id 
+      AND plans.created_by = auth.uid()
+    )
+  );
+
 -- Owners can add members
 CREATE POLICY "Owners can add members"
   ON plan_members FOR INSERT
