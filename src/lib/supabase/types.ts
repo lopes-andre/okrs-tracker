@@ -1,24 +1,23 @@
-/**
- * Database types for Supabase
- * 
- * These types are manually maintained to match the database schema.
- * In production, you can generate these automatically using:
- * npx supabase gen types typescript --project-id <your-project-id> > src/lib/supabase/types.ts
- */
+// ============================================================================
+// DATABASE TYPES - Generated from Supabase schema
+// ============================================================================
 
 // Enum Types
-export type OkrRole = "owner" | "editor" | "viewer";
-export type KrType = "metric" | "count" | "milestone" | "rate" | "average";
-export type KrDirection = "increase" | "decrease" | "maintain";
-export type KrAggregation = "reset_quarterly" | "cumulative";
-export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
-export type TaskPriority = "low" | "medium" | "high";
-export type TagKind = "platform" | "funnel_stage" | "initiative" | "category" | "custom";
-export type MindmapEntityType = "plan" | "objective" | "annual_kr" | "quarter_target";
-export type EventEntityType = "task" | "check_in" | "member" | "objective" | "annual_kr" | "quarter_target" | "plan";
-export type EventType = "created" | "updated" | "deleted" | "status_changed" | "completed" | "joined" | "left" | "role_changed";
+export type OkrRole = 'owner' | 'editor' | 'viewer';
+export type KrType = 'metric' | 'count' | 'milestone' | 'rate' | 'average';
+export type KrDirection = 'increase' | 'decrease' | 'maintain';
+export type KrAggregation = 'reset_quarterly' | 'cumulative';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
+export type MindmapEntityType = 'plan' | 'objective' | 'annual_kr' | 'quarter_target';
+export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan';
+export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed';
 
-// Table Row Types
+// ============================================================================
+// TABLE TYPES
+// ============================================================================
+
 export interface Profile {
   id: string;
   email: string;
@@ -224,7 +223,7 @@ export interface SavedView {
   view_type: string;
   filters: Record<string, unknown>;
   sort_by: string | null;
-  sort_order: "asc" | "desc" | null;
+  sort_order: 'asc' | 'desc' | null;
   columns: string[] | null;
   is_default: boolean;
   created_at: string;
@@ -244,77 +243,186 @@ export interface ActivityEvent {
   created_at: string;
 }
 
-// View Types
-export interface PlanTimelineEvent extends ActivityEvent {
-  user_email: string | null;
-  user_full_name: string | null;
+// ============================================================================
+// INSERT/UPDATE TYPES (without auto-generated fields)
+// ============================================================================
+
+export type PlanInsert = Omit<Plan, 'id' | 'created_at' | 'updated_at'>;
+export type PlanUpdate = Partial<Omit<Plan, 'id' | 'created_by' | 'created_at' | 'updated_at'>>;
+
+export type ObjectiveInsert = Omit<Objective, 'id' | 'created_at' | 'updated_at'>;
+export type ObjectiveUpdate = Partial<Omit<Objective, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>;
+
+export type AnnualKrInsert = Omit<AnnualKr, 'id' | 'created_at' | 'updated_at'>;
+export type AnnualKrUpdate = Partial<Omit<AnnualKr, 'id' | 'objective_id' | 'created_at' | 'updated_at'>>;
+
+export type QuarterTargetInsert = Omit<QuarterTarget, 'id' | 'created_at' | 'updated_at'>;
+export type QuarterTargetUpdate = Partial<Omit<QuarterTarget, 'id' | 'annual_kr_id' | 'quarter' | 'created_at' | 'updated_at'>>;
+
+export type TaskInsert = Omit<Task, 'id' | 'completed_at' | 'created_at' | 'updated_at'>;
+export type TaskUpdate = Partial<Omit<Task, 'id' | 'plan_id' | 'completed_at' | 'created_at' | 'updated_at'>>;
+
+export type CheckInInsert = Omit<CheckIn, 'id' | 'previous_value' | 'created_at'>;
+export type CheckInUpdate = Partial<Pick<CheckIn, 'note' | 'evidence_url'>>;
+
+export type TagInsert = Omit<Tag, 'id' | 'created_at'>;
+export type TagUpdate = Partial<Omit<Tag, 'id' | 'plan_id' | 'created_at'>>;
+
+export type KrGroupInsert = Omit<KrGroup, 'id' | 'created_at' | 'updated_at'>;
+export type KrGroupUpdate = Partial<Omit<KrGroup, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>;
+
+export type DashboardInsert = Omit<Dashboard, 'id' | 'created_at' | 'updated_at'>;
+export type DashboardUpdate = Partial<Omit<Dashboard, 'id' | 'plan_id' | 'created_by' | 'created_at' | 'updated_at'>>;
+
+export type DashboardWidgetInsert = Omit<DashboardWidget, 'id' | 'created_at' | 'updated_at'>;
+export type DashboardWidgetUpdate = Partial<Omit<DashboardWidget, 'id' | 'dashboard_id' | 'created_at' | 'updated_at'>>;
+
+export type PlanInviteInsert = Omit<PlanInvite, 'id' | 'expires_at' | 'accepted_at' | 'created_at'>;
+
+// ============================================================================
+// EXTENDED TYPES (with joined data)
+// ============================================================================
+
+export interface PlanWithMembership extends Plan {
+  role: OkrRole;
+  member_count?: number;
 }
 
-export interface PlanCheckInsByDay {
-  plan_id: string;
-  check_in_date: string;
-  check_in_count: number;
-  kr_ids: string[];
+export interface PlanMemberWithProfile extends PlanMember {
+  profile: Profile;
 }
 
-// Database Type Definition
+export interface ObjectiveWithKrs extends Objective {
+  annual_krs: AnnualKr[];
+  progress?: number;
+}
+
+export interface AnnualKrWithDetails extends AnnualKr {
+  objective?: Objective;
+  group?: KrGroup;
+  quarter_targets?: QuarterTarget[];
+  tags?: Tag[];
+  progress?: number;
+}
+
+export interface TaskWithDetails extends Task {
+  objective?: Objective;
+  quarter_target?: QuarterTarget;
+  assigned_user?: Profile;
+  tags?: Tag[];
+}
+
+export interface CheckInWithDetails extends CheckIn {
+  annual_kr?: AnnualKr;
+  recorded_by_user?: Profile;
+}
+
+export interface ActivityEventWithUser extends ActivityEvent {
+  user?: Profile;
+}
+
+// ============================================================================
+// FILTER/QUERY TYPES
+// ============================================================================
+
+export interface TaskFilters {
+  status?: TaskStatus | TaskStatus[];
+  priority?: TaskPriority | TaskPriority[];
+  assigned_to?: string;
+  objective_id?: string;
+  quarter_target_id?: string;
+  due_date_from?: string;
+  due_date_to?: string;
+  tag_ids?: string[];
+}
+
+export interface CheckInFilters {
+  annual_kr_id?: string;
+  quarter_target_id?: string;
+  recorded_by?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface TimelineFilters {
+  entity_type?: EventEntityType | EventEntityType[];
+  event_type?: EventType | EventType[];
+  user_id?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface SortParams {
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+// ============================================================================
+// DATABASE SCHEMA TYPE (for Supabase client)
+// ============================================================================
+
 export interface Database {
   public: {
     Tables: {
       profiles: {
         Row: Profile;
-        Insert: Omit<Profile, "created_at" | "updated_at">;
-        Update: Partial<Omit<Profile, "id" | "created_at">>;
+        Insert: Omit<Profile, 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Profile, 'id' | 'created_at' | 'updated_at'>>;
       };
       plans: {
         Row: Plan;
-        Insert: Omit<Plan, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Plan, "id" | "created_at" | "created_by">>;
+        Insert: PlanInsert;
+        Update: PlanUpdate;
       };
       plan_members: {
         Row: PlanMember;
-        Insert: Omit<PlanMember, "id" | "created_at" | "updated_at">;
-        Update: Partial<Pick<PlanMember, "role">>;
+        Insert: Omit<PlanMember, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Pick<PlanMember, 'role'>>;
       };
       plan_invites: {
         Row: PlanInvite;
-        Insert: Omit<PlanInvite, "id" | "created_at" | "accepted_at">;
-        Update: Partial<Pick<PlanInvite, "accepted_at">>;
+        Insert: PlanInviteInsert;
+        Update: never;
       };
       objectives: {
         Row: Objective;
-        Insert: Omit<Objective, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Objective, "id" | "plan_id" | "created_at">>;
+        Insert: ObjectiveInsert;
+        Update: ObjectiveUpdate;
       };
       kr_groups: {
         Row: KrGroup;
-        Insert: Omit<KrGroup, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<KrGroup, "id" | "plan_id" | "created_at">>;
+        Insert: KrGroupInsert;
+        Update: KrGroupUpdate;
       };
       annual_krs: {
         Row: AnnualKr;
-        Insert: Omit<AnnualKr, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<AnnualKr, "id" | "objective_id" | "created_at">>;
+        Insert: AnnualKrInsert;
+        Update: AnnualKrUpdate;
       };
       quarter_targets: {
         Row: QuarterTarget;
-        Insert: Omit<QuarterTarget, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<QuarterTarget, "id" | "annual_kr_id" | "quarter" | "created_at">>;
+        Insert: QuarterTargetInsert;
+        Update: QuarterTargetUpdate;
       };
       tasks: {
         Row: Task;
-        Insert: Omit<Task, "id" | "created_at" | "updated_at" | "completed_at">;
-        Update: Partial<Omit<Task, "id" | "plan_id" | "created_at">>;
+        Insert: TaskInsert;
+        Update: TaskUpdate;
       };
       check_ins: {
         Row: CheckIn;
-        Insert: Omit<CheckIn, "id" | "created_at">;
-        Update: Partial<Omit<CheckIn, "id" | "annual_kr_id" | "created_at" | "recorded_by">>;
+        Insert: CheckInInsert;
+        Update: CheckInUpdate;
       };
       tags: {
         Row: Tag;
-        Insert: Omit<Tag, "id" | "created_at">;
-        Update: Partial<Omit<Tag, "id" | "plan_id" | "created_at">>;
+        Insert: TagInsert;
+        Update: TagUpdate;
       };
       annual_kr_tags: {
         Row: AnnualKrTag;
@@ -328,56 +436,82 @@ export interface Database {
       };
       mindmap_views: {
         Row: MindmapView;
-        Insert: Omit<MindmapView, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<MindmapView, "id" | "plan_id" | "user_id" | "created_at">>;
+        Insert: Omit<MindmapView, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Pick<MindmapView, 'viewport_x' | 'viewport_y' | 'viewport_zoom'>>;
       };
       mindmap_nodes: {
         Row: MindmapNode;
-        Insert: Omit<MindmapNode, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<MindmapNode, "id" | "mindmap_view_id" | "entity_type" | "entity_id" | "created_at">>;
+        Insert: Omit<MindmapNode, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Pick<MindmapNode, 'position_x' | 'position_y' | 'is_collapsed'>>;
       };
       mindmap_edges: {
         Row: MindmapEdge;
-        Insert: Omit<MindmapEdge, "id" | "created_at">;
+        Insert: Omit<MindmapEdge, 'id' | 'created_at'>;
         Update: never;
       };
       dashboards: {
         Row: Dashboard;
-        Insert: Omit<Dashboard, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Dashboard, "id" | "plan_id" | "created_by" | "created_at">>;
+        Insert: DashboardInsert;
+        Update: DashboardUpdate;
       };
       dashboard_widgets: {
         Row: DashboardWidget;
-        Insert: Omit<DashboardWidget, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<DashboardWidget, "id" | "dashboard_id" | "created_at">>;
+        Insert: DashboardWidgetInsert;
+        Update: DashboardWidgetUpdate;
       };
       saved_views: {
         Row: SavedView;
-        Insert: Omit<SavedView, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<SavedView, "id" | "plan_id" | "user_id" | "created_at">>;
+        Insert: Omit<SavedView, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<SavedView, 'id' | 'plan_id' | 'user_id' | 'created_at' | 'updated_at'>>;
       };
       activity_events: {
         Row: ActivityEvent;
-        Insert: Omit<ActivityEvent, "id" | "created_at">;
+        Insert: never; // Created by triggers only
         Update: never;
       };
     };
     Views: {
       v_plan_timeline: {
-        Row: PlanTimelineEvent;
+        Row: ActivityEventWithUser;
       };
       v_plan_checkins_by_day: {
-        Row: PlanCheckInsByDay;
+        Row: {
+          plan_id: string;
+          date: string;
+          check_in_count: number;
+          total_value_change: number;
+        };
       };
-    };
-    Functions: {
-      has_plan_access: {
-        Args: { p_plan_id: string; p_min_role?: OkrRole };
-        Returns: boolean;
+      v_objective_progress: {
+        Row: {
+          id: string;
+          plan_id: string;
+          code: string;
+          name: string;
+          progress: number;
+          kr_count: number;
+        };
       };
-      okr_role_rank: {
-        Args: { role: OkrRole };
-        Returns: number;
+      v_kr_progress: {
+        Row: AnnualKr & { progress: number; objective_code: string };
+      };
+      v_plan_stats: {
+        Row: {
+          plan_id: string;
+          objective_count: number;
+          kr_count: number;
+          task_count: number;
+          completed_task_count: number;
+          check_in_count: number;
+        };
+      };
+      v_quarter_overview: {
+        Row: {
+          plan_id: string;
+          quarter: number;
+          target_count: number;
+          avg_progress: number;
+        };
       };
     };
     Enums: {

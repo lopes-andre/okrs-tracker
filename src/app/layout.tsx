@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
+import { QueryProvider } from "@/lib/query-client";
+import { Toaster } from "@/components/ui/toaster";
 
 // Load Plus Jakarta Sans for headings
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -33,7 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${inter.variable}`}>
       <body className="min-h-screen">
-        {children}
+        <QueryProvider>
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );
