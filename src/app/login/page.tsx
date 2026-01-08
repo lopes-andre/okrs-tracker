@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Target, Loader2 } from "lucide-react";
+import { Target, Loader2, Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ function LoginForm() {
       : null
   );
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [signupSuccess, setSignupSuccess] = useState<{ email: string } | null>(null);
 
   async function handleSubmit(formData: FormData) {
     setIsLoading(true);
@@ -31,12 +32,101 @@ function LoginForm() {
       
       if (result?.error) {
         setError(result.error);
+      } else if ('success' in result && result.success && 'email' in result) {
+        // Signup successful - show confirmation message
+        setSignupSuccess({ email: result.email as string });
       }
     } catch {
       // Redirect happens in server action, this catch is for other errors
     } finally {
       setIsLoading(false);
     }
+  }
+
+  // Show success message after signup
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen bg-bg-1 flex flex-col items-center justify-center p-4">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 mb-8">
+          <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+            <Target className="w-6 h-6 text-white" />
+          </div>
+          <span className="font-heading font-semibold text-xl">OKRs Tracker</span>
+        </Link>
+
+        {/* Success Card */}
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-8 pb-8">
+            <div className="text-center space-y-6">
+              {/* Success Icon */}
+              <div className="mx-auto w-16 h-16 rounded-full bg-status-success/10 flex items-center justify-center">
+                <Mail className="w-8 h-8 text-status-success" />
+              </div>
+
+              {/* Success Message */}
+              <div className="space-y-2">
+                <h2 className="font-heading font-semibold text-h3 text-text-strong">
+                  Check your email
+                </h2>
+                <p className="text-body text-text-muted leading-relaxed">
+                  We&apos;ve sent a confirmation link to
+                </p>
+                <p className="text-body font-medium text-text-strong">
+                  {signupSuccess.email}
+                </p>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-bg-1 rounded-card p-4 text-left space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-status-success mt-0.5 shrink-0" />
+                  <p className="text-body-sm text-text-muted">
+                    Click the link in the email to verify your account
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-status-success mt-0.5 shrink-0" />
+                  <p className="text-body-sm text-text-muted">
+                    After verification, you&apos;ll be redirected to your dashboard
+                  </p>
+                </div>
+              </div>
+
+              {/* Back to Sign In */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setSignupSuccess(null);
+                    setMode("signin");
+                  }}
+                  className="inline-flex items-center gap-2 text-body-sm text-text-muted hover:text-text-strong transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to sign in
+                </button>
+              </div>
+
+              {/* Help Text */}
+              <p className="text-small text-text-subtle">
+                Didn&apos;t receive the email? Check your spam folder or{" "}
+                <button
+                  onClick={() => setSignupSuccess(null)}
+                  className="text-text-strong hover:underline"
+                >
+                  try again
+                </button>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer */}
+        <p className="text-small text-text-subtle mt-8">
+          © {new Date().getFullYear()} OKRs Tracker. All rights reserved.
+        </p>
+      </div>
+    );
   }
 
   return (

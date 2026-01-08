@@ -18,6 +18,7 @@ export async function signUp(formData: FormData) {
       data: {
         full_name: fullName,
       },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
     },
   });
 
@@ -25,8 +26,9 @@ export async function signUp(formData: FormData) {
     return { error: error.message };
   }
 
-  revalidatePath("/", "layout");
-  redirect("/plans");
+  // Don't redirect - return success so we can show confirmation message
+  // User needs to confirm their email before they can access the app
+  return { success: true, email };
 }
 
 export async function signIn(formData: FormData) {
