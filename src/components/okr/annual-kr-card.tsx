@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   ChevronDown,
-  ChevronRight,
+  ChevronUp,
   Target,
   TrendingUp,
   TrendingDown,
@@ -35,7 +35,7 @@ import {
 import { QuarterTargetPills } from "./quarter-target-pills";
 import { PaceBadge } from "./pace-badge";
 import type { AnnualKr, OkrRole, QuarterTarget, CheckIn } from "@/lib/supabase/types";
-import type { ProgressResult, QuarterProgressResult } from "@/lib/progress-engine";
+import type { ProgressResult } from "@/lib/progress-engine";
 import { 
   formatValueWithUnit, 
   formatProgress, 
@@ -60,6 +60,8 @@ interface AnnualKrCardProps {
   checkIns?: CheckIn[];
   /** Plan year for quarter calculations */
   planYear?: number;
+  /** Last check-in for display */
+  lastCheckIn?: CheckIn;
 }
 
 const krTypeLabels: Record<string, string> = {
@@ -68,6 +70,20 @@ const krTypeLabels: Record<string, string> = {
   milestone: "Milestone",
   rate: "Rate",
   average: "Average",
+};
+
+const directionLabels: Record<string, string> = {
+  increase: "Increase",
+  decrease: "Decrease",
+  maintain: "Maintain",
+};
+
+const aggregationLabels: Record<string, string> = {
+  latest: "Latest Value",
+  cumulative: "Cumulative (YTD)",
+  average: "Average",
+  max: "Maximum",
+  min: "Minimum",
 };
 
 const directionIcons = {
@@ -86,6 +102,7 @@ export function AnnualKrCard({
   progressResult,
   checkIns = [],
   planYear = new Date().getFullYear(),
+  lastCheckIn,
 }: AnnualKrCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const canEdit = role === "owner" || role === "editor";
@@ -120,31 +137,32 @@ export function AnnualKrCard({
   const currentQuarter = getCurrentQuarter();
   const currentQuarterData = quarterProgress.find(q => q.isCurrent);
 
+  // Handle card click (expand/collapse)
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't expand if clicking on buttons or dropdown
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') || 
+      target.closest('[role="menu"]') ||
+      target.closest('[data-radix-popper-content-wrapper]')
+    ) {
+      return;
+    }
+    setIsExpanded(!isExpanded);
+  };
+
   return (
     <div
+      onClick={handleCardClick}
       className={cn(
-        "group rounded-card border border-border-soft bg-white transition-all",
-        "hover:border-border hover:shadow-card-hover"
+        "group rounded-card border transition-all cursor-pointer",
+        isExpanded 
+          ? "border-border bg-white shadow-card" 
+          : "border-border-soft bg-white hover:border-border hover:shadow-card-hover"
       )}
     >
-      {/* Main Row */}
+      {/* Main Row - Collapsed View */}
       <div className="flex items-center gap-3 p-3">
-        {/* Expand Button (if has quarter targets) */}
-        {hasQuarterTargets ? (
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-0.5 hover:bg-bg-1 rounded transition-colors shrink-0"
-          >
-            {isExpanded ? (
-              <ChevronDown className="w-4 h-4 text-text-muted" />
-            ) : (
-              <ChevronRight className="w-4 h-4 text-text-muted" />
-            )}
-          </button>
-        ) : (
-          <div className="w-5" /> // Spacer
-        )}
-
         {/* Icon */}
         <div className="w-8 h-8 rounded-button bg-bg-1 flex items-center justify-center shrink-0">
           <DirectionIcon className="w-4 h-4 text-text-muted" />
@@ -190,54 +208,17 @@ export function AnnualKrCard({
           </div>
         </div>
 
-        {/* Quarter Pills Preview */}
-        {hasQuarterTargets && !isExpanded && (
-          <QuarterTargetPills 
-            quarterTargets={kr.quarter_targets!} 
-            quarterProgress={quarterProgress}
-            compact 
-          />
-        )}
-        
-        {/* Current Quarter Quick Status */}
-        {hasQuarterTargets && !isExpanded && currentQuarterData && (
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn(
-                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium shrink-0",
-                  currentQuarterData.isComplete 
-                    ? "bg-status-success/10 text-status-success"
-                    : currentQuarterData.progress >= 0.7
-                    ? "bg-status-success/10 text-status-success"
-                    : currentQuarterData.progress >= 0.4
-                    ? "bg-status-warning/10 text-status-warning"
-                    : "bg-status-info/10 text-status-info"
-                )}>
-                  {currentQuarterData.isComplete ? (
-                    <>
-                      <CheckCircle2 className="w-3 h-3" />
-                      Q{currentQuarter} ✓
-                    </>
-                  ) : (
-                    <>
-                      Q{currentQuarter}: {Math.round(currentQuarterData.progress * 100)}%
-                    </>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="font-medium">
-                  Q{currentQuarter} Progress: {Math.round(currentQuarterData.progress * 100)}%
-                </p>
-                <p className="text-xs text-text-subtle">
-                  {currentQuarterData.currentValue.toLocaleString()} / {currentQuarterData.target.toLocaleString()}
-                  {kr.unit && ` ${kr.unit}`}
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        {/* Expand/Collapse Indicator */}
+        <div className={cn(
+          "w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors",
+          isExpanded ? "bg-accent/10" : "bg-bg-1 group-hover:bg-bg-2"
+        )}>
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-accent" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-text-subtle group-hover:text-text-muted" />
+          )}
+        </div>
 
         {/* Quick Check-in Button */}
         {canEdit && onCheckIn && (
@@ -247,7 +228,7 @@ export function AnnualKrCard({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={onCheckIn}
+                  onClick={(e) => { e.stopPropagation(); onCheckIn(); }}
                   className="gap-1.5 h-7 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -268,6 +249,7 @@ export function AnnualKrCard({
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={(e) => e.stopPropagation()}
                 className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
               >
                 <MoreHorizontal className="w-4 h-4" />
@@ -303,237 +285,320 @@ export function AnnualKrCard({
         )}
       </div>
 
-      {/* Expanded: Quarter Targets and Progress Details */}
+      {/* Expanded View */}
       {isExpanded && (
-        <div className="px-3 pb-3 pt-0 space-y-3 border-t border-border-soft">
-          {/* Quarterly Progress Section */}
-          {hasQuarterTargets && (
-            <div className="ml-[52px] mt-3">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-small font-semibold text-text-strong">
-                  Quarterly Breakdown
+        <div className="border-t border-border-soft">
+          {/* KR Details Header */}
+          <div className="p-4 bg-bg-1/50">
+            {/* Description */}
+            {kr.description && (
+              <p className="text-body-sm text-text-muted mb-4">
+                {kr.description}
+              </p>
+            )}
+            
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {/* Type */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Type</p>
+                <p className="text-small font-medium">{krTypeLabels[kr.kr_type]}</p>
+              </div>
+              
+              {/* Direction */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Direction</p>
+                <div className="flex items-center gap-1.5">
+                  <DirectionIcon className="w-3.5 h-3.5 text-text-muted" />
+                  <p className="text-small font-medium">{directionLabels[kr.direction]}</p>
+                </div>
+              </div>
+              
+              {/* Aggregation */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Aggregation</p>
+                <p className="text-small font-medium">{aggregationLabels[kr.aggregation] || kr.aggregation}</p>
+              </div>
+              
+              {/* Start Value */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Start Value</p>
+                <p className="text-small font-medium">{formatValue(kr.start_value)}</p>
+              </div>
+              
+              {/* Target Value */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Target Value</p>
+                <p className="text-small font-medium text-accent">{formatValue(kr.target_value)}</p>
+              </div>
+              
+              {/* Current Value */}
+              <div>
+                <p className="text-xs text-text-subtle mb-1">Current Value</p>
+                <p className={cn(
+                  "text-small font-bold",
+                  progress >= 100 ? "text-status-success" : 
+                  progress >= 70 ? "text-status-info" :
+                  progress >= 40 ? "text-status-warning" :
+                  "text-text-strong"
+                )}>
+                  {formatValue(kr.current_value)}
                 </p>
-                {quarterSummary && (
-                  <span className={cn(
-                    "text-xs px-2 py-0.5 rounded-full font-medium",
-                    quarterSummary.isOnTrackForYear 
-                      ? "bg-status-success/10 text-status-success"
-                      : "bg-status-warning/10 text-status-warning"
-                  )}>
-                    {quarterSummary.completedQuarters}/4 quarters complete
-                  </span>
-                )}
               </div>
-              
-              {/* Detailed Quarter Cards */}
-              <div className="grid grid-cols-4 gap-3">
-                {quarterProgress.map((qp) => {
-                  const quarterTarget = kr.quarter_targets?.find(qt => qt.quarter === qp.quarter);
-                  
-                  return (
-                    <div 
-                      key={qp.quarter}
-                      className={cn(
-                        "p-3 rounded-card border transition-all",
-                        qp.isCurrent && "ring-2 ring-offset-2 ring-accent/30",
-                        qp.isComplete 
-                          ? "bg-status-success/5 border-status-success/30" 
-                          : qp.isPast && !qp.isComplete
-                          ? "bg-status-danger/5 border-status-danger/30"
-                          : qp.isFuture
-                          ? "bg-bg-1 border-border-soft"
-                          : "bg-white border-border"
-                      )}
-                    >
-                      {/* Quarter Header */}
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={cn(
-                          "text-xs font-bold",
-                          qp.isComplete ? "text-status-success" :
-                          qp.isPast ? "text-status-danger" :
-                          qp.isCurrent ? "text-accent" :
-                          "text-text-subtle"
-                        )}>
-                          Q{qp.quarter}
-                        </span>
-                        {qp.isComplete && (
-                          <CheckCircle2 className="w-4 h-4 text-status-success" />
-                        )}
-                        {qp.isCurrent && !qp.isComplete && (
-                          <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">
-                            NOW
-                          </span>
-                        )}
-                        {qp.isPast && !qp.isComplete && (
-                          <span className="text-[10px] text-status-danger">Missed</span>
-                        )}
-                      </div>
-                      
-                      {/* Progress Value */}
-                      <div className="mb-2">
-                        <p className={cn(
-                          "text-lg font-bold",
-                          qp.isComplete ? "text-status-success" :
-                          qp.isPast ? "text-status-danger" :
-                          qp.isCurrent ? "text-text-strong" :
-                          "text-text-muted"
-                        )}>
-                          {Math.round(qp.progress * 100)}%
-                        </p>
-                        <p className="text-[10px] text-text-muted">
-                          {qp.currentValue.toLocaleString()} / {qp.target.toLocaleString()}
-                          {kr.unit && ` ${kr.unit}`}
-                        </p>
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <Progress 
-                        value={qp.progress * 100} 
-                        className={cn(
-                          "h-1.5 mb-2",
-                          qp.isComplete && "[&>div]:bg-status-success",
-                          qp.isPast && !qp.isComplete && "[&>div]:bg-status-danger",
-                          qp.isCurrent && "[&>div]:bg-accent"
-                        )}
+            </div>
+            
+            {/* Progress Bar with Details */}
+            <div className="mt-4 p-3 bg-white rounded-card border border-border-soft">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-small font-medium">Annual Progress</span>
+                <div className="flex items-center gap-3">
+                  {hasProgressEngine && progressResult && (
+                    <>
+                      <span className="text-xs text-text-muted">
+                        Expected: {formatProgress(progressResult.expectedProgress)}
+                      </span>
+                      <PaceBadge 
+                        status={progressResult.paceStatus}
+                        paceRatio={progressResult.paceRatio}
+                        progress={progressResult.progress}
+                        expectedProgress={progressResult.expectedProgress}
                       />
-                      
-                      {/* Pace Info for Current Quarter */}
-                      {qp.isCurrent && (
-                        <div className="text-[10px] space-y-0.5 pt-1 border-t border-border-soft/50">
-                          <div className="flex justify-between">
-                            <span className="text-text-muted">Expected:</span>
-                            <span className="font-medium">{Math.round(qp.expectedProgress * 100)}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-text-muted">Days left:</span>
-                            <span className="font-medium">{qp.daysRemaining}d</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-text-muted">Pace:</span>
-                            <PaceBadge 
-                              status={qp.paceStatus}
-                              paceRatio={qp.paceRatio}
-                              progress={qp.progress}
-                              expectedProgress={qp.expectedProgress}
-                              compact
-                            />
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Days info for future quarters */}
-                      {qp.isFuture && (
-                        <p className="text-[10px] text-text-subtle text-center pt-1 border-t border-border-soft/50">
-                          Starts in {qp.daysRemaining}d
-                        </p>
-                      )}
-                      
-                      {/* Notes */}
-                      {quarterTarget?.notes && (
-                        <p className="text-[10px] text-text-muted italic mt-2 truncate" title={quarterTarget.notes}>
-                          {quarterTarget.notes}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+                    </>
+                  )}
+                  <span className="text-body font-bold">{Math.round(progress)}%</span>
+                </div>
               </div>
+              <Progress value={progress} className="h-2" />
               
-              {/* Edit Quarterly Targets Button */}
-              {canEdit && onEditQuarterTargets && (
-                <div className="flex justify-end mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onEditQuarterTargets}
-                    className="text-xs gap-1.5 text-text-muted hover:text-text-strong"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    Edit Quarterly Targets
-                  </Button>
+              {/* Additional Progress Info */}
+              {hasProgressEngine && progressResult && (
+                <div className="flex items-center justify-between mt-2 text-xs text-text-muted">
+                  <span>
+                    Delta: <span className={progressResult.delta >= 0 ? "text-status-success" : "text-status-danger"}>
+                      {formatDelta(progressResult.delta, kr.unit, kr.direction)}
+                    </span>
+                  </span>
+                  <span>{progressResult.daysRemaining} days remaining</span>
+                  {progressResult.forecastValue !== null && (
+                    <span>
+                      Forecast: <span className={progressResult.forecastValue >= progressResult.target ? "text-status-success" : "text-status-warning"}>
+                        {formatValue(progressResult.forecastValue)}
+                      </span>
+                    </span>
+                  )}
                 </div>
               )}
             </div>
-          )}
-          
-          {/* No Quarter Targets - Prompt to Add */}
-          {!hasQuarterTargets && canEdit && onEditQuarterTargets && (
-            <div className="ml-[52px] mt-3 p-4 bg-bg-1 rounded-card border border-dashed border-border text-center">
-              <p className="text-small text-text-muted mb-2">
-                No quarterly targets set
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={onEditQuarterTargets}
-                className="gap-1.5"
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                Set Quarterly Targets
-              </Button>
-            </div>
-          )}
-          
-          {/* Annual Progress Details */}
-          {hasProgressEngine && progressResult && (
-            <div className="ml-[52px] p-3 bg-white rounded-card border border-border-soft">
-              <p className="text-small font-semibold text-text-strong mb-2">
-                Annual Progress
-              </p>
-              <div className="grid grid-cols-3 gap-3 text-small">
-                <div className="p-2 bg-bg-1 rounded-button text-center">
-                  <p className="text-xs text-text-muted">Current</p>
-                  <p className="text-body font-bold">{formatValue(progressResult.currentValue)}</p>
-                </div>
-                <div className="p-2 bg-bg-1 rounded-button text-center">
-                  <p className="text-xs text-text-muted">Target</p>
-                  <p className="text-body font-bold">{formatValue(progressResult.target)}</p>
-                </div>
-                <div className="p-2 bg-bg-1 rounded-button text-center">
-                  <p className="text-xs text-text-muted">Delta</p>
-                  <p className={cn(
-                    "text-body font-bold",
-                    progressResult.delta >= 0 ? "text-status-success" : "text-status-danger"
-                  )}>
-                    {formatDelta(progressResult.delta, kr.unit, kr.direction)}
-                  </p>
-                </div>
+            
+            {/* Last Check-in */}
+            {(lastCheckIn || (progressResult?.lastCheckInDate)) && (
+              <div className="flex items-center gap-2 mt-3 text-xs text-text-muted">
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  Last check-in: {progressResult?.lastCheckInDate 
+                    ? formatDistanceToNow(progressResult.lastCheckInDate, { addSuffix: true })
+                    : lastCheckIn 
+                    ? formatDistanceToNow(new Date(lastCheckIn.recorded_at), { addSuffix: true })
+                    : "Never"
+                  }
+                </span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-small">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Progress:</span>
-                  <span className="font-medium">{formatProgress(progressResult.progress)}</span>
+            )}
+          </div>
+          
+          {/* Quarterly Progress Section */}
+          <div className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-small font-semibold text-text-strong">
+                Quarterly Progress
+              </h4>
+              {quarterSummary && (
+                <span className={cn(
+                  "text-xs px-2 py-0.5 rounded-full font-medium",
+                  quarterSummary.isOnTrackForYear 
+                    ? "bg-status-success/10 text-status-success"
+                    : "bg-status-warning/10 text-status-warning"
+                )}>
+                  {quarterSummary.completedQuarters}/4 quarters complete
+                </span>
+              )}
+            </div>
+            
+            {hasQuarterTargets ? (
+              <>
+                {/* Quarter Cards Grid */}
+                <div className="grid grid-cols-4 gap-3">
+                  {quarterProgress.map((qp) => {
+                    const quarterTarget = kr.quarter_targets?.find(qt => qt.quarter === qp.quarter);
+                    
+                    return (
+                      <div 
+                        key={qp.quarter}
+                        className={cn(
+                          "p-3 rounded-card border transition-all",
+                          qp.isCurrent && "ring-2 ring-offset-2 ring-accent/30",
+                          qp.isComplete 
+                            ? "bg-status-success/5 border-status-success/30" 
+                            : qp.isPast && !qp.isComplete
+                            ? "bg-status-danger/5 border-status-danger/30"
+                            : qp.isFuture
+                            ? "bg-bg-1 border-border-soft"
+                            : "bg-white border-border"
+                        )}
+                      >
+                        {/* Quarter Header */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className={cn(
+                            "text-xs font-bold",
+                            qp.isComplete ? "text-status-success" :
+                            qp.isPast ? "text-status-danger" :
+                            qp.isCurrent ? "text-accent" :
+                            "text-text-subtle"
+                          )}>
+                            Q{qp.quarter}
+                          </span>
+                          {qp.isComplete && (
+                            <CheckCircle2 className="w-4 h-4 text-status-success" />
+                          )}
+                          {qp.isCurrent && !qp.isComplete && (
+                            <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">
+                              NOW
+                            </span>
+                          )}
+                          {qp.isPast && !qp.isComplete && (
+                            <span className="text-[10px] text-status-danger">Missed</span>
+                          )}
+                        </div>
+                        
+                        {/* Progress Value */}
+                        <div className="mb-2">
+                          <p className={cn(
+                            "text-lg font-bold",
+                            qp.isComplete ? "text-status-success" :
+                            qp.isPast ? "text-status-danger" :
+                            qp.isCurrent ? "text-text-strong" :
+                            "text-text-muted"
+                          )}>
+                            {Math.round(qp.progress * 100)}%
+                          </p>
+                          <p className="text-[10px] text-text-muted">
+                            {qp.currentValue.toLocaleString()} / {qp.target.toLocaleString()}
+                            {kr.unit && ` ${kr.unit}`}
+                          </p>
+                        </div>
+                        
+                        {/* Progress Bar */}
+                        <Progress 
+                          value={qp.progress * 100} 
+                          className={cn(
+                            "h-1.5 mb-2",
+                            qp.isComplete && "[&>div]:bg-status-success",
+                            qp.isPast && !qp.isComplete && "[&>div]:bg-status-danger",
+                            qp.isCurrent && "[&>div]:bg-accent"
+                          )}
+                        />
+                        
+                        {/* Pace Info for Current Quarter */}
+                        {qp.isCurrent && (
+                          <div className="text-[10px] space-y-0.5 pt-1 border-t border-border-soft/50">
+                            <div className="flex justify-between">
+                              <span className="text-text-muted">Expected:</span>
+                              <span className="font-medium">{Math.round(qp.expectedProgress * 100)}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-text-muted">Days left:</span>
+                              <span className="font-medium">{qp.daysRemaining}d</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Pace:</span>
+                              <PaceBadge 
+                                status={qp.paceStatus}
+                                paceRatio={qp.paceRatio}
+                                progress={qp.progress}
+                                expectedProgress={qp.expectedProgress}
+                                compact
+                              />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Days info for future quarters */}
+                        {qp.isFuture && (
+                          <p className="text-[10px] text-text-subtle text-center pt-1 border-t border-border-soft/50">
+                            Starts in {qp.daysRemaining}d
+                          </p>
+                        )}
+                        
+                        {/* Notes */}
+                        {quarterTarget?.notes && (
+                          <p className="text-[10px] text-text-muted italic mt-2 truncate" title={quarterTarget.notes}>
+                            {quarterTarget.notes}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Expected:</span>
-                  <span className="font-medium">{formatProgress(progressResult.expectedProgress)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Days left:</span>
-                  <span className="font-medium">{progressResult.daysRemaining} days</span>
-                </div>
-                {progressResult.forecastValue !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-text-muted">Forecast:</span>
-                    <span className={cn(
-                      "font-medium",
-                      progressResult.forecastValue >= progressResult.target 
-                        ? "text-status-success" 
-                        : "text-status-warning"
-                    )}>
-                      {formatValue(progressResult.forecastValue)}
-                    </span>
+                
+                {/* Edit Quarterly Targets Button */}
+                {canEdit && onEditQuarterTargets && (
+                  <div className="flex justify-end mt-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onEditQuarterTargets(); }}
+                      className="text-xs gap-1.5 text-text-muted hover:text-text-strong"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      Edit Quarterly Targets
+                    </Button>
                   </div>
                 )}
+              </>
+            ) : (
+              <div className="p-6 bg-bg-1 rounded-card border border-dashed border-border text-center">
+                <Calendar className="w-8 h-8 text-text-subtle mx-auto mb-2" />
+                <p className="text-small text-text-muted mb-3">
+                  No quarterly targets set for this KR
+                </p>
+                {canEdit && onEditQuarterTargets && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); onEditQuarterTargets(); }}
+                    className="gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Set Quarterly Targets
+                  </Button>
+                )}
               </div>
-              
-              {progressResult.lastCheckInDate && (
-                <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border-soft/50 text-xs text-text-muted">
-                  <Clock className="w-3 h-3" />
-                  Last check-in: {formatDistanceToNow(progressResult.lastCheckInDate, { addSuffix: true })}
-                </div>
+            )}
+          </div>
+          
+          {/* Quick Actions Footer */}
+          {canEdit && (
+            <div className="px-4 py-3 bg-bg-1/30 border-t border-border-soft flex items-center justify-end gap-2">
+              {onCheckIn && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); onCheckIn(); }}
+                  className="gap-1.5"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Record Check-in
+                </Button>
               )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="gap-1.5"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit KR
+              </Button>
             </div>
           )}
         </div>

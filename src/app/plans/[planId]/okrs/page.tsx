@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, use, useMemo } from "react";
-import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo, Calendar } from "lucide-react";
+import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ObjectiveCard,
   ObjectiveDialog,
@@ -34,7 +33,6 @@ import {
   useCreateCheckIn,
   useCheckIns,
 } from "@/features";
-import { getCurrentQuarter } from "@/lib/progress-engine";
 import type { 
   Objective, 
   AnnualKr, 
@@ -93,10 +91,6 @@ export default function OKRsPage({
   const { data: groups = [] } = useKrGroups(planId);
   const { data: tags = [] } = useTags(planId);
   const { data: checkIns = [] } = useCheckIns(planId);
-  
-  // View state
-  const [viewMode, setViewMode] = useState<"annual" | "q1" | "q2" | "q3" | "q4">("annual");
-  const currentQuarter = getCurrentQuarter();
   
   // Organize check-ins by KR ID
   const checkInsByKr = useMemo(() => {
@@ -297,7 +291,7 @@ export default function OKRsPage({
       </PageHeader>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatsCard
           icon={Target}
           label="Objectives"
@@ -321,39 +315,10 @@ export default function OKRsPage({
         />
       </div>
 
-      {/* View Tabs */}
-      <Tabs 
-        value={viewMode} 
-        onValueChange={(v) => setViewMode(v as typeof viewMode)} 
-        className="mb-6"
-      >
-        <div className="flex items-center justify-between">
-          <TabsList className="bg-bg-1">
-            <TabsTrigger value="annual" className="gap-1.5">
-              <Calendar className="w-4 h-4" />
-              Annual
-            </TabsTrigger>
-            {[1, 2, 3, 4].map((q) => (
-              <TabsTrigger 
-                key={q} 
-                value={`q${q}`}
-                className={q === currentQuarter ? "relative" : ""}
-              >
-                Q{q}
-                {q === currentQuarter && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full" />
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
-          {viewMode !== "annual" && (
-            <p className="text-small text-text-muted">
-              Showing Q{viewMode.replace("q", "")} targets and progress
-            </p>
-          )}
-        </div>
-      </Tabs>
+      {/* Tip */}
+      <p className="text-xs text-text-subtle mb-4">
+        💡 Click on any Key Result to expand and see detailed quarterly progress
+      </p>
 
       {/* Objectives List */}
       {objectives && objectives.length > 0 ? (
