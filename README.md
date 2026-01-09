@@ -10,7 +10,7 @@ A premium personal OKR (Objectives and Key Results) tracking web application. De
 - **Hierarchical OKR Structure**: Annual Plans → Objectives → Annual KRs → Quarterly KRs → Tasks
 - **Mixed KR Types**: Support for metrics, counts, milestones, rates, and averages
 - **Time Scoping**: Quarterly reset vs. cumulative year-to-date tracking
-- **Progress Roll-ups**: Weighted averages with configurable weights
+- **Progress Roll-ups**: Simple averages for equal weighting across all OKRs
 
 ### Tracking & Analytics
 - **Quick Check-ins**: 10-second updates with optional notes and evidence links
@@ -87,7 +87,7 @@ npm install
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    
-   > **Tip**: You can run all migrations at once by copying all SQL files into a single query, but ensure they're in the correct order.
+   > **Fresh Deployment Note**: All 12 migrations are designed to run sequentially on a new database. Some later migrations modify columns/views created in earlier ones (e.g., migration 12 removes `weight` columns added in migration 3). This is the standard incremental migration approach.
 
 5. **Configure Auth** (optional but recommended):
    - Go to Authentication → URL Configuration
@@ -151,7 +151,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │       ├── toast-utils.ts       # Toast notifications
 │       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations (11 files)
+│   ├── migrations/              # Database migrations (12 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -232,11 +232,44 @@ function MyComponent() {
 | `npm run build` | Build for production |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run test` | Run tests in watch mode |
+| `npm run test:run` | Run tests once |
+| `npm run test:coverage` | Run tests with coverage report |
+
+## Testing
+
+The project uses [Vitest](https://vitest.dev/) for unit testing with v8 coverage.
+
+### Running Tests
+
+```bash
+# Run tests in watch mode (interactive)
+npm run test
+
+# Run tests once
+npm run test:run
+
+# Run tests with coverage report
+npm run test:coverage
+```
+
+### Test Coverage
+
+The Progress Engine (`src/lib/progress-engine.ts`) has comprehensive unit tests covering:
+
+- **Utility Functions**: Date calculations, clamping, quarter dates
+- **Progress Computation**: All KR types (Metric, Count, Milestone, Rate, Average)
+- **Direction Support**: Increase, Decrease, Maintain
+- **Pace Tracking**: Expected progress, pace ratios, status classification
+- **Forecasting**: End value projections, milestone completion dates
+- **Rollups**: Simple average calculations for Objectives and Plans
+
+All rollup calculations use **simple arithmetic mean** (no weights) ensuring equal importance for all KRs and Objectives.
 
 ## Troubleshooting
 
 ### "Permission denied" when creating a plan
-- Make sure you ran **all 11 migration files** in order
+- Make sure you ran **all 12 migration files** in order
 - Check that your `.env.local` has the correct Supabase keys
 - Verify you're logged in (check browser cookies)
 
@@ -276,7 +309,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Next.js + TypeScript + Tailwind setup
 - [x] Design system implementation
 - [x] shadcn/ui component library
-- [x] Supabase schema with migrations (10 files)
+- [x] Supabase schema with migrations (12 files)
 - [x] Row Level Security policies
 - [x] Activity timeline triggers
 - [x] Database views
@@ -289,15 +322,26 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Link tasks to Objectives, Annual KRs, or Quarter Targets
   - [x] Custom tags for filtering and grouping
   - [x] Due date + optional due time
+  - [x] Priority and Effort indicators
   - [x] Collapsible task lists (Today, Overdue, This Week, etc.)
   - [x] Completed tasks logbook with pagination
   - [x] Late completion tracking
+- [x] Check-in functionality with:
+  - [x] Quick check-in from KR cards
+  - [x] Value + optional note + evidence URL
+  - [x] Check-in history list
+  - [x] Activity event logging
+- [x] Progress Engine with:
+  - [x] Support for all KR types (Metric, Count, Milestone, Rate, Average)
+  - [x] Pace tracking (ahead, on-track, at-risk, off-track)
+  - [x] Forecast calculations
+  - [x] Simple average rollups (Objective and Plan level)
+  - [x] Comprehensive unit tests (67 tests)
 - [x] Timeline page with real data
 - [x] Settings page with member management
 - [x] Analytics overview
 
 ### 🔜 Coming Next
-- [ ] Check-in functionality
 - [ ] Real-time updates
 - [ ] Analytics charts (Recharts)
 - [ ] Mindmap visualization (React Flow)
