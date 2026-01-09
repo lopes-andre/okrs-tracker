@@ -103,10 +103,16 @@ export async function getAnalyticsData(planId: string): Promise<{
       `)
       .eq("plan_id", planId)
       .order("sort_order", { ascending: true }),
+    // Check-ins don't have plan_id directly - query via annual_krs relationship
     supabase
       .from("check_ins")
-      .select("*")
-      .eq("plan_id", planId)
+      .select(`
+        *,
+        annual_krs!inner(
+          objectives!inner(plan_id)
+        )
+      `)
+      .eq("annual_krs.objectives.plan_id", planId)
       .order("occurred_at", { ascending: true }),
     supabase
       .from("tasks")
@@ -141,21 +147,21 @@ export async function getCheckInsByDay(
     .eq("plan_id", planId);
 
   if (dateFrom) {
-    query = query.gte("date", dateFrom);
+    query = query.gte("check_in_date", dateFrom);
   }
   if (dateTo) {
-    query = query.lte("date", dateTo);
+    query = query.lte("check_in_date", dateTo);
   }
 
-  query = query.order("date", { ascending: true });
+  query = query.order("check_in_date", { ascending: true });
 
   const { data, error } = await query;
   if (error) throw error;
 
   return (data || []).map((row) => ({
-    date: row.date,
+    date: row.check_in_date,
     count: row.check_in_count,
-    totalValueChange: row.total_value_change || 0,
+    totalValueChange: 0, // View doesn't track value change, just count
   }));
 }
 
@@ -266,10 +272,16 @@ export async function getProductivityStats(planId: string): Promise<Productivity
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
+  // Check-ins don't have plan_id directly - query via annual_krs relationship
   const { data: checkIns, error } = await supabase
     .from("check_ins")
-    .select("occurred_at")
-    .eq("plan_id", planId)
+    .select(`
+      occurred_at,
+      annual_krs!inner(
+        objectives!inner(plan_id)
+      )
+    `)
+    .eq("annual_krs.objectives.plan_id", planId)
     .gte("occurred_at", ninetyDaysAgo.toISOString())
     .order("occurred_at", { ascending: true });
 
