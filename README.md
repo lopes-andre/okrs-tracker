@@ -359,11 +359,26 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Tooltips explain pace status rationale on KRs and Objectives
 - [x] Timeline page with real data
 - [x] Settings page with member management
-- [x] Analytics overview
+- [x] Activity Log with:
+  - [x] Unified activity feed with expandable event cards
+  - [x] Filters: date range, entity type, action type
+  - [x] Weekly Review mode with summary stats
+  - [x] Pagination for large datasets
+- [x] Analytics Dashboard with:
+  - [x] Summary cards (progress, objectives on track, momentum)
+  - [x] KR Performance table (sortable, groupable)
+  - [x] Progress line chart (multi-KR comparison)
+  - [x] Activity bar chart (weekly/monthly)
+  - [x] Burn-up chart (target vs actual)
+  - [x] Pace Analysis panel with recommendations
+  - [x] GitHub-style activity heatmap
+  - [x] Task metrics panel
+  - [x] Productivity patterns analysis
+  - [x] Quarterly comparison view
+  - [x] Saved views (presets + custom)
 
 ### 🔜 Coming Next
-- [ ] Real-time updates
-- [ ] Analytics charts (Recharts)
+- [ ] Real-time updates (WebSocket/Supabase Realtime)
 - [ ] Mindmap visualization (React Flow)
 - [ ] Weekly review flow
 - [ ] Export/import functionality
