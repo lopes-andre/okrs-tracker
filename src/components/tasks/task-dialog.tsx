@@ -219,12 +219,15 @@ export function TaskDialog({
           {objectives.length > 0 && (
             <div className="space-y-2">
               <Label>Link to Objective</Label>
-              <Select value={objectiveId} onValueChange={setObjectiveId}>
+              <Select 
+                value={objectiveId || "none"} 
+                onValueChange={(v) => setObjectiveId(v === "none" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select an objective (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No objective</SelectItem>
+                  <SelectItem value="none">No objective</SelectItem>
                   {objectives.map((obj) => (
                     <SelectItem key={obj.id} value={obj.id}>
                       {obj.code}: {obj.name}
