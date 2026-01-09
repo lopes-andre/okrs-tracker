@@ -40,12 +40,13 @@ export function useTagsByKind(planId: string, kind: TagKind) {
 /**
  * Create a tag
  */
-export function useCreateTag() {
+export function useCreateTag(planId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (tag: TagInsert) => api.createTag(tag),
+    mutationFn: (tag: Omit<TagInsert, "plan_id"> & { plan_id?: string }) => 
+      api.createTag({ ...tag, plan_id: tag.plan_id || planId! }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(data.plan_id) });
       toast(successMessages.tagCreated);

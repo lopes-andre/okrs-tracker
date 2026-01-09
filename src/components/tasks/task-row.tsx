@@ -26,8 +26,10 @@ import { cn } from "@/lib/utils";
 interface TaskRowProps {
   task: Task & {
     objective?: { code: string; name: string } | null;
+    annual_kr?: { name: string; kr_type?: string } | null;
     quarter_target?: { quarter: number } | null;
     assigned_user?: { full_name: string | null; avatar_url: string | null } | null;
+    tags?: { id: string; name: string; color?: string | null }[];
   };
   role: OkrRole;
   onStatusChange: (status: TaskStatus) => void;
@@ -115,17 +117,35 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
         )}>
           {task.title}
         </p>
-        {(task.objective || task.description) && (
-          <p className="text-small text-text-muted truncate mt-0.5">
+        {(task.objective || task.annual_kr || task.description) && (
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             {task.objective && (
-              <span className="inline-flex items-center gap-1">
+              <span className="inline-flex items-center gap-1 text-small text-text-muted">
                 <Target className="w-3 h-3" />
                 {task.objective.code}
-                {task.description && " · "}
               </span>
             )}
-            {task.description}
-          </p>
+            {task.annual_kr && (
+              <span className="text-small text-text-subtle truncate max-w-[150px]">
+                → {task.annual_kr.name}
+              </span>
+            )}
+            {task.description && !task.objective && !task.annual_kr && (
+              <span className="text-small text-text-muted truncate">{task.description}</span>
+            )}
+            {task.tags && task.tags.length > 0 && (
+              <div className="flex gap-1 ml-1">
+                {task.tags.slice(0, 2).map((tag) => (
+                  <Badge key={tag.id} variant="secondary" className="text-[10px] py-0 px-1.5">
+                    {tag.name}
+                  </Badge>
+                ))}
+                {task.tags.length > 2 && (
+                  <span className="text-[10px] text-text-subtle">+{task.tags.length - 2}</span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, Plus, X, Tag as TagIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,8 @@ import type {
   TaskStatus,
   TaskPriority,
   Objective,
+  AnnualKr,
+  Tag,
 } from "@/lib/supabase/types";
 
 // Type for creating - without plan_id since the hook adds it
@@ -38,7 +41,11 @@ interface TaskDialogProps {
   planId: string;
   task?: Task | null;
   objectives?: Objective[];
-  onSubmit: (data: TaskCreateData | TaskUpdate) => Promise<void>;
+  annualKrs?: AnnualKr[];
+  tags?: Tag[];
+  selectedTags?: string[];
+  onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[]) => Promise<void>;
+  onCreateTag?: (name: string) => Promise<Tag>;
 }
 
 const statusOptions: { value: TaskStatus; label: string }[] = [
@@ -60,7 +67,11 @@ export function TaskDialog({
   planId: _planId,
   task,
   objectives = [],
+  annualKrs = [],
+  tags = [],
+  selectedTags: initialSelectedTags = [],
   onSubmit,
+  onCreateTag,
 }: TaskDialogProps) {
   const isEditing = !!task;
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +83,16 @@ export function TaskDialog({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [objectiveId, setObjectiveId] = useState<string>("");
+  const [annualKrId, setAnnualKrId] = useState<string>("");
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [newTagName, setNewTagName] = useState("");
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+
+  // Filter KRs based on selected objective
+  const filteredKrs = useMemo(() => {
+    if (!objectiveId) return [];
+    return annualKrs.filter((kr) => kr.objective_id === objectiveId);
+  }, [objectiveId, annualKrs]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -83,6 +104,8 @@ export function TaskDialog({
         setPriority(task.priority);
         setDueDate(task.due_date || "");
         setObjectiveId(task.objective_id || "");
+        setAnnualKrId(task.annual_kr_id || "");
+        setSelectedTagIds(initialSelectedTags);
       } else {
         setTitle("");
         setDescription("");
@@ -90,9 +113,41 @@ export function TaskDialog({
         setPriority("medium");
         setDueDate("");
         setObjectiveId("");
+        setAnnualKrId("");
+        setSelectedTagIds([]);
+      }
+      setNewTagName("");
+    }
+  }, [open, task, initialSelectedTags]);
+
+  // When objective changes, reset KR selection if the KR doesn't belong to new objective
+  useEffect(() => {
+    if (annualKrId && objectiveId) {
+      const kr = annualKrs.find((k) => k.id === annualKrId);
+      if (kr && kr.objective_id !== objectiveId) {
+        setAnnualKrId("");
       }
     }
-  }, [open, task]);
+  }, [objectiveId, annualKrId, annualKrs]);
+
+  function handleTagToggle(tagId: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  }
+
+  async function handleCreateTag() {
+    if (!newTagName.trim() || !onCreateTag) return;
+    
+    setIsCreatingTag(true);
+    try {
+      const newTag = await onCreateTag(newTagName.trim());
+      setSelectedTagIds((prev) => [...prev, newTag.id]);
+      setNewTagName("");
+    } finally {
+      setIsCreatingTag(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,6 +163,7 @@ export function TaskDialog({
             priority,
             due_date: dueDate || null,
             objective_id: objectiveId || null,
+            annual_kr_id: annualKrId || null,
           }
         : {
             // Don't include plan_id - the hook adds it automatically
@@ -117,12 +173,13 @@ export function TaskDialog({
             priority,
             due_date: dueDate || null,
             objective_id: objectiveId || null,
+            annual_kr_id: annualKrId || null,
             quarter_target_id: null,
             assigned_to: null,
             sort_order: 0,
           };
 
-      await onSubmit(data);
+      await onSubmit(data, selectedTagIds);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -131,7 +188,7 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading">
             {isEditing ? "Edit Task" : "Create Task"}
@@ -213,33 +270,154 @@ export function TaskDialog({
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
             />
+            <p className="text-xs text-text-subtle">
+              Leave empty for ideas/backlog tasks
+            </p>
           </div>
 
-          {/* Objective */}
-          {objectives.length > 0 && (
-            <div className="space-y-2">
-              <Label>Link to Objective</Label>
-              <Select 
-                value={objectiveId || "none"} 
-                onValueChange={(v) => setObjectiveId(v === "none" ? "" : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an objective (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No objective</SelectItem>
-                  {objectives.map((obj) => (
-                    <SelectItem key={obj.id} value={obj.id}>
-                      {obj.code}: {obj.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-text-subtle">
-                Link this task to an objective for better tracking
+          {/* Objective and KR Linking */}
+          <div className="space-y-4 p-3 rounded-card bg-bg-1/50 border border-border-soft">
+            <p className="text-small font-medium text-text-muted">Link to OKRs (optional)</p>
+            
+            {/* Objective */}
+            {objectives.length > 0 && (
+              <div className="space-y-2">
+                <Label>Objective</Label>
+                <Select 
+                  value={objectiveId || "none"} 
+                  onValueChange={(v) => {
+                    setObjectiveId(v === "none" ? "" : v);
+                    // Reset KR when objective changes
+                    if (v === "none" || v !== objectiveId) {
+                      setAnnualKrId("");
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an objective" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No objective</SelectItem>
+                    {objectives.map((obj) => (
+                      <SelectItem key={obj.id} value={obj.id}>
+                        {obj.code}: {obj.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Key Result (only shown when an objective is selected) */}
+            {objectiveId && filteredKrs.length > 0 && (
+              <div className="space-y-2">
+                <Label>Key Result</Label>
+                <Select 
+                  value={annualKrId || "none"} 
+                  onValueChange={(v) => setAnnualKrId(v === "none" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a key result" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No specific KR</SelectItem>
+                    {filteredKrs.map((kr) => (
+                      <SelectItem key={kr.id} value={kr.id}>
+                        {kr.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-text-subtle">
+                  Link to a specific Key Result for granular tracking
+                </p>
+              </div>
+            )}
+
+            {objectiveId && filteredKrs.length === 0 && (
+              <p className="text-small text-text-muted">
+                No Key Results defined for this objective yet.
               </p>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <TagIcon className="w-4 h-4" />
+              Tags
+            </Label>
+            
+            {/* Selected tags */}
+            {selectedTagIds.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {selectedTagIds.map((tagId) => {
+                  const tag = tags.find((t) => t.id === tagId);
+                  if (!tag) return null;
+                  return (
+                    <Badge
+                      key={tagId}
+                      variant="outline"
+                      className="gap-1 pr-1 cursor-pointer"
+                      onClick={() => handleTagToggle(tagId)}
+                    >
+                      {tag.name}
+                      <X className="w-3 h-3" />
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Available tags */}
+            {tags.filter((t) => !selectedTagIds.includes(t.id)).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tags
+                  .filter((t) => !selectedTagIds.includes(t.id))
+                  .map((tag) => (
+                    <Badge
+                      key={tag.id}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-bg-2"
+                      onClick={() => handleTagToggle(tag.id)}
+                    >
+                      {tag.name}
+                    </Badge>
+                  ))}
+              </div>
+            )}
+
+            {/* Create new tag */}
+            {onCreateTag && (
+              <div className="flex gap-2">
+                <Input
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  placeholder="Create new tag..."
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateTag();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleCreateTag}
+                  disabled={!newTagName.trim() || isCreatingTag}
+                >
+                  {isCreatingTag ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button

@@ -114,6 +114,7 @@ export interface Task {
   id: string;
   plan_id: string;
   objective_id: string | null;
+  annual_kr_id: string | null;
   quarter_target_id: string | null;
   title: string;
   description: string | null;
@@ -307,6 +308,7 @@ export interface AnnualKrWithDetails extends AnnualKr {
 
 export interface TaskWithDetails extends Task {
   objective?: Objective;
+  annual_kr?: AnnualKr;
   quarter_target?: QuarterTarget;
   assigned_user?: Profile;
   tags?: Tag[];
@@ -330,10 +332,14 @@ export interface TaskFilters {
   priority?: TaskPriority | TaskPriority[];
   assigned_to?: string;
   objective_id?: string;
+  annual_kr_id?: string;
   quarter_target_id?: string;
   due_date_from?: string;
   due_date_to?: string;
+  due_date_null?: boolean; // For "Ideas Backlog" - tasks without due date
   tag_ids?: string[];
+  // Quick filter presets
+  listView?: 'all' | 'active' | 'overdue' | 'this_week' | 'this_month' | 'future' | 'backlog' | 'completed';
 }
 
 export interface CheckInFilters {

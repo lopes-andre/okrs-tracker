@@ -34,6 +34,17 @@ export function useTasksWithDetails(planId: string, filters?: TaskFilters) {
 }
 
 /**
+ * Get tasks grouped by list categories (overdue, thisWeek, etc.)
+ */
+export function useTasksGrouped(planId: string, filters?: Omit<TaskFilters, 'listView'>) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(planId, filters), "grouped"],
+    queryFn: () => api.getTasksGrouped(planId, filters),
+    enabled: !!planId,
+  });
+}
+
+/**
  * Get tasks by objective
  */
 export function useTasksByObjective(objectiveId: string) {
@@ -41,6 +52,17 @@ export function useTasksByObjective(objectiveId: string) {
     queryKey: queryKeys.tasks.byObjective(objectiveId),
     queryFn: () => api.getTasksByObjective(objectiveId),
     enabled: !!objectiveId,
+  });
+}
+
+/**
+ * Get tasks by annual KR
+ */
+export function useTasksByAnnualKr(annualKrId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(""), "byAnnualKr", annualKrId],
+    queryFn: () => api.getTasksByAnnualKr(annualKrId),
+    enabled: !!annualKrId,
   });
 }
 
@@ -72,12 +94,61 @@ export function useTasksPaginated(
 }
 
 /**
+ * Get completed tasks paginated (for logbook)
+ */
+export function useCompletedTasksPaginated(
+  planId: string,
+  page: number = 1,
+  limit: number = 20,
+  filters?: Omit<TaskFilters, 'status' | 'listView'>
+) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(planId), "completed", "paginated", page, limit, filters],
+    queryFn: () => api.getCompletedTasksPaginated(planId, page, limit, filters),
+    enabled: !!planId,
+  });
+}
+
+/**
+ * Get recent completed tasks (for summary view)
+ */
+export function useRecentCompletedTasks(planId: string, limit: number = 10) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(planId), "completed", "recent", limit],
+    queryFn: () => api.getRecentCompletedTasks(planId, limit),
+    enabled: !!planId,
+  });
+}
+
+/**
+ * Get task counts for stats cards
+ */
+export function useTaskCounts(planId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(planId), "counts"],
+    queryFn: () => api.getTaskCounts(planId),
+    enabled: !!planId,
+  });
+}
+
+/**
  * Get a single task
  */
 export function useTask(taskId: string) {
   return useQuery({
     queryKey: queryKeys.tasks.detail(taskId),
     queryFn: () => api.getTask(taskId),
+    enabled: !!taskId,
+  });
+}
+
+/**
+ * Get a single task with details
+ */
+export function useTaskWithDetails(taskId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.detail(taskId), "withDetails"],
+    queryFn: () => api.getTaskWithDetails(taskId),
     enabled: !!taskId,
   });
 }
@@ -100,6 +171,9 @@ export function useCreateTask(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       if (data.objective_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byObjective(data.objective_id) });
+      }
+      if (data.annual_kr_id) {
+        queryClient.invalidateQueries({ queryKey: [...queryKeys.tasks.list(""), "byAnnualKr", data.annual_kr_id] });
       }
       if (data.quarter_target_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.byQuarterTarget(data.quarter_target_id) });
