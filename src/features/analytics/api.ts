@@ -113,7 +113,7 @@ export async function getAnalyticsData(planId: string): Promise<{
         )
       `)
       .eq("annual_krs.objectives.plan_id", planId)
-      .order("occurred_at", { ascending: true }),
+      .order("recorded_at", { ascending: true }),
     supabase
       .from("tasks")
       .select("*")
@@ -181,13 +181,13 @@ export async function getKrCheckIns(
     .in("annual_kr_id", krIds);
 
   if (dateFrom) {
-    query = query.gte("occurred_at", dateFrom);
+    query = query.gte("recorded_at", dateFrom);
   }
   if (dateTo) {
-    query = query.lte("occurred_at", dateTo);
+    query = query.lte("recorded_at", dateTo);
   }
 
-  query = query.order("occurred_at", { ascending: true });
+  query = query.order("recorded_at", { ascending: true });
 
   const { data, error } = await query;
   if (error) throw error;
@@ -276,14 +276,14 @@ export async function getProductivityStats(planId: string): Promise<Productivity
   const { data: checkIns, error } = await supabase
     .from("check_ins")
     .select(`
-      occurred_at,
+      recorded_at,
       annual_krs!inner(
         objectives!inner(plan_id)
       )
     `)
     .eq("annual_krs.objectives.plan_id", planId)
-    .gte("occurred_at", ninetyDaysAgo.toISOString())
-    .order("occurred_at", { ascending: true });
+    .gte("recorded_at", ninetyDaysAgo.toISOString())
+    .order("recorded_at", { ascending: true });
 
   if (error) throw error;
 
@@ -293,7 +293,7 @@ export async function getProductivityStats(planId: string): Promise<Productivity
   };
 
   (checkIns || []).forEach((c) => {
-    const day = dayNames[new Date(c.occurred_at).getDay()];
+    const day = dayNames[new Date(c.recorded_at).getDay()];
     checkInsByDay[day]++;
   });
 
@@ -318,7 +318,7 @@ export async function getProductivityStats(planId: string): Promise<Productivity
     today.setHours(0, 0, 0, 0);
     
     const checkInDates = new Set(
-      checkIns.map((c) => new Date(c.occurred_at).toISOString().split("T")[0])
+      checkIns.map((c) => new Date(c.recorded_at).toISOString().split("T")[0])
     );
     
     let currentDate = new Date(today);

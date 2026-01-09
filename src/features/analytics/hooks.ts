@@ -117,9 +117,9 @@ export function useAnalyticsSummary(
     lastWeekStart.setDate(lastWeekStart.getDate() - 7);
 
     // Check-ins this week vs last week
-    const checkInsThisWeek = checkIns.filter((ci) => new Date(ci.occurred_at) >= weekStart).length;
+    const checkInsThisWeek = checkIns.filter((ci) => new Date(ci.recorded_at) >= weekStart).length;
     const checkInsLastWeek = checkIns.filter((ci) => {
-      const date = new Date(ci.occurred_at);
+      const date = new Date(ci.recorded_at);
       return date >= lastWeekStart && date < weekStart;
     }).length;
 
@@ -199,7 +199,7 @@ export function useKrPerformanceData(
         const sevenDaysAgo = new Date(asOfDate);
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        const recentCheckIns = krCheckIns.filter((ci) => new Date(ci.occurred_at) >= sevenDaysAgo);
+        const recentCheckIns = krCheckIns.filter((ci) => new Date(ci.recorded_at) >= sevenDaysAgo);
         let trend: "up" | "down" | "stable" = "stable";
         
         if (recentCheckIns.length >= 2) {
@@ -211,7 +211,7 @@ export function useKrPerformanceData(
 
         // Find last check-in date
         const sortedCheckIns = [...krCheckIns].sort((a, b) => 
-          new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime()
+          new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
         );
         const lastCheckIn = sortedCheckIns[0];
 
@@ -232,7 +232,7 @@ export function useKrPerformanceData(
           paceStatus: progressResult.paceStatus,
           expectedValue: progressResult.expectedProgress * (kr.target_value - kr.start_value) + kr.start_value,
           forecast: progressResult.forecast,
-          lastCheckInDate: lastCheckIn?.occurred_at || null,
+          lastCheckInDate: lastCheckIn?.recorded_at || null,
           checkInCount: krCheckIns.length,
           trend,
         });
