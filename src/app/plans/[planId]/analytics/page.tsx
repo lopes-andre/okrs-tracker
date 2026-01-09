@@ -22,6 +22,7 @@ import {
   useTaskMetrics,
   useProductivityStats,
 } from "@/features/analytics/hooks";
+import { useState } from "react";
 import { 
   SummaryCards, 
   KrPerformanceTable, 
@@ -32,6 +33,10 @@ import {
   ActivityHeatmap,
   TaskMetricsPanel,
   ProductivityPanel,
+  SavedViews,
+  useSavedViews,
+  QuarterlyComparison,
+  type ViewConfig,
 } from "@/components/analytics";
 
 export default function AnalyticsPage({
@@ -43,6 +48,23 @@ export default function AnalyticsPage({
   
   const { data: plan, isLoading: isLoadingPlan } = usePlan(planId);
   const planYear = plan?.year || new Date().getFullYear();
+  
+  // View state
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedQuarter, setSelectedQuarter] = useState("all");
+  
+  // Saved views
+  const { savedViews, saveView, deleteView } = useSavedViews(planId);
+  
+  const currentConfig: ViewConfig = {
+    tab: activeTab,
+    quarter: selectedQuarter,
+  };
+  
+  const handleApplyView = (config: ViewConfig) => {
+    setActiveTab(config.tab);
+    setSelectedQuarter(config.quarter);
+  };
 
   // Analytics data
   const { data: summary, isLoading: isLoadingSummary } = useAnalyticsSummary(planId, planYear);
@@ -70,7 +92,7 @@ export default function AnalyticsPage({
         title="Analytics"
         description="Insights and visualizations for your OKR progress"
       >
-        <Select defaultValue="all">
+        <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
           <SelectTrigger className="w-32">
             <SelectValue placeholder="Quarter" />
           </SelectTrigger>
@@ -82,14 +104,17 @@ export default function AnalyticsPage({
             <SelectItem value="q4">Q4 {planYear}</SelectItem>
           </SelectContent>
         </Select>
-        <Button variant="secondary" className="gap-2" disabled>
-          <Download className="w-4 h-4" />
-          Export
-        </Button>
+        <SavedViews
+          currentConfig={currentConfig}
+          onApplyView={handleApplyView}
+          savedViews={savedViews}
+          onSaveView={saveView}
+          onDeleteView={deleteView}
+        />
       </PageHeader>
 
       {/* Analytics Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">KR Performance</TabsTrigger>
@@ -132,14 +157,26 @@ export default function AnalyticsPage({
                 />
               </div>
               
-              {/* Burn-Up Chart */}
-              {krPerformanceData && krPerformanceData.length > 0 && (
-                <BurnupChart 
-                  krs={krPerformanceData} 
-                  checkIns={allCheckIns}
-                  year={planYear}
-                />
-              )}
+              {/* Bottom Row: Burn-Up + Quarterly Comparison */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Burn-Up Chart */}
+                {krPerformanceData && krPerformanceData.length > 0 && (
+                  <BurnupChart 
+                    krs={krPerformanceData} 
+                    checkIns={allCheckIns}
+                    year={planYear}
+                  />
+                )}
+                
+                {/* Quarterly Comparison */}
+                {krPerformanceData && krPerformanceData.length > 0 && (
+                  <QuarterlyComparison 
+                    krs={krPerformanceData} 
+                    checkIns={allCheckIns}
+                    year={planYear}
+                  />
+                )}
+              </div>
             </div>
           )}
         </TabsContent>

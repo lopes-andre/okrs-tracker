@@ -7,3 +7,5 @@ export { BurnupChart } from "./burnup-chart";
 export { ActivityHeatmap } from "./activity-heatmap";
 export { TaskMetricsPanel } from "./task-metrics-panel";
 export { ProductivityPanel } from "./productivity-panel";
+export { SavedViews, useSavedViews, type ViewConfig, type SavedView } from "./saved-views";
+export { QuarterlyComparison } from "./quarterly-comparison";
