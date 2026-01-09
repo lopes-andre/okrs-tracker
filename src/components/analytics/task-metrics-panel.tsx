@@ -30,24 +30,36 @@ interface MetricCardProps {
 function MetricCard({ icon: Icon, label, value, sublabel, variant = "default" }: MetricCardProps) {
   return (
     <div className={cn(
-      "p-4 rounded-card border h-full flex flex-col items-center justify-center text-center",
+      "p-4 rounded-card border flex flex-col items-center text-center",
       variant === "success" && "bg-status-success/5 border-status-success/20",
       variant === "warning" && "bg-status-warning/5 border-status-warning/20",
       variant === "danger" && "bg-status-danger/5 border-status-danger/20",
       variant === "accent" && "bg-accent/5 border-accent/20",
       variant === "default" && "bg-bg-1/50 border-border-soft"
     )}>
-      <Icon className={cn(
-        "w-5 h-5 mb-2",
-        variant === "success" && "text-status-success",
-        variant === "warning" && "text-status-warning",
-        variant === "danger" && "text-status-danger",
-        variant === "accent" && "text-accent",
-        variant === "default" && "text-text-muted"
-      )} />
-      <p className="text-2xl font-bold font-heading leading-none">{value}</p>
-      <p className="text-xs text-text-muted mt-1">{label}</p>
-      {sublabel && <p className="text-[10px] text-text-subtle mt-0.5">{sublabel}</p>}
+      {/* Icon row - fixed height */}
+      <div className="h-6 flex items-center justify-center">
+        <Icon className={cn(
+          "w-5 h-5",
+          variant === "success" && "text-status-success",
+          variant === "warning" && "text-status-warning",
+          variant === "danger" && "text-status-danger",
+          variant === "accent" && "text-accent",
+          variant === "default" && "text-text-muted"
+        )} />
+      </div>
+      {/* Value row - fixed height */}
+      <div className="h-9 flex items-center justify-center">
+        <p className="text-2xl font-bold font-heading leading-none">{value}</p>
+      </div>
+      {/* Label row - fixed height for 2 lines */}
+      <div className="h-8 flex items-start justify-center">
+        <p className="text-xs text-text-muted leading-tight">{label}</p>
+      </div>
+      {/* Sublabel row - fixed height */}
+      <div className="h-4 flex items-start justify-center">
+        {sublabel && <p className="text-[10px] text-text-subtle leading-tight">{sublabel}</p>}
+      </div>
     </div>
   );
 }
