@@ -355,7 +355,7 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
                         
                         {/* Forecast */}
                         <TableCell className="text-right">
-                          {row.krType !== "milestone" && (
+                          {row.krType !== "milestone" && row.forecast != null && (
                             <>
                               <span className={cn(
                                 "text-small font-medium",
@@ -367,6 +367,9 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
                                 <span className="text-xs text-text-muted ml-1">{row.unit}</span>
                               )}
                             </>
+                          )}
+                          {row.krType !== "milestone" && row.forecast == null && (
+                            <span className="text-xs text-text-muted">—</span>
                           )}
                         </TableCell>
                         
