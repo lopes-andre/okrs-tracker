@@ -289,15 +289,15 @@ export default function TasksPage({
 
         <Card
           className={cn(
-            "cursor-pointer transition-all hover:border-accent/50",
-            counts.today > 0 && "border-accent/30 bg-accent/5",
-            activeFilter === "today" && "ring-2 ring-accent/30"
+            "cursor-pointer transition-all hover:border-status-info/50",
+            counts.today > 0 && "border-status-info/30 bg-status-info/5",
+            activeFilter === "today" && "ring-2 ring-status-info/30"
           )}
           onClick={() => handleStatsClick("today")}
         >
           <CardContent className="pt-4 text-center">
-            <Calendar className="w-5 h-5 mx-auto mb-1 text-accent" />
-            <p className="text-h4 font-bold text-accent">{counts.today}</p>
+            <Calendar className="w-5 h-5 mx-auto mb-1 text-status-info" />
+            <p className="text-h4 font-bold text-status-info">{counts.today}</p>
             <p className="text-small text-text-muted">Today</p>
           </CardContent>
         </Card>
@@ -434,7 +434,7 @@ export default function TasksPage({
                   title="Today"
                   count={counts.today}
                   tasks={todayTasks}
-                  icon={<Calendar className="w-4 h-4 text-accent" />}
+                  icon={<Calendar className="w-4 h-4 text-status-info" />}
                   variant="accent"
                   defaultExpanded={true}
                   role={userRole}

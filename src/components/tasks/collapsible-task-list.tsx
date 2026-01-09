@@ -44,10 +44,11 @@ const variantStyles = {
     titleClass: "",
   },
   accent: {
-    border: "border-accent/30",
-    header: "bg-accent/5",
+    // Blue styling for "Today" - uses status-info blue
+    border: "border-status-info/30",
+    header: "bg-status-info/5",
     badge: "info" as const,
-    titleClass: "text-accent",
+    titleClass: "text-status-info",
   },
   danger: {
     border: "border-status-danger/30",

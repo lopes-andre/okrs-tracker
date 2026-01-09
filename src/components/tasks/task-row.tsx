@@ -117,7 +117,7 @@ function formatDueDate(
 
 const variantStyles: Record<DueDateDisplay["variant"], string> = {
   overdue: "text-status-danger font-medium",
-  today: "text-accent font-medium", // Blue for today
+  today: "text-status-info font-medium", // Blue for today
   soon: "text-status-warning",
   normal: "text-text-muted",
   completed: "text-status-success",
