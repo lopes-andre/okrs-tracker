@@ -155,6 +155,13 @@ export function TaskDialog({
 
     setIsSubmitting(true);
     try {
+      // Important: Task can only have ONE parent link due to constraint
+      // If KR is selected, use that (KR already knows its Objective)
+      // If only Objective is selected, use that
+      // If neither, both are null
+      const finalObjectiveId = annualKrId ? null : (objectiveId || null);
+      const finalAnnualKrId = annualKrId || null;
+
       const data: TaskCreateData | TaskUpdate = isEditing
         ? {
             title,
@@ -162,8 +169,8 @@ export function TaskDialog({
             status,
             priority,
             due_date: dueDate || null,
-            objective_id: objectiveId || null,
-            annual_kr_id: annualKrId || null,
+            objective_id: finalObjectiveId,
+            annual_kr_id: finalAnnualKrId,
           }
         : {
             // Don't include plan_id - the hook adds it automatically
@@ -172,8 +179,8 @@ export function TaskDialog({
             status,
             priority,
             due_date: dueDate || null,
-            objective_id: objectiveId || null,
-            annual_kr_id: annualKrId || null,
+            objective_id: finalObjectiveId,
+            annual_kr_id: finalAnnualKrId,
             quarter_target_id: null,
             assigned_to: null,
             sort_order: 0,
