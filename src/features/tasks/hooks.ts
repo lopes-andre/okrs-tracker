@@ -106,6 +106,8 @@ export function useCreateTask(planId: string) {
       }
       // Invalidate timeline for activity events
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      // Invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.taskCreated);
     },
     onError: (error) => {
@@ -129,6 +131,8 @@ export function useUpdateTask(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       // Invalidate timeline for activity events
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      // Invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       
       if (data.status === "completed") {
         toast(successMessages.taskCompleted);
@@ -157,6 +161,8 @@ export function useUpdateTaskStatus(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       // Invalidate timeline for activity events
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      // Invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       
       if (data.status === "completed") {
         toast(successMessages.taskCompleted);
@@ -184,6 +190,8 @@ export function useCompleteTask(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       // Invalidate timeline for activity events
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      // Invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.taskCompleted);
     },
     onError: (error) => {
@@ -205,6 +213,8 @@ export function useDeleteTask(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
       // Invalidate timeline for activity events
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      // Invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.taskDeleted);
     },
     onError: (error) => {

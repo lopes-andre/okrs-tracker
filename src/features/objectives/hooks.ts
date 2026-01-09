@@ -71,6 +71,8 @@ export function useCreateObjective() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.list(data.plan_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.withKrs(data.plan_id) });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.objectiveCreated);
     },
     onError: (error) => {
@@ -93,6 +95,8 @@ export function useUpdateObjective() {
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.list(data.plan_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.withKrs(data.plan_id) });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.objectiveUpdated);
     },
     onError: (error) => {
@@ -114,6 +118,8 @@ export function useDeleteObjective() {
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.list(planId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.withKrs(planId) });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.objectiveDeleted);
     },
     onError: (error) => {

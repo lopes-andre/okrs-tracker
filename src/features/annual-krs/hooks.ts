@@ -82,6 +82,8 @@ export function useCreateAnnualKr() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.byObjective(data.objective_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.krCreated);
     },
     onError: (error) => {
@@ -105,6 +107,8 @@ export function useUpdateAnnualKr() {
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.withDetails(data.id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.byObjective(data.objective_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.krUpdated);
     },
     onError: (error) => {
@@ -126,6 +130,8 @@ export function useDeleteAnnualKr() {
     onSuccess: (_, { objectiveId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.byObjective(objectiveId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });
+      // Also invalidate plan stats to update counters
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
       toast(successMessages.krDeleted);
     },
     onError: (error) => {
