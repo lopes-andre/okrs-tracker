@@ -90,7 +90,7 @@ const effortOptions: {
 }[] = [
   { value: "light", label: "Light", description: "Quick task, low energy", color: "text-status-success", Icon: BatteryLow },
   { value: "moderate", label: "Moderate", description: "Requires some focus", color: "text-text-muted", Icon: BatteryMedium },
-  { value: "heavy", label: "Heavy", description: "Significant time investment", color: "text-text-strong", Icon: BatteryFull },
+  { value: "heavy", label: "Heavy", description: "Significant time investment", color: "text-status-danger", Icon: BatteryFull },
 ];
 
 export function TaskDialog({

@@ -101,7 +101,7 @@ const effortConfig: Record<TaskEffort, {
   heavy: { 
     label: "Heavy", 
     tooltip: "Heavy — Significant time and energy investment",
-    color: "border-text-strong/50 text-text-strong bg-transparent",
+    color: "border-status-danger/40 text-status-danger bg-transparent",
     Icon: BatteryFull,
   },
 };
