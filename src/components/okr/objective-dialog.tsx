@@ -148,15 +148,19 @@ export function ObjectiveDialog({
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
+            <Button 
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || isCodeTaken || !name.trim()}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || isCodeTaken || !name.trim()}
+              className="bg-accent hover:bg-accent-hover text-white"
+            >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Save Changes" : "Create Objective"}
             </Button>

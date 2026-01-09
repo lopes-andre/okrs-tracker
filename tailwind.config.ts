@@ -38,11 +38,11 @@ const config: Config = {
           danger: "#EF4444",
           info: "#3B82F6",
         },
-        // Accent (near-black, restrained)
+        // Accent (professional blue for primary actions)
         accent: {
-          DEFAULT: "#1A1A1A",
-          hover: "#333333",
-          muted: "rgba(26, 26, 26, 0.08)",
+          DEFAULT: "#2563EB",
+          hover: "#1D4ED8",
+          muted: "rgba(37, 99, 235, 0.08)",
         },
       },
       // Font families

@@ -212,7 +212,11 @@ function LoginForm() {
                 </p>
               )}
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-accent hover:bg-accent-hover text-white" 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />

@@ -14,6 +14,7 @@ import {
   DeleteConfirmationDialog,
   CheckInDialog,
 } from "@/components/okr";
+import { computeKrProgress } from "@/lib/progress-engine";
 import {
   usePlan,
   usePlanRole,
@@ -145,10 +146,32 @@ export default function OKRsPage({
   // Get existing objective codes
   const existingCodes = objectives?.map((o) => o.code) || [];
 
-  // Calculate overall progress
-  const overallProgress = objectives && objectives.length > 0
-    ? objectives.reduce((sum, obj) => sum + (obj.progress || 0), 0) / objectives.length
-    : 0;
+  // Calculate real-time overall progress from check-ins
+  const overallProgress = useMemo(() => {
+    if (!objectives || objectives.length === 0) return 0;
+    
+    const planYear = plan?.year || new Date().getFullYear();
+    
+    // Calculate progress for each objective based on its KRs
+    const objectiveProgresses = objectives.map((obj) => {
+      const krs = obj.annual_krs || [];
+      if (krs.length === 0) return 0;
+      
+      // Compute progress for each KR using the progress engine
+      const krProgresses = krs.map((kr) => {
+        const krCheckIns = checkInsByKr[kr.id] || [];
+        const result = computeKrProgress(kr, krCheckIns, [], planYear);
+        return result.progress * 100; // Convert 0-1 to 0-100
+      });
+      
+      // Average of all KR progresses for this objective
+      return krProgresses.reduce((sum, p) => sum + p, 0) / krProgresses.length;
+    });
+    
+    // Average of all objective progresses
+    const total = objectiveProgresses.reduce((sum, p) => sum + p, 0) / objectiveProgresses.length;
+    return Math.min(Math.max(total, 0), 100);
+  }, [objectives, checkInsByKr, plan?.year]);
 
   // Handlers
   function handleCreateObjective() {
@@ -314,11 +337,6 @@ export default function OKRsPage({
           subtext={stats ? `${stats.completed_task_count} completed` : undefined}
         />
       </div>
-
-      {/* Tip */}
-      <p className="text-xs text-text-subtle mb-4">
-        💡 Click on any Key Result to expand and see detailed quarterly progress
-      </p>
 
       {/* Objectives List */}
       {objectives && objectives.length > 0 ? (

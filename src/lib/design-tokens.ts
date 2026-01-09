@@ -40,11 +40,11 @@ export const colors = {
     info: "#3B82F6",
   },
   
-  // Accent (near-black)
+  // Accent (professional blue for primary actions)
   accent: {
-    default: "#1A1A1A",
-    hover: "#333333",
-    muted: "rgba(26, 26, 26, 0.08)",
+    default: "#2563EB",
+    hover: "#1D4ED8",
+    muted: "rgba(37, 99, 235, 0.08)",
   },
 } as const;
 

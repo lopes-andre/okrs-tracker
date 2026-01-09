@@ -50,13 +50,13 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up stagger-2">
               <Link href="/plans">
-                <Button size="lg" className="gap-2">
+                <Button size="lg" className="gap-2 bg-accent hover:bg-accent-hover text-white">
                   Get Started
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
               <Link href="/login">
-                <Button variant="secondary" size="lg">
+                <Button variant="outline" size="lg">
                   Sign In to Your Account
                 </Button>
               </Link>

@@ -10,6 +10,8 @@ import {
   Target,
   CheckCircle2,
   ArrowRight,
+  Flag,
+  XCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -88,38 +90,40 @@ export function CheckInDialog({
   const quarterImpact = useMemo(() => {
     if (!selectedQuarterTarget || !kr) return null;
     
-    // Current quarter progress
-    const qtCurrent = selectedQuarterTarget.current_value;
     const qtTarget = selectedQuarterTarget.target_value;
+    
+    // Always show DELTA from KR start value for quarter impact
+    // Quarter target represents the expected increment for that quarter
+    // Delta can be negative (losing followers) or exceed target (overachieving)
+    const currentDelta = kr.current_value - kr.start_value;
+    const newDelta = numValue - kr.start_value;
+    
+    // Progress percentage is clamped to 0-100%, but raw values can exceed
     const currentQtProgress = qtTarget > 0 
-      ? Math.min(Math.max((qtCurrent / qtTarget) * 100, 0), 100) 
+      ? Math.min(Math.max((currentDelta / qtTarget) * 100, 0), 100) 
       : 0;
-    
-    // New value impact on quarter (for cumulative, the delta goes to quarter)
-    // For non-cumulative, the new value replaces
-    const isCumulative = kr.aggregation === "cumulative";
-    const newQtValue = isCumulative 
-      ? qtCurrent + delta
-      : numValue;
-    
     const newQtProgress = qtTarget > 0 
-      ? Math.min(Math.max((newQtValue / qtTarget) * 100, 0), 100) 
+      ? Math.min(Math.max((newDelta / qtTarget) * 100, 0), 100) 
       : 0;
     
     return {
-      current: qtCurrent,
+      current: currentDelta,    // Delta from start, can be negative
       target: qtTarget,
-      newValue: newQtValue,
+      newValue: newDelta,       // Delta from start, can be negative  
       currentProgress: currentQtProgress,
       newProgress: newQtProgress,
-      willComplete: newQtProgress >= 100,
+      willComplete: newDelta >= qtTarget,  // Compare actual values, not clamped
     };
-  }, [selectedQuarterTarget, delta, numValue, kr]);
+  }, [selectedQuarterTarget, numValue, kr]);
 
   // Early return AFTER all hooks
   if (!kr) return null;
 
-  // Calculate preview progress
+  // Check if this is a milestone
+  const isMilestone = kr.kr_type === "milestone";
+  const isCurrentlyComplete = kr.current_value >= 1;
+
+  // Calculate preview progress (for non-milestone)
   const newProgress = range > 0 
     ? Math.min(Math.max(((numValue - kr.start_value) / range) * 100, 0), 100)
     : numValue >= kr.target_value ? 100 : 0;
@@ -129,16 +133,18 @@ export function CheckInDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!value.trim() || !kr) return;
+    if (!isMilestone && !value.trim()) return;
+    if (!kr) return;
 
     setIsSubmitting(true);
     try {
       await onSubmit({
         annual_kr_id: kr.id,
-        value: parseFloat(value),
+        // For milestone: toggle between 0 and 1
+        value: isMilestone ? (isCurrentlyComplete ? 0 : 1) : parseFloat(value),
         note: note.trim() || null,
         evidence_url: evidenceUrl.trim() || null,
-        quarter_target_id: quarterTargetId || currentQuarterTarget?.id || null,
+        quarter_target_id: isMilestone ? null : (quarterTargetId || currentQuarterTarget?.id || null),
         recorded_at: recordedAt ? new Date(recordedAt).toISOString() : new Date().toISOString(),
       });
       onOpenChange(false);
@@ -152,6 +158,124 @@ export function CheckInDialog({
     return val.toLocaleString();
   };
 
+  // Milestone-specific dialog
+  if (isMilestone) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="font-heading flex items-center gap-2 text-base">
+              <Flag className="w-4 h-4 text-accent" />
+              {isCurrentlyComplete ? "Update Milestone" : "Mark Complete"}: {kr.name}
+            </DialogTitle>
+            <p className="text-xs text-text-muted">
+              Status: {isCurrentlyComplete ? "Completed" : "Not completed"}
+            </p>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Status Preview */}
+            <div className={cn(
+              "p-4 rounded-card border text-center",
+              isCurrentlyComplete 
+                ? "bg-status-warning/5 border-status-warning/30" 
+                : "bg-status-success/5 border-status-success/30"
+            )}>
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2",
+                isCurrentlyComplete ? "bg-status-warning/20" : "bg-status-success/20"
+              )}>
+                {isCurrentlyComplete ? (
+                  <XCircle className="w-5 h-5 text-status-warning" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5 text-status-success" />
+                )}
+              </div>
+              <p className={cn(
+                "text-sm font-medium",
+                isCurrentlyComplete ? "text-status-warning" : "text-status-success"
+              )}>
+                {isCurrentlyComplete 
+                  ? "This will mark the milestone as incomplete" 
+                  : "This will mark the milestone as complete"}
+              </p>
+            </div>
+
+            {/* Note */}
+            <div>
+              <Label htmlFor="milestone-note" className="text-xs text-text-muted mb-1.5 block">
+                Note (optional)
+              </Label>
+              <Input
+                id="milestone-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Add a note about this milestone..."
+                className="h-9 text-sm"
+              />
+            </div>
+
+            {/* Evidence + Date */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="milestone-evidence" className="text-xs text-text-muted mb-1.5 block">
+                  Evidence URL
+                </Label>
+                <Input
+                  id="milestone-evidence"
+                  type="url"
+                  value={evidenceUrl}
+                  onChange={(e) => setEvidenceUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <Label htmlFor="milestone-date" className="text-xs text-text-muted mb-1.5 block">
+                  Date
+                </Label>
+                <Input
+                  id="milestone-date"
+                  type="datetime-local"
+                  value={recordedAt}
+                  onChange={(e) => setRecordedAt(e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                size="sm" 
+                disabled={isSubmitting}
+                className={cn(
+                  "text-white",
+                  isCurrentlyComplete 
+                    ? "bg-status-warning hover:bg-status-warning/90" 
+                    : "bg-status-success hover:bg-status-success/90"
+                )}
+              >
+                {isSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                {isCurrentlyComplete ? "Mark Incomplete" : "Mark Complete"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Regular check-in dialog for non-milestone KRs
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[440px]">
@@ -239,12 +363,19 @@ export function CheckInDialog({
                 )}>
                   <span className="text-text-muted">Q{selectedQuarterTarget.quarter}:</span>
                   <span className="flex items-center gap-1">
-                    <span>{formatValue(quarterImpact.current)}</span>
-                    <ArrowRight className="w-3 h-3 text-text-subtle" />
-                    <span className={delta > 0 ? "text-status-success font-medium" : ""}>
-                      {formatValue(quarterImpact.newValue)}
+                    <span className={quarterImpact.current < 0 ? "text-status-danger" : ""}>
+                      {quarterImpact.current >= 0 ? "+" : ""}{formatValue(quarterImpact.current)}
                     </span>
-                    <span className="text-text-subtle">/ {formatValue(quarterImpact.target)}</span>
+                    <ArrowRight className="w-3 h-3 text-text-subtle" />
+                    <span className={cn(
+                      "font-medium",
+                      quarterImpact.newValue < 0 ? "text-status-danger" : 
+                      quarterImpact.newValue >= quarterImpact.target ? "text-status-success" :
+                      delta > 0 ? "text-status-success" : ""
+                    )}>
+                      {quarterImpact.newValue >= 0 ? "+" : ""}{formatValue(quarterImpact.newValue)}
+                    </span>
+                    <span className="text-text-subtle">/ +{formatValue(quarterImpact.target)}</span>
                   </span>
                 </div>
               )}
@@ -281,14 +412,19 @@ export function CheckInDialog({
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={isSubmitting || !value.trim()}>
+            <Button 
+              type="submit" 
+              size="sm" 
+              disabled={isSubmitting || !value.trim()}
+              className="bg-accent hover:bg-accent-hover text-white"
+            >
               {isSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
               Record
             </Button>

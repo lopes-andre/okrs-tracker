@@ -592,15 +592,19 @@ export function TaskDialog({
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
-            <Button
+            <Button 
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !title.trim()}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !title.trim()}
+              className="bg-accent hover:bg-accent-hover text-white"
+            >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Save Changes" : "Create Task"}
             </Button>

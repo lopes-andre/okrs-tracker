@@ -195,12 +195,16 @@ export default function PlansPage() {
             <DialogFooter className="gap-2 sm:gap-0 pt-2">
               <Button
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={() => setCreateDialogOpen(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createPlan.isPending || !newPlanName.trim()}>
+              <Button 
+                type="submit" 
+                disabled={createPlan.isPending || !newPlanName.trim()}
+                className="bg-accent hover:bg-accent-hover text-white"
+              >
                 {createPlan.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}

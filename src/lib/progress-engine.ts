@@ -374,6 +374,7 @@ function computeAverageValue(kr: AnnualKr, checkIns: CheckIn[]): number {
 /**
  * Compute value for Milestone KRs
  * Returns 1 if completed, 0 otherwise (or task-based proxy)
+ * Uses the LATEST check-in to determine current status (can toggle complete/incomplete)
  */
 function computeMilestoneValue(
   kr: AnnualKr,
@@ -381,22 +382,19 @@ function computeMilestoneValue(
   tasks: Task[],
   trackingSource: "check_ins" | "tasks" | "mixed"
 ): number {
-  // Check if explicitly marked complete via check-in with value >= 1
-  const hasCompletionCheckIn = checkIns.some((ci) => ci.value >= 1);
-  if (hasCompletionCheckIn) return 1;
+  // If there are check-ins, use the LATEST one to determine current status
+  // This allows toggling a milestone back to incomplete
+  if (checkIns.length > 0) {
+    const sorted = [...checkIns].sort(
+      (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+    );
+    return sorted[0].value >= 1 ? 1 : 0;
+  }
   
   // For task-based tracking, compute proxy progress
   if (trackingSource !== "check_ins" && tasks.length > 0) {
     // Return task completion ratio (will be handled in progress calculation)
     return tasks.length; // Number of completed tasks
-  }
-  
-  // If there are check-ins with values between 0 and 1, use the latest
-  if (checkIns.length > 0) {
-    const sorted = [...checkIns].sort(
-      (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
-    );
-    return sorted[0].value;
   }
   
   return 0;
@@ -714,6 +712,7 @@ export function computeKrProgress(
   config?: KrConfig
 ): ProgressResult {
   const window = getAnnualKrWindow(kr, planYear, asOfDate);
+  const yearDates = getYearDates(planYear); // Get actual year end for days remaining
   const filteredCheckIns = filterCheckInsInWindow(checkIns, window);
   const filteredTasks = filterCompletedTasksInWindow(tasks, window);
   
@@ -732,14 +731,20 @@ export function computeKrProgress(
   let progress: number;
   if (kr.kr_type === "milestone" && (config?.trackingSource === "tasks" || config?.trackingSource === "mixed")) {
     const totalLinkedTasks = tasks.length;
-    const isComplete = filteredCheckIns.some((ci) => ci.value >= 1);
+    // Use latest check-in to determine completion status (allows toggling)
+    const sortedCheckIns = [...filteredCheckIns].sort(
+      (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+    );
+    const isComplete = sortedCheckIns.length > 0 && sortedCheckIns[0].value >= 1;
     progress = computeMilestoneProgressWithTasks(currentValue, filteredTasks.length, totalLinkedTasks, isComplete);
   } else {
     progress = computeProgress(kr.kr_type, kr.direction, currentValue, baseline, kr.target_value, config);
   }
   
-  // Compute expected progress and value
-  const expectedProgress = computeExpectedProgress(asOfDate, window);
+  // Compute expected progress and value using FULL year window (not capped window)
+  // This gives the correct proportional expected value for the current date
+  const fullYearWindow: TimeWindow = { start: yearDates.start, end: yearDates.end };
+  const expectedProgress = computeExpectedProgress(asOfDate, fullYearWindow);
   const expectedValue = computeExpectedValue(expectedProgress, baseline, kr.target_value, kr.direction);
   
   // Compute pace
@@ -758,9 +763,9 @@ export function computeKrProgress(
     forecastDate = computeMilestoneForecastDate(filteredTasks.length, tasks.length, window, asOfDate);
   }
   
-  // Time calculations
+  // Time calculations - use actual year end for days remaining, not capped window end
   const daysElapsed = daysBetween(window.start, asOfDate);
-  const daysRemaining = daysBetween(asOfDate, window.end);
+  const daysRemaining = daysBetween(asOfDate, yearDates.end);
   
   return {
     currentValue,
@@ -793,6 +798,7 @@ export function computeQuarterTargetProgress(
   config?: KrConfig
 ): ProgressResult {
   const window = getQuarterTargetWindow(quarterTarget, kr, planYear, asOfDate);
+  const quarterDates = getQuarterDates(planYear, quarterTarget.quarter); // Get actual quarter end for days remaining
   
   // Filter check-ins and tasks to this quarter target
   const qtCheckIns = checkIns.filter((ci) => ci.quarter_target_id === quarterTarget.id);
@@ -829,9 +835,9 @@ export function computeQuarterTargetProgress(
   // Compute forecast
   const forecast = computeForecast(kr.kr_type, baseline, currentValue, window, asOfDate);
   
-  // Time calculations
+  // Time calculations - use actual quarter end for days remaining, not capped window end
   const daysElapsed = daysBetween(window.start, asOfDate);
-  const daysRemaining = daysBetween(asOfDate, window.end);
+  const daysRemaining = daysBetween(asOfDate, quarterDates.end);
   
   return {
     currentValue,
@@ -924,12 +930,9 @@ export function buildDailySeries(
           break;
         
         case "milestone":
-          // Check for completion
-          if (dayCheckIns.some((ci) => ci.value >= 1)) {
-            runningValue = 1;
-          } else {
-            runningValue = dayCheckIns[dayCheckIns.length - 1].value;
-          }
+          // Use the latest check-in value to determine status (allows toggling)
+          const latestMilestoneValue = dayCheckIns[dayCheckIns.length - 1].value;
+          runningValue = latestMilestoneValue >= 1 ? 1 : 0;
           break;
       }
     }
@@ -1147,6 +1150,7 @@ export interface QuarterProgressResult {
   currentValue: number;
   progress: number; // 0-1
   expectedProgress: number; // 0-1
+  expectedValue: number; // Expected value at this point in time
   paceRatio: number;
   paceStatus: PaceStatus;
   isComplete: boolean;
@@ -1295,6 +1299,11 @@ export function computeQuarterProgress(
     expectedProgress = totalDays > 0 ? clamp01(daysElapsed / totalDays) : 0;
   }
   
+  // Expected value for this quarter at this point in time
+  // For reset quarterly: expectedValue = target * expectedProgress
+  // For cumulative: similar logic but using the quarter's target portion
+  const expectedValue = target * expectedProgress;
+  
   // Pace calculations
   const paceRatio = computePaceRatio(progress, expectedProgress);
   const paceStatus = isPast 
@@ -1312,6 +1321,7 @@ export function computeQuarterProgress(
     currentValue,
     progress,
     expectedProgress,
+    expectedValue,
     paceRatio,
     paceStatus,
     isComplete,

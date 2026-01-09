@@ -651,9 +651,9 @@ export function AnnualKrDialog({
           )}
 
           <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
-            <Button
+            <Button 
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
@@ -662,6 +662,7 @@ export function AnnualKrDialog({
             <Button 
               type="submit" 
               disabled={isSubmitting || !name.trim() || (krType !== "milestone" && !targetValue)}
+              className="bg-accent hover:bg-accent-hover text-white"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Save Changes" : "Create Key Result"}

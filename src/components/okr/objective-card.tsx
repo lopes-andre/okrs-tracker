@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -21,7 +21,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { AnnualKrCard } from "./annual-kr-card";
+import { computeKrProgress, classifyPaceStatus, formatProgress } from "@/lib/progress-engine";
 import type { ObjectiveWithKrs, OkrRole, CheckIn } from "@/lib/supabase/types";
 
 interface ObjectiveCardProps {
@@ -56,16 +63,72 @@ export function ObjectiveCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const canEdit = role === "owner" || role === "editor";
   const krCount = objective.annual_krs?.length || 0;
-  const progress = objective.progress || 0;
 
-  // Determine status based on progress
-  const getStatus = () => {
-    if (progress >= 70) return { label: "On Track", variant: "success" as const };
-    if (progress >= 40) return { label: "At Risk", variant: "warning" as const };
-    return { label: "Behind", variant: "danger" as const };
+  // Compute progress for each KR using the progress engine
+  const krProgressResults = useMemo(() => {
+    const results: Record<string, ReturnType<typeof computeKrProgress>> = {};
+    if (objective.annual_krs) {
+      for (const kr of objective.annual_krs) {
+        const checkIns = checkInsByKr[kr.id] || [];
+        // Pass empty tasks array - task-based progress is optional
+        results[kr.id] = computeKrProgress(kr, checkIns, [], planYear);
+      }
+    }
+    return results;
+  }, [objective.annual_krs, checkInsByKr, planYear]);
+
+  // Compute real-time Objective progress and expected progress as simple averages
+  const { progress, expectedProgress, paceRatio, paceStatus } = useMemo(() => {
+    const krs = objective.annual_krs || [];
+    if (krs.length === 0) return { progress: 0, expectedProgress: 0, paceRatio: 1, paceStatus: "on_track" as const };
+    
+    let totalProgress = 0;
+    let totalExpected = 0;
+    
+    for (const kr of krs) {
+      const krResult = krProgressResults[kr.id];
+      if (krResult) {
+        // Progress from progress engine is 0-1
+        totalProgress += krResult.progress;
+        totalExpected += krResult.expectedProgress;
+      }
+    }
+    
+    const avgProgress = totalProgress / krs.length;
+    const avgExpected = totalExpected / krs.length;
+    
+    // Calculate pace ratio (actual vs expected)
+    const ratio = avgExpected > 0 ? avgProgress / avgExpected : (avgProgress > 0 ? 2 : 1);
+    const status = classifyPaceStatus(ratio);
+    
+    return {
+      progress: Math.min(Math.max(avgProgress * 100, 0), 100),
+      expectedProgress: Math.min(Math.max(avgExpected * 100, 0), 100),
+      paceRatio: ratio,
+      paceStatus: status,
+    };
+  }, [objective.annual_krs, krProgressResults]);
+
+  // Map pace status to display properties
+  const getStatusDisplay = () => {
+    switch (paceStatus) {
+      case "ahead":
+        return { label: "Ahead", variant: "success" as const };
+      case "on_track":
+        return { label: "On Track", variant: "success" as const };
+      case "at_risk":
+        return { label: "At Risk", variant: "warning" as const };
+      case "off_track":
+        return { label: "Behind", variant: "danger" as const };
+      default:
+        return { label: "Behind", variant: "danger" as const };
+    }
   };
 
-  const status = getStatus();
+  const status = getStatusDisplay();
+  
+  // Calculate the delta between actual and expected
+  const progressDelta = progress - expectedProgress;
 
   return (
     <Card className="group">
@@ -118,7 +181,35 @@ export function ObjectiveCard({
 
               {/* Right side: Status + Progress */}
               <div className="flex items-center gap-4 shrink-0">
-                <Badge variant={status.variant}>{status.label}</Badge>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs max-w-xs">
+                      <p className="font-medium mb-1">
+                        {status.label === "Ahead" || status.label === "On Track" 
+                          ? "You're doing great!" 
+                          : status.label === "At Risk" 
+                          ? "Needs attention" 
+                          : "Falling behind schedule"}
+                      </p>
+                      <div className="space-y-0.5 text-muted-foreground">
+                        <p>Current progress: {formatProgress(progress / 100)}</p>
+                        <p>Expected by today: {formatProgress(expectedProgress / 100)}</p>
+                        {progressDelta > 0 ? (
+                          <p className="text-status-success">You are {Math.abs(progressDelta).toFixed(1)}% ahead of schedule</p>
+                        ) : progressDelta < 0 ? (
+                          <p className="text-status-danger">You are {Math.abs(progressDelta).toFixed(1)}% behind schedule</p>
+                        ) : (
+                          <p>Exactly on track!</p>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <div className="flex items-center gap-2 w-32">
                   <Progress value={progress} className="flex-1" />
                   <span className="font-heading font-bold text-body w-12 text-right">
@@ -183,6 +274,7 @@ export function ObjectiveCard({
                     onCheckIn={onCheckIn ? () => onCheckIn(kr.id) : undefined}
                     checkIns={checkInsByKr[kr.id] || []}
                     planYear={planYear}
+                    progressResult={krProgressResults[kr.id]}
                   />
                 ))}
               </>

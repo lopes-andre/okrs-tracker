@@ -24,6 +24,12 @@ interface PaceBadgeProps {
   paceRatio?: number;
   progress?: number;
   expectedProgress?: number;
+  /** Expected value at this point in time */
+  expectedValue?: number;
+  /** Current actual value */
+  currentValue?: number;
+  /** Unit for display (e.g., "followers", "subscribers") */
+  unit?: string | null;
   showTooltip?: boolean;
   size?: "sm" | "md";
   /** Extra compact mode - icon only with minimal text */
@@ -62,12 +68,43 @@ export function PaceBadge({
   paceRatio, 
   progress, 
   expectedProgress,
+  expectedValue,
+  currentValue,
+  unit,
   showTooltip = true,
   size = "sm",
   compact = false,
 }: PaceBadgeProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
+  
+  // Format value with unit
+  const formatValueWithUnit = (value: number) => {
+    const formatted = value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return unit ? `${formatted} ${unit}` : formatted;
+  };
+  
+  // Build tooltip content
+  const buildTooltipContent = () => {
+    const lines: string[] = [];
+    
+    if (expectedValue !== undefined) {
+      lines.push(`By today you should have ${formatValueWithUnit(expectedValue)}`);
+    }
+    
+    if (currentValue !== undefined && expectedValue !== undefined) {
+      const diff = currentValue - expectedValue;
+      if (diff > 0) {
+        lines.push(`You are ahead by ${formatValueWithUnit(diff)}`);
+      } else if (diff < 0) {
+        lines.push(`You are behind by ${formatValueWithUnit(Math.abs(diff))}`);
+      } else {
+        lines.push("You are exactly on track!");
+      }
+    }
+    
+    return lines;
+  };
   
   // Compact mode - smaller badge with abbreviated text
   if (compact) {
@@ -93,14 +130,23 @@ export function PaceBadge({
     
     if (!showTooltip) return compactBadge;
     
+    const tooltipLines = buildTooltipContent();
+    
     return (
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
             {compactBadge}
           </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">
-            {formatPaceStatus(status)}
+          <TooltipContent side="top" className="text-xs max-w-xs">
+            <p className="font-medium">{formatPaceStatus(status)}</p>
+            {tooltipLines.length > 0 && (
+              <div className="mt-1 space-y-0.5 text-muted-foreground">
+                {tooltipLines.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            )}
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -119,6 +165,8 @@ export function PaceBadge({
   
   if (!showTooltip) return badge;
   
+  const tooltipLines = buildTooltipContent();
+  
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -127,9 +175,17 @@ export function PaceBadge({
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <p className="font-medium mb-1">{formatPaceStatus(status)}</p>
-          <p className="text-xs text-muted-foreground mb-2">
-            {config.description}
-          </p>
+          
+          {/* Expected value messages */}
+          {tooltipLines.length > 0 && (
+            <div className="text-xs text-muted-foreground mb-2 space-y-0.5">
+              {tooltipLines.map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
+          )}
+          
+          {/* Progress details */}
           {(progress !== undefined || expectedProgress !== undefined) && (
             <div className="text-xs space-y-1 pt-2 border-t border-border">
               {progress !== undefined && (

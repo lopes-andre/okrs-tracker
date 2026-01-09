@@ -343,11 +343,20 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Comprehensive unit tests (67 tests)
 - [x] Quarterly View Features:
   - [x] Expandable KR cards with quarterly breakdown
-  - [x] View tabs (Annual / Q1 / Q2 / Q3 / Q4)
   - [x] Quarter progress pills with status indicators
   - [x] Current quarter highlighting and quick status badge
   - [x] Check-in dialog shows quarter impact preview
   - [x] Per-quarter pace tracking and days remaining
+- [x] Real-time Progress Computation:
+  - [x] Objective progress computed from KR check-ins (not stale DB values)
+  - [x] KR current values computed from progress engine
+  - [x] Overall Progress stat uses real-time calculations
+  - [x] Days remaining correctly counts to Dec 31 (annual) / quarter end
+- [x] Pace Tracking Improvements:
+  - [x] Annual expected progress uses proportional time-based calculation
+  - [x] Objective pace badge compares actual vs expected progress
+  - [x] Milestone KRs can toggle complete/incomplete via latest check-in
+  - [x] Tooltips explain pace status rationale on KRs and Objectives
 - [x] Timeline page with real data
 - [x] Settings page with member management
 - [x] Analytics overview
