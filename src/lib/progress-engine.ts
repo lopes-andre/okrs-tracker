@@ -1200,6 +1200,7 @@ export function computeQuarterProgress(
   
   // For quarterly progress, we need to calculate based on the aggregation type
   let currentValue: number;
+  let quarterStartValue: number = 0;
   
   if (isCumulative) {
     // For cumulative: use total check-ins from year start up to current date
@@ -1213,12 +1214,49 @@ export function computeQuarterProgress(
     const filteredCheckIns = filterCheckInsInWindow(checkIns, cumulativeWindow);
     currentValue = computeCurrentValueFromCheckIns(kr, filteredCheckIns);
   } else {
-    // For reset quarterly: only count check-ins within this quarter
-    const filteredCheckIns = filterCheckInsInWindow(checkIns, quarterWindow);
-    currentValue = computeCurrentValueFromCheckIns(kr, filteredCheckIns);
+    // For reset quarterly with metrics (absolute values like follower counts):
+    // We need to calculate the DELTA from the quarter start
+    // 1. Get the value at the start of the quarter (last check-in before Q started, or kr.start_value)
+    // 2. Get the current value (latest check-in in Q)
+    // 3. Progress = (current - quarter_start) / quarter_target
+    
+    const checkInsInQuarter = filterCheckInsInWindow(checkIns, quarterWindow);
+    
+    if (kr.kr_type === "metric" || kr.kr_type === "rate") {
+      // For metrics/rates, we need to calculate delta from quarter start
+      // Get value at start of quarter (last check-in before quarter, or kr.start_value)
+      const checkInsBeforeQuarter = checkIns.filter((ci) => {
+        const recordedAt = parseDate(ci.recorded_at);
+        if (!recordedAt) return false;
+        return recordedAt < quarterDates.start;
+      }).sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+      
+      if (checkInsBeforeQuarter.length > 0) {
+        quarterStartValue = checkInsBeforeQuarter[0].value;
+      } else if (quarter === 1) {
+        // For Q1, use kr.start_value as the baseline
+        quarterStartValue = kr.start_value;
+      } else {
+        // For Q2+, use kr.start_value if no check-ins exist before
+        quarterStartValue = kr.start_value;
+      }
+      
+      // Get latest value in quarter
+      if (checkInsInQuarter.length > 0) {
+        const latestInQuarter = [...checkInsInQuarter].sort(
+          (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+        );
+        currentValue = latestInQuarter[0].value - quarterStartValue;
+      } else {
+        currentValue = 0;
+      }
+    } else {
+      // For counts/milestones, sum up check-ins within the quarter
+      currentValue = computeCurrentValueFromCheckIns(kr, checkInsInQuarter);
+    }
   }
   
-  // Also use the stored current_value if no check-ins
+  // Also use the stored current_value if no check-ins at all
   if (checkIns.length === 0) {
     currentValue = quarterTarget.current_value;
   }
@@ -1235,7 +1273,7 @@ export function computeQuarterProgress(
     // The target is cumulative (e.g., Q2 target might be 10k which includes Q1's 5k)
     progress = clamp01((currentValue - baseline) / target);
   } else {
-    // For reset quarterly, progress is simple ratio
+    // For reset quarterly, currentValue is already the delta for this quarter
     progress = clamp01(currentValue / target);
   }
   
@@ -1244,6 +1282,7 @@ export function computeQuarterProgress(
   const daysElapsed = Math.max(0, daysBetween(quarterDates.start, now));
   const daysRemaining = Math.max(0, daysBetween(now, quarterDates.end));
   const totalDays = daysBetween(quarterDates.start, quarterDates.end);
+  const daysUntilStart = Math.max(0, daysBetween(now, quarterDates.start));
   
   // Expected progress based on time
   let expectedProgress: number;
@@ -1279,7 +1318,7 @@ export function computeQuarterProgress(
     isCurrent,
     isPast,
     isFuture,
-    daysRemaining: isFuture ? totalDays : daysRemaining,
+    daysRemaining: isFuture ? daysUntilStart : daysRemaining,
     daysElapsed: isFuture ? 0 : daysElapsed,
   };
 }

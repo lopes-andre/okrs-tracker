@@ -80,7 +80,8 @@ const directionLabels: Record<string, string> = {
 
 const aggregationLabels: Record<string, string> = {
   latest: "Latest Value",
-  cumulative: "Cumulative (YTD)",
+  cumulative: "Cumulative",
+  reset_quarterly: "Reset Quarterly",
   average: "Average",
   max: "Maximum",
   min: "Minimum",
@@ -457,8 +458,12 @@ export function AnnualKrCard({
                           )}>
                             Q{qp.quarter}
                           </span>
+                          {/* Status badges */}
                           {qp.isComplete && (
-                            <CheckCircle2 className="w-4 h-4 text-status-success" />
+                            <span className="flex items-center gap-1 text-[10px] bg-status-success/10 text-status-success px-1.5 py-0.5 rounded font-medium">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Done
+                            </span>
                           )}
                           {qp.isCurrent && !qp.isComplete && (
                             <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">
@@ -466,7 +471,14 @@ export function AnnualKrCard({
                             </span>
                           )}
                           {qp.isPast && !qp.isComplete && (
-                            <span className="text-[10px] text-status-danger">Missed</span>
+                            <span className="text-[10px] bg-status-danger/10 text-status-danger px-1.5 py-0.5 rounded font-medium">
+                              Missed
+                            </span>
+                          )}
+                          {qp.isFuture && (
+                            <span className="text-[10px] text-text-subtle">
+                              Upcoming
+                            </span>
                           )}
                         </div>
                         
@@ -540,20 +552,6 @@ export function AnnualKrCard({
                   })}
                 </div>
                 
-                {/* Edit Quarterly Targets Button */}
-                {canEdit && onEditQuarterTargets && (
-                  <div className="flex justify-end mt-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); onEditQuarterTargets(); }}
-                      className="text-xs gap-1.5 text-text-muted hover:text-text-strong"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      Edit Quarterly Targets
-                    </Button>
-                  </div>
-                )}
               </>
             ) : (
               <div className="p-6 bg-bg-1 rounded-card border border-dashed border-border text-center">
