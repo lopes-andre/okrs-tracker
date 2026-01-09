@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -250,7 +250,7 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
             </TableHeader>
             <TableBody>
               {Object.entries(groupedData).map(([group, rows]) => (
-                <>
+                <Fragment key={group}>
                   {/* Group Header */}
                   {groupBy !== "none" && group && (
                     <TableRow 
@@ -392,7 +392,7 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
                       </TableRow>
                     );
                   })}
-                </>
+                </Fragment>
               ))}
             </TableBody>
           </Table>
