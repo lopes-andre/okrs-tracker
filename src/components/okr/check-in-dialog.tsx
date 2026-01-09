@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Loader2, 
   TrendingUp, 
@@ -8,6 +8,8 @@ import {
   FileText,
   Calendar,
   Target,
+  CheckCircle2,
+  ArrowRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import type { AnnualKr, QuarterTarget, CheckInInsert } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { getCurrentQuarter } from "@/lib/progress-engine";
 
 interface CheckInDialogProps {
   open: boolean;
@@ -83,8 +86,43 @@ export function CheckInDialog({
   const delta = numValue - kr.current_value;
 
   // Get current quarter for default selection
-  const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
+  const currentQuarter = getCurrentQuarter();
   const currentQuarterTarget = kr.quarter_targets?.find(qt => qt.quarter === currentQuarter);
+  const selectedQuarterTarget = kr.quarter_targets?.find(
+    qt => qt.id === (quarterTargetId || currentQuarterTarget?.id)
+  );
+  
+  // Calculate quarter impact preview
+  const quarterImpact = useMemo(() => {
+    if (!selectedQuarterTarget) return null;
+    
+    // Current quarter progress
+    const qtCurrent = selectedQuarterTarget.current_value;
+    const qtTarget = selectedQuarterTarget.target_value;
+    const currentQtProgress = qtTarget > 0 
+      ? Math.min(Math.max((qtCurrent / qtTarget) * 100, 0), 100) 
+      : 0;
+    
+    // New value impact on quarter (for cumulative, the delta goes to quarter)
+    // For non-cumulative, the new value replaces
+    const isCumulative = kr.aggregation === "cumulative";
+    const newQtValue = isCumulative 
+      ? qtCurrent + delta
+      : numValue;
+    
+    const newQtProgress = qtTarget > 0 
+      ? Math.min(Math.max((newQtValue / qtTarget) * 100, 0), 100) 
+      : 0;
+    
+    return {
+      current: qtCurrent,
+      target: qtTarget,
+      newValue: newQtValue,
+      currentProgress: currentQtProgress,
+      newProgress: newQtProgress,
+      willComplete: newQtProgress >= 100,
+    };
+  }, [selectedQuarterTarget, delta, numValue, kr.aggregation]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -189,9 +227,9 @@ export function CheckInDialog({
             <Progress value={newProgress} className="h-2" />
           </div>
 
-          {/* Quarter Target */}
+          {/* Quarter Target Selection */}
           {kr.quarter_targets && kr.quarter_targets.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label>Quarter Target</Label>
               <Select 
                 value={quarterTargetId || currentQuarterTarget?.id || ""} 
@@ -216,6 +254,70 @@ export function CheckInDialog({
                   ))}
                 </SelectContent>
               </Select>
+              
+              {/* Quarter Impact Preview */}
+              {quarterImpact && selectedQuarterTarget && (
+                <div className={cn(
+                  "p-3 rounded-card border transition-all",
+                  quarterImpact.willComplete && delta > 0
+                    ? "bg-status-success/5 border-status-success/30"
+                    : "bg-bg-1 border-border-soft"
+                )}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-text-muted">
+                      Q{selectedQuarterTarget.quarter} Impact
+                    </span>
+                    {quarterImpact.willComplete && delta > 0 && (
+                      <Badge variant="success" className="text-[10px] gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Goal Reached!
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-small mb-2">
+                    <div className="flex-1">
+                      <p className="text-xs text-text-muted">Current</p>
+                      <p className="font-medium">{formatValue(quarterImpact.current)}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-text-subtle" />
+                    <div className="flex-1">
+                      <p className="text-xs text-text-muted">After</p>
+                      <p className={cn(
+                        "font-medium",
+                        delta > 0 ? "text-status-success" : delta < 0 ? "text-status-danger" : ""
+                      )}>
+                        {formatValue(quarterImpact.newValue)}
+                      </p>
+                    </div>
+                    <div className="flex-1 text-right">
+                      <p className="text-xs text-text-muted">Target</p>
+                      <p className="font-medium">{formatValue(quarterImpact.target)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-text-muted">Q{selectedQuarterTarget.quarter} Progress</span>
+                      <span className={cn(
+                        "font-medium",
+                        quarterImpact.newProgress > quarterImpact.currentProgress 
+                          ? "text-status-success" 
+                          : ""
+                      )}>
+                        {Math.round(quarterImpact.currentProgress)}% → {Math.round(quarterImpact.newProgress)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={quarterImpact.newProgress} 
+                      className={cn(
+                        "h-1.5",
+                        quarterImpact.willComplete && "[&>div]:bg-status-success"
+                      )} 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

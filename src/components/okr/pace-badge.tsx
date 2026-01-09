@@ -26,6 +26,8 @@ interface PaceBadgeProps {
   expectedProgress?: number;
   showTooltip?: boolean;
   size?: "sm" | "md";
+  /** Extra compact mode - icon only with minimal text */
+  compact?: boolean;
 }
 
 const statusConfig: Record<PaceStatus, {
@@ -62,9 +64,48 @@ export function PaceBadge({
   expectedProgress,
   showTooltip = true,
   size = "sm",
+  compact = false,
 }: PaceBadgeProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
+  
+  // Compact mode - smaller badge with abbreviated text
+  if (compact) {
+    const compactLabels: Record<PaceStatus, string> = {
+      ahead: "↑",
+      on_track: "✓",
+      at_risk: "!",
+      off_track: "✕",
+    };
+    
+    const compactBadge = (
+      <span 
+        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${
+          config.variant === "success" ? "bg-status-success/20 text-status-success" :
+          config.variant === "info" ? "bg-status-info/20 text-status-info" :
+          config.variant === "warning" ? "bg-status-warning/20 text-status-warning" :
+          "bg-status-danger/20 text-status-danger"
+        }`}
+      >
+        {compactLabels[status]}
+      </span>
+    );
+    
+    if (!showTooltip) return compactBadge;
+    
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {compactBadge}
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {formatPaceStatus(status)}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
   
   const badge = (
     <Badge 

@@ -14,6 +14,7 @@ import {
   Calendar,
   Plus,
   Clock,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +34,16 @@ import {
 } from "@/components/ui/tooltip";
 import { QuarterTargetPills } from "./quarter-target-pills";
 import { PaceBadge } from "./pace-badge";
-import type { AnnualKr, OkrRole, QuarterTarget } from "@/lib/supabase/types";
-import type { ProgressResult } from "@/lib/progress-engine";
-import { formatValueWithUnit, formatProgress, formatDelta } from "@/lib/progress-engine";
+import type { AnnualKr, OkrRole, QuarterTarget, CheckIn } from "@/lib/supabase/types";
+import type { ProgressResult, QuarterProgressResult } from "@/lib/progress-engine";
+import { 
+  formatValueWithUnit, 
+  formatProgress, 
+  formatDelta,
+  getCurrentQuarter,
+  computeAllQuartersProgress,
+  getQuarterProgressSummary,
+} from "@/lib/progress-engine";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +56,10 @@ interface AnnualKrCardProps {
   onCheckIn?: () => void;
   /** Optional computed progress - if not provided, basic progress is calculated */
   progressResult?: ProgressResult;
+  /** Check-ins for computing quarter progress */
+  checkIns?: CheckIn[];
+  /** Plan year for quarter calculations */
+  planYear?: number;
 }
 
 const krTypeLabels: Record<string, string> = {
@@ -64,7 +76,17 @@ const directionIcons = {
   maintain: Minus,
 };
 
-export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets, onCheckIn, progressResult }: AnnualKrCardProps) {
+export function AnnualKrCard({ 
+  kr, 
+  role, 
+  onEdit, 
+  onDelete, 
+  onEditQuarterTargets, 
+  onCheckIn, 
+  progressResult,
+  checkIns = [],
+  planYear = new Date().getFullYear(),
+}: AnnualKrCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const canEdit = role === "owner" || role === "editor";
 
@@ -85,6 +107,18 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
   const formatValue = (value: number) => formatValueWithUnit(value, kr.unit, kr.kr_type);
 
   const hasQuarterTargets = kr.quarter_targets && kr.quarter_targets.length > 0;
+  
+  // Compute quarter progress
+  const quarterProgress = hasQuarterTargets 
+    ? computeAllQuartersProgress(kr.quarter_targets!, kr, checkIns, planYear)
+    : [];
+  
+  const quarterSummary = hasQuarterTargets
+    ? getQuarterProgressSummary(kr.quarter_targets!, kr, checkIns, planYear)
+    : null;
+  
+  const currentQuarter = getCurrentQuarter();
+  const currentQuarterData = quarterProgress.find(q => q.isCurrent);
 
   return (
     <div
@@ -160,8 +194,49 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
         {hasQuarterTargets && !isExpanded && (
           <QuarterTargetPills 
             quarterTargets={kr.quarter_targets!} 
+            quarterProgress={quarterProgress}
             compact 
           />
+        )}
+        
+        {/* Current Quarter Quick Status */}
+        {hasQuarterTargets && !isExpanded && currentQuarterData && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium shrink-0",
+                  currentQuarterData.isComplete 
+                    ? "bg-status-success/10 text-status-success"
+                    : currentQuarterData.progress >= 0.7
+                    ? "bg-status-success/10 text-status-success"
+                    : currentQuarterData.progress >= 0.4
+                    ? "bg-status-warning/10 text-status-warning"
+                    : "bg-status-info/10 text-status-info"
+                )}>
+                  {currentQuarterData.isComplete ? (
+                    <>
+                      <CheckCircle2 className="w-3 h-3" />
+                      Q{currentQuarter} ✓
+                    </>
+                  ) : (
+                    <>
+                      Q{currentQuarter}: {Math.round(currentQuarterData.progress * 100)}%
+                    </>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="font-medium">
+                  Q{currentQuarter} Progress: {Math.round(currentQuarterData.progress * 100)}%
+                </p>
+                <p className="text-xs text-text-subtle">
+                  {currentQuarterData.currentValue.toLocaleString()} / {currentQuarterData.target.toLocaleString()}
+                  {kr.unit && ` ${kr.unit}`}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         {/* Quick Check-in Button */}
@@ -230,36 +305,202 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
 
       {/* Expanded: Quarter Targets and Progress Details */}
       {isExpanded && (
-        <div className="px-3 pb-3 pt-0 space-y-2">
-          {/* Quarter Targets */}
+        <div className="px-3 pb-3 pt-0 space-y-3 border-t border-border-soft">
+          {/* Quarterly Progress Section */}
           {hasQuarterTargets && (
-            <div className="ml-[52px] p-3 bg-bg-1 rounded-button">
-              <p className="text-small font-medium text-text-muted mb-2">
-                Quarterly Targets
-              </p>
-              <QuarterTargetPills 
-                quarterTargets={kr.quarter_targets!}
-                showValues
-                unit={kr.unit}
-              />
+            <div className="ml-[52px] mt-3">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-small font-semibold text-text-strong">
+                  Quarterly Breakdown
+                </p>
+                {quarterSummary && (
+                  <span className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-medium",
+                    quarterSummary.isOnTrackForYear 
+                      ? "bg-status-success/10 text-status-success"
+                      : "bg-status-warning/10 text-status-warning"
+                  )}>
+                    {quarterSummary.completedQuarters}/4 quarters complete
+                  </span>
+                )}
+              </div>
+              
+              {/* Detailed Quarter Cards */}
+              <div className="grid grid-cols-4 gap-3">
+                {quarterProgress.map((qp) => {
+                  const quarterTarget = kr.quarter_targets?.find(qt => qt.quarter === qp.quarter);
+                  
+                  return (
+                    <div 
+                      key={qp.quarter}
+                      className={cn(
+                        "p-3 rounded-card border transition-all",
+                        qp.isCurrent && "ring-2 ring-offset-2 ring-accent/30",
+                        qp.isComplete 
+                          ? "bg-status-success/5 border-status-success/30" 
+                          : qp.isPast && !qp.isComplete
+                          ? "bg-status-danger/5 border-status-danger/30"
+                          : qp.isFuture
+                          ? "bg-bg-1 border-border-soft"
+                          : "bg-white border-border"
+                      )}
+                    >
+                      {/* Quarter Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={cn(
+                          "text-xs font-bold",
+                          qp.isComplete ? "text-status-success" :
+                          qp.isPast ? "text-status-danger" :
+                          qp.isCurrent ? "text-accent" :
+                          "text-text-subtle"
+                        )}>
+                          Q{qp.quarter}
+                        </span>
+                        {qp.isComplete && (
+                          <CheckCircle2 className="w-4 h-4 text-status-success" />
+                        )}
+                        {qp.isCurrent && !qp.isComplete && (
+                          <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">
+                            NOW
+                          </span>
+                        )}
+                        {qp.isPast && !qp.isComplete && (
+                          <span className="text-[10px] text-status-danger">Missed</span>
+                        )}
+                      </div>
+                      
+                      {/* Progress Value */}
+                      <div className="mb-2">
+                        <p className={cn(
+                          "text-lg font-bold",
+                          qp.isComplete ? "text-status-success" :
+                          qp.isPast ? "text-status-danger" :
+                          qp.isCurrent ? "text-text-strong" :
+                          "text-text-muted"
+                        )}>
+                          {Math.round(qp.progress * 100)}%
+                        </p>
+                        <p className="text-[10px] text-text-muted">
+                          {qp.currentValue.toLocaleString()} / {qp.target.toLocaleString()}
+                          {kr.unit && ` ${kr.unit}`}
+                        </p>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <Progress 
+                        value={qp.progress * 100} 
+                        className={cn(
+                          "h-1.5 mb-2",
+                          qp.isComplete && "[&>div]:bg-status-success",
+                          qp.isPast && !qp.isComplete && "[&>div]:bg-status-danger",
+                          qp.isCurrent && "[&>div]:bg-accent"
+                        )}
+                      />
+                      
+                      {/* Pace Info for Current Quarter */}
+                      {qp.isCurrent && (
+                        <div className="text-[10px] space-y-0.5 pt-1 border-t border-border-soft/50">
+                          <div className="flex justify-between">
+                            <span className="text-text-muted">Expected:</span>
+                            <span className="font-medium">{Math.round(qp.expectedProgress * 100)}%</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-text-muted">Days left:</span>
+                            <span className="font-medium">{qp.daysRemaining}d</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-text-muted">Pace:</span>
+                            <PaceBadge 
+                              status={qp.paceStatus}
+                              paceRatio={qp.paceRatio}
+                              progress={qp.progress}
+                              expectedProgress={qp.expectedProgress}
+                              compact
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Days info for future quarters */}
+                      {qp.isFuture && (
+                        <p className="text-[10px] text-text-subtle text-center pt-1 border-t border-border-soft/50">
+                          Starts in {qp.daysRemaining}d
+                        </p>
+                      )}
+                      
+                      {/* Notes */}
+                      {quarterTarget?.notes && (
+                        <p className="text-[10px] text-text-muted italic mt-2 truncate" title={quarterTarget.notes}>
+                          {quarterTarget.notes}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Edit Quarterly Targets Button */}
+              {canEdit && onEditQuarterTargets && (
+                <div className="flex justify-end mt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onEditQuarterTargets}
+                    className="text-xs gap-1.5 text-text-muted hover:text-text-strong"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Edit Quarterly Targets
+                  </Button>
+                </div>
+              )}
             </div>
           )}
           
-          {/* Progress Engine Details */}
-          {hasProgressEngine && progressResult && (
-            <div className="ml-[52px] p-3 bg-bg-1 rounded-button">
-              <p className="text-small font-medium text-text-muted mb-2">
-                Progress Details
+          {/* No Quarter Targets - Prompt to Add */}
+          {!hasQuarterTargets && canEdit && onEditQuarterTargets && (
+            <div className="ml-[52px] mt-3 p-4 bg-bg-1 rounded-card border border-dashed border-border text-center">
+              <p className="text-small text-text-muted mb-2">
+                No quarterly targets set
               </p>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-small">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Current:</span>
-                  <span className="font-medium">{formatValue(progressResult.currentValue)}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onEditQuarterTargets}
+                className="gap-1.5"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Set Quarterly Targets
+              </Button>
+            </div>
+          )}
+          
+          {/* Annual Progress Details */}
+          {hasProgressEngine && progressResult && (
+            <div className="ml-[52px] p-3 bg-white rounded-card border border-border-soft">
+              <p className="text-small font-semibold text-text-strong mb-2">
+                Annual Progress
+              </p>
+              <div className="grid grid-cols-3 gap-3 text-small">
+                <div className="p-2 bg-bg-1 rounded-button text-center">
+                  <p className="text-xs text-text-muted">Current</p>
+                  <p className="text-body font-bold">{formatValue(progressResult.currentValue)}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Target:</span>
-                  <span className="font-medium">{formatValue(progressResult.target)}</span>
+                <div className="p-2 bg-bg-1 rounded-button text-center">
+                  <p className="text-xs text-text-muted">Target</p>
+                  <p className="text-body font-bold">{formatValue(progressResult.target)}</p>
                 </div>
+                <div className="p-2 bg-bg-1 rounded-button text-center">
+                  <p className="text-xs text-text-muted">Delta</p>
+                  <p className={cn(
+                    "text-body font-bold",
+                    progressResult.delta >= 0 ? "text-status-success" : "text-status-danger"
+                  )}>
+                    {formatDelta(progressResult.delta, kr.unit, kr.direction)}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 text-small">
                 <div className="flex justify-between">
                   <span className="text-text-muted">Progress:</span>
                   <span className="font-medium">{formatProgress(progressResult.progress)}</span>
@@ -269,24 +510,12 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
                   <span className="font-medium">{formatProgress(progressResult.expectedProgress)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Delta:</span>
-                  <span className={cn(
-                    "font-medium",
-                    progressResult.delta >= 0 ? "text-status-success" : "text-status-danger"
-                  )}>
-                    {formatDelta(progressResult.delta, kr.unit, kr.direction)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-text-muted">Days left:</span>
-                  <span className="font-medium">{progressResult.daysRemaining}</span>
+                  <span className="font-medium">{progressResult.daysRemaining} days</span>
                 </div>
                 {progressResult.forecastValue !== null && (
-                  <div className="flex justify-between col-span-2 pt-1 border-t border-border-soft/50 mt-1">
-                    <span className="text-text-muted flex items-center gap-1">
-                      <Target className="w-3 h-3" />
-                      Forecast:
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-text-muted">Forecast:</span>
                     <span className={cn(
                       "font-medium",
                       progressResult.forecastValue >= progressResult.target 
@@ -294,24 +523,17 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
                         : "text-status-warning"
                     )}>
                       {formatValue(progressResult.forecastValue)}
-                      {progressResult.forecastValue >= progressResult.target 
-                        ? " ✓ On pace" 
-                        : " ⚠ Below target"}
-                    </span>
-                  </div>
-                )}
-                {progressResult.lastCheckInDate && (
-                  <div className="flex justify-between col-span-2 pt-1 border-t border-border-soft/50 mt-1">
-                    <span className="text-text-muted flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Last check-in:
-                    </span>
-                    <span className="font-medium">
-                      {formatDistanceToNow(progressResult.lastCheckInDate, { addSuffix: true })}
                     </span>
                   </div>
                 )}
               </div>
+              
+              {progressResult.lastCheckInDate && (
+                <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-border-soft/50 text-xs text-text-muted">
+                  <Clock className="w-3 h-3" />
+                  Last check-in: {formatDistanceToNow(progressResult.lastCheckInDate, { addSuffix: true })}
+                </div>
+              )}
             </div>
           )}
         </div>

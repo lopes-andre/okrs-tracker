@@ -1138,6 +1138,242 @@ function isPaceWorse(a: PaceStatus, b: PaceStatus): boolean {
 }
 
 // ============================================================================
+// QUARTER PROGRESS COMPUTATION
+// ============================================================================
+
+export interface QuarterProgressResult {
+  quarter: 1 | 2 | 3 | 4;
+  target: number;
+  currentValue: number;
+  progress: number; // 0-1
+  expectedProgress: number; // 0-1
+  paceRatio: number;
+  paceStatus: PaceStatus;
+  isComplete: boolean;
+  isCurrent: boolean;
+  isPast: boolean;
+  isFuture: boolean;
+  daysRemaining: number;
+  daysElapsed: number;
+}
+
+/**
+ * Compute progress for a specific quarter target
+ */
+export function computeQuarterProgress(
+  quarterTarget: QuarterTarget,
+  kr: AnnualKr,
+  checkIns: CheckIn[],
+  planYear: number,
+  asOfDate: Date = new Date()
+): QuarterProgressResult {
+  const quarter = quarterTarget.quarter;
+  const currentQuarter = getCurrentQuarter(asOfDate);
+  const quarterDates = getQuarterDates(planYear, quarter);
+  
+  // Determine quarter status
+  const isCurrent = quarter === currentQuarter;
+  const isPast = quarter < currentQuarter;
+  const isFuture = quarter > currentQuarter;
+  
+  // Get baseline for the quarter
+  // For cumulative, start from year start or previous quarter end
+  // For reset quarterly, start from 0 or kr.start_value
+  const isCumulative = kr.aggregation === "cumulative";
+  
+  let baseline: number;
+  if (isCumulative && quarter > 1) {
+    // For cumulative, baseline is cumulative target from previous quarters
+    // This means we're measuring total progress towards annual goal
+    baseline = kr.start_value;
+  } else {
+    // For reset quarterly, each quarter starts fresh from 0
+    baseline = 0;
+  }
+  
+  // Calculate current value for this quarter
+  // Filter check-ins to this quarter's window
+  const quarterWindow: TimeWindow = {
+    start: quarterDates.start,
+    end: new Date(Math.min(asOfDate.getTime(), quarterDates.end.getTime())),
+  };
+  
+  // For quarterly progress, we need to calculate based on the aggregation type
+  let currentValue: number;
+  
+  if (isCumulative) {
+    // For cumulative: use total check-ins from year start up to current date
+    // The quarter's "current" is the total progress towards annual goal
+    // So we compare against the cumulative target for this quarter
+    const yearStart = new Date(planYear, 0, 1);
+    const cumulativeWindow: TimeWindow = {
+      start: yearStart,
+      end: quarterWindow.end,
+    };
+    const filteredCheckIns = filterCheckInsInWindow(checkIns, cumulativeWindow);
+    currentValue = computeCurrentValueFromCheckIns(kr, filteredCheckIns);
+  } else {
+    // For reset quarterly: only count check-ins within this quarter
+    const filteredCheckIns = filterCheckInsInWindow(checkIns, quarterWindow);
+    currentValue = computeCurrentValueFromCheckIns(kr, filteredCheckIns);
+  }
+  
+  // Also use the stored current_value if no check-ins
+  if (checkIns.length === 0) {
+    currentValue = quarterTarget.current_value;
+  }
+  
+  // Target for this quarter
+  const target = quarterTarget.target_value;
+  
+  // Calculate progress
+  let progress: number;
+  if (target === 0) {
+    progress = currentValue > 0 ? 1 : 0;
+  } else if (isCumulative) {
+    // For cumulative, progress is how much of the cumulative target we've hit
+    // The target is cumulative (e.g., Q2 target might be 10k which includes Q1's 5k)
+    progress = clamp01((currentValue - baseline) / target);
+  } else {
+    // For reset quarterly, progress is simple ratio
+    progress = clamp01(currentValue / target);
+  }
+  
+  // Days calculations
+  const now = startOfDay(asOfDate);
+  const daysElapsed = Math.max(0, daysBetween(quarterDates.start, now));
+  const daysRemaining = Math.max(0, daysBetween(now, quarterDates.end));
+  const totalDays = daysBetween(quarterDates.start, quarterDates.end);
+  
+  // Expected progress based on time
+  let expectedProgress: number;
+  if (isPast) {
+    expectedProgress = 1; // Past quarters should be 100%
+  } else if (isFuture) {
+    expectedProgress = 0; // Future quarters haven't started
+  } else {
+    // Current quarter - linear time-based expectation
+    expectedProgress = totalDays > 0 ? clamp01(daysElapsed / totalDays) : 0;
+  }
+  
+  // Pace calculations
+  const paceRatio = computePaceRatio(progress, expectedProgress);
+  const paceStatus = isPast 
+    ? (progress >= 1 ? "ahead" : "off_track")
+    : isFuture 
+      ? "on_track" 
+      : classifyPaceStatus(paceRatio);
+  
+  // Is complete?
+  const isComplete = progress >= 1;
+  
+  return {
+    quarter,
+    target,
+    currentValue,
+    progress,
+    expectedProgress,
+    paceRatio,
+    paceStatus,
+    isComplete,
+    isCurrent,
+    isPast,
+    isFuture,
+    daysRemaining: isFuture ? totalDays : daysRemaining,
+    daysElapsed: isFuture ? 0 : daysElapsed,
+  };
+}
+
+/**
+ * Helper to compute current value from check-ins based on KR type
+ */
+function computeCurrentValueFromCheckIns(kr: AnnualKr, checkIns: CheckIn[]): number {
+  if (checkIns.length === 0) return 0;
+  
+  switch (kr.kr_type) {
+    case "count":
+      // Sum all check-in values
+      return checkIns.reduce((sum, ci) => sum + ci.value, 0);
+    
+    case "average":
+      // Average of all check-ins
+      return checkIns.reduce((sum, ci) => sum + ci.value, 0) / checkIns.length;
+    
+    case "rate":
+    case "metric":
+    default:
+      // Use most recent check-in value (last aggregation)
+      const sorted = [...checkIns].sort(
+        (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+      );
+      return sorted[0].value;
+  }
+}
+
+/**
+ * Compute progress for all quarters of a KR
+ */
+export function computeAllQuartersProgress(
+  quarterTargets: QuarterTarget[],
+  kr: AnnualKr,
+  checkIns: CheckIn[],
+  planYear: number,
+  asOfDate: Date = new Date()
+): QuarterProgressResult[] {
+  return quarterTargets
+    .sort((a, b) => a.quarter - b.quarter)
+    .map((qt) => computeQuarterProgress(qt, kr, checkIns, planYear, asOfDate));
+}
+
+/**
+ * Get a summary of quarter progress for display
+ */
+export interface QuarterProgressSummary {
+  completedQuarters: number;
+  currentQuarter: 1 | 2 | 3 | 4;
+  currentQuarterProgress: QuarterProgressResult | null;
+  allQuartersProgress: QuarterProgressResult[];
+  isOnTrackForYear: boolean;
+}
+
+export function getQuarterProgressSummary(
+  quarterTargets: QuarterTarget[],
+  kr: AnnualKr,
+  checkIns: CheckIn[],
+  planYear: number,
+  asOfDate: Date = new Date()
+): QuarterProgressSummary {
+  const currentQuarter = getCurrentQuarter(asOfDate);
+  const allQuartersProgress = computeAllQuartersProgress(
+    quarterTargets,
+    kr,
+    checkIns,
+    planYear,
+    asOfDate
+  );
+  
+  const completedQuarters = allQuartersProgress.filter((q) => q.isComplete).length;
+  const currentQuarterProgress = allQuartersProgress.find((q) => q.isCurrent) || null;
+  
+  // On track if all past quarters are complete and current quarter is on track
+  const pastQuartersComplete = allQuartersProgress
+    .filter((q) => q.isPast)
+    .every((q) => q.isComplete);
+  
+  const currentOnTrack = currentQuarterProgress 
+    ? currentQuarterProgress.paceStatus !== "off_track" 
+    : true;
+  
+  return {
+    completedQuarters,
+    currentQuarter,
+    currentQuarterProgress,
+    allQuartersProgress,
+    isOnTrackForYear: pastQuartersComplete && currentOnTrack,
+  };
+}
+
+// ============================================================================
 // DISPLAY HELPERS
 // ============================================================================
 

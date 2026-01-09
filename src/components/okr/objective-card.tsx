@@ -22,7 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AnnualKrCard } from "./annual-kr-card";
-import type { ObjectiveWithKrs, OkrRole } from "@/lib/supabase/types";
+import type { ObjectiveWithKrs, OkrRole, CheckIn } from "@/lib/supabase/types";
 
 interface ObjectiveCardProps {
   objective: ObjectiveWithKrs;
@@ -34,6 +34,10 @@ interface ObjectiveCardProps {
   onDeleteKr: (krId: string) => void;
   onEditQuarterTargets?: (krId: string) => void;
   onCheckIn?: (krId: string) => void;
+  /** Check-ins by KR ID for progress computation */
+  checkInsByKr?: Record<string, CheckIn[]>;
+  /** Plan year for quarter calculations */
+  planYear?: number;
 }
 
 export function ObjectiveCard({
@@ -46,6 +50,8 @@ export function ObjectiveCard({
   onDeleteKr,
   onEditQuarterTargets,
   onCheckIn,
+  checkInsByKr = {},
+  planYear = new Date().getFullYear(),
 }: ObjectiveCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const canEdit = role === "owner" || role === "editor";
@@ -162,7 +168,7 @@ export function ObjectiveCard({
       {isExpanded && (
         <CardContent className="pt-0">
           <div className="ml-[72px] space-y-2">
-            {objective.annual_krs && objective.annual_krs.length > 0 ? (
+              {objective.annual_krs && objective.annual_krs.length > 0 ? (
               <>
                 {objective.annual_krs.map((kr) => (
                   <AnnualKrCard
@@ -175,6 +181,8 @@ export function ObjectiveCard({
                       onEditQuarterTargets ? () => onEditQuarterTargets(kr.id) : undefined
                     }
                     onCheckIn={onCheckIn ? () => onCheckIn(kr.id) : undefined}
+                    checkIns={checkInsByKr[kr.id] || []}
+                    planYear={planYear}
                   />
                 ))}
               </>

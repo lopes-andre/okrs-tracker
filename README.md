@@ -145,6 +145,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   └── mindmap/             # Mindmap API & hooks
 │   └── lib/
 │       ├── supabase/            # Supabase clients & types
+│       ├── progress-engine.ts   # Progress computation engine
+│       ├── progress-engine.test.ts # Progress engine unit tests
 │       ├── design-tokens.ts     # Design system values
 │       ├── query-client.tsx     # TanStack Query setup
 │       ├── api-utils.ts         # API helper functions
@@ -263,6 +265,7 @@ The Progress Engine (`src/lib/progress-engine.ts`) has comprehensive unit tests 
 - **Pace Tracking**: Expected progress, pace ratios, status classification
 - **Forecasting**: End value projections, milestone completion dates
 - **Rollups**: Simple average calculations for Objectives and Plans
+- **Quarter Progress**: Per-quarter target tracking and impact calculation
 
 All rollup calculations use **simple arithmetic mean** (no weights) ensuring equal importance for all KRs and Objectives.
 
@@ -336,7 +339,15 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Pace tracking (ahead, on-track, at-risk, off-track)
   - [x] Forecast calculations
   - [x] Simple average rollups (Objective and Plan level)
+  - [x] Quarter-specific progress computation
   - [x] Comprehensive unit tests (67 tests)
+- [x] Quarterly View Features:
+  - [x] Expandable KR cards with quarterly breakdown
+  - [x] View tabs (Annual / Q1 / Q2 / Q3 / Q4)
+  - [x] Quarter progress pills with status indicators
+  - [x] Current quarter highlighting and quick status badge
+  - [x] Check-in dialog shows quarter impact preview
+  - [x] Per-quarter pace tracking and days remaining
 - [x] Timeline page with real data
 - [x] Settings page with member management
 - [x] Analytics overview
