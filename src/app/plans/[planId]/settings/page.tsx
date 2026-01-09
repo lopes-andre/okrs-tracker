@@ -46,7 +46,7 @@ import {
   useRemovePlanMember,
   useDeletePlanInvite,
 } from "@/features";
-import { useTimeline, useActivityStats } from "@/features/timeline/hooks";
+import { useTimeline, useTimelinePaginated } from "@/features/timeline/hooks";
 import { ActivityEventCard, WeeklyReviewPanel, ActivityFilters, type ActivityFiltersState } from "@/components/activity";
 import type { OkrRole, TimelineFilters } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
@@ -80,6 +80,14 @@ export default function SettingsPage({
     eventTypes: [],
   });
   const [showWeeklyReview, setShowWeeklyReview] = useState(false);
+  const [logPage, setLogPage] = useState(1);
+  const PAGE_SIZE = 25;
+  
+  // Reset to page 1 when filters change
+  const handleFiltersChange = (newFilters: ActivityFiltersState) => {
+    setActivityFilters(newFilters);
+    setLogPage(1);
+  };
   
   // Convert UI filters to API filters
   const apiFilters: TimelineFilters | undefined = useMemo(() => {
@@ -91,7 +99,17 @@ export default function SettingsPage({
     return Object.keys(filters).length > 0 ? filters : undefined;
   }, [activityFilters]);
   
-  const { data: logEvents = [], isLoading: isLoadingLog } = useTimeline(planId, apiFilters);
+  // Use paginated query for the activity log
+  const { 
+    data: logData, 
+    isLoading: isLoadingLog,
+    isFetching: isFetchingLog,
+  } = useTimelinePaginated(planId, logPage, PAGE_SIZE, apiFilters);
+  
+  const logEvents = logData?.data || [];
+  const totalEvents = logData?.count || 0;
+  const totalPages = Math.ceil(totalEvents / PAGE_SIZE);
+  const hasMore = logPage < totalPages;
   
   // Weekly review data - always fetch this week's data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
@@ -587,7 +605,7 @@ export default function SettingsPage({
             {/* Filters */}
             <ActivityFilters 
               filters={activityFilters}
-              onFiltersChange={setActivityFilters}
+              onFiltersChange={handleFiltersChange}
             />
 
             {/* Activity Feed */}
@@ -598,13 +616,20 @@ export default function SettingsPage({
                     <History className="w-4 h-4 text-text-muted" />
                     Activity Feed
                   </CardTitle>
-                  <Badge variant="outline" className="text-[10px]">
-                    {logEvents.length} events
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {totalEvents > 0 && (
+                      <span className="text-small text-text-muted">
+                        Showing {Math.min(logPage * PAGE_SIZE, totalEvents)} of {totalEvents.toLocaleString()}
+                      </span>
+                    )}
+                    <Badge variant="outline" className="text-[10px]">
+                      {totalEvents.toLocaleString()} total
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {isLoadingLog ? (
+                {isLoadingLog && logPage === 1 ? (
                   <div className="flex justify-center py-12">
                     <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
                   </div>
@@ -621,11 +646,65 @@ export default function SettingsPage({
                     }
                   />
                 ) : (
-                  <div className="space-y-1">
-                    {logEvents.map((event) => (
-                      <ActivityEventCard key={event.id} event={event} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="space-y-1">
+                      {logEvents.map((event) => (
+                        <ActivityEventCard key={event.id} event={event} />
+                      ))}
+                    </div>
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="mt-6 pt-4 border-t border-border-soft">
+                        <div className="flex items-center justify-between">
+                          {/* Page Info */}
+                          <span className="text-small text-text-muted">
+                            Page {logPage} of {totalPages}
+                          </span>
+                          
+                          {/* Navigation */}
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={logPage === 1 || isFetchingLog}
+                              onClick={() => setLogPage(1)}
+                            >
+                              First
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={logPage === 1 || isFetchingLog}
+                              onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+                            >
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!hasMore || isFetchingLog}
+                              onClick={() => setLogPage((p) => p + 1)}
+                            >
+                              {isFetchingLog ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                "Next"
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={logPage === totalPages || isFetchingLog}
+                              onClick={() => setLogPage(totalPages)}
+                            >
+                              Last
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
