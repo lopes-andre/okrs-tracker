@@ -119,37 +119,54 @@ export default function TasksPage({
     ];
   }, [groupedTasks, todayTasks, overdueTasks, thisWeekTasks, thisMonthTasks, backlogTasks]);
 
-  // Group tasks by objective for "By Objective" view
-  // Also consider tasks linked via annual_kr
-  const tasksByObjective = useMemo(() => {
-    const grouped: Record<
-      string,
-      { objective: (typeof objectives)[0] | null; tasks: TaskWithDetails[] }
-    > = {};
+  // Group tasks by Objective → KR for "By OKR" view
+  // Structure: { objectiveId: { objective, krs: { krId: { kr, tasks } }, unassignedTasks } }
+  const tasksByOKR = useMemo(() => {
+    type KrGroup = {
+      kr: (typeof annualKrs)[0];
+      tasks: TaskWithDetails[];
+    };
+    type ObjectiveGroup = {
+      objective: (typeof objectives)[0] | null;
+      krs: Record<string, KrGroup>;
+      unassignedTasks: TaskWithDetails[]; // Tasks linked to objective but not to specific KR
+    };
+    
+    const grouped: Record<string, ObjectiveGroup> = {};
 
-    grouped["none"] = { objective: null, tasks: [] };
+    // Initialize with "unassigned" group
+    grouped["none"] = { objective: null, krs: {}, unassignedTasks: [] };
+    
+    // Initialize objective groups with their KRs
     objectives.forEach((obj) => {
-      grouped[obj.id] = { objective: obj, tasks: [] };
+      grouped[obj.id] = { objective: obj, krs: {}, unassignedTasks: [] };
+      // Add KRs for this objective
+      annualKrs
+        .filter((kr) => kr.objective_id === obj.id)
+        .forEach((kr) => {
+          grouped[obj.id].krs[kr.id] = { kr, tasks: [] };
+        });
     });
 
+    // Distribute tasks into groups
     allActiveTasks.forEach((task) => {
-      // Check if task is linked via objective_id
-      if (task.objective_id && grouped[task.objective_id]) {
-        grouped[task.objective_id].tasks.push(task);
-        return;
-      }
-      
-      // Check if task is linked via annual_kr_id - find the objective
+      // Task linked to specific KR
       if (task.annual_kr_id) {
         const kr = annualKrs.find((k) => k.id === task.annual_kr_id);
-        if (kr && grouped[kr.objective_id]) {
-          grouped[kr.objective_id].tasks.push(task);
+        if (kr && grouped[kr.objective_id]?.krs[kr.id]) {
+          grouped[kr.objective_id].krs[kr.id].tasks.push(task);
           return;
         }
       }
       
-      // Otherwise, unassigned
-      grouped["none"].tasks.push(task);
+      // Task linked to objective only (no specific KR)
+      if (task.objective_id && grouped[task.objective_id]) {
+        grouped[task.objective_id].unassignedTasks.push(task);
+        return;
+      }
+      
+      // Unassigned tasks
+      grouped["none"].unassignedTasks.push(task);
     });
 
     return grouped;
@@ -399,7 +416,7 @@ export default function TasksPage({
           </TabsTrigger>
           <TabsTrigger value="grouped" className="gap-2">
             <Layers className="w-4 h-4" />
-            By Objective
+            By OKR
           </TabsTrigger>
         </TabsList>
 
@@ -572,8 +589,8 @@ export default function TasksPage({
           )}
         </TabsContent>
 
-        {/* Grouped by Objective View */}
-        <TabsContent value="grouped" className="space-y-4">
+        {/* Grouped by OKR View */}
+        <TabsContent value="grouped" className="space-y-6">
           {isLoading ? (
             <Card>
               <CardContent className="py-12 flex justify-center">
@@ -582,41 +599,80 @@ export default function TasksPage({
             </Card>
           ) : (
             <>
-              {Object.entries(tasksByObjective)
-                .filter(([, group]) => group.tasks.length > 0)
-                .sort(([keyA], [keyB]) => {
+              {Object.entries(tasksByOKR)
+                .filter(([, group]) => {
+                  // Show if there are any tasks in KRs or unassigned
+                  const hasKrTasks = Object.values(group.krs).some((kr) => kr.tasks.length > 0);
+                  const hasUnassigned = group.unassignedTasks.length > 0;
+                  return hasKrTasks || hasUnassigned;
+                })
+                .sort(([keyA, groupA], [keyB, groupB]) => {
                   if (keyA === "none") return 1;
                   if (keyB === "none") return -1;
-                  return 0;
+                  // Sort by objective sort_order
+                  return (groupA.objective?.sort_order || 0) - (groupB.objective?.sort_order || 0);
                 })
-                .map(([key, group]) => (
-                  <CollapsibleTaskList
-                    key={key}
-                    title={
-                      group.objective
-                        ? `${group.objective.code}: ${group.objective.name}`
-                        : "Unassigned Tasks"
-                    }
-                    count={group.tasks.length}
-                    tasks={group.tasks}
-                    icon={<Target className="w-4 h-4 text-text-muted" />}
-                    variant="default"
-                    defaultExpanded={true}
-                    role={userRole}
-                    onStatusChange={handleStatusChange}
-                    onEdit={openEdit}
-                    onDelete={(task) => setDeleteDialog({ open: true, task })}
-                    renderTask={renderTask}
-                  />
+                .map(([objKey, group]) => (
+                  <div key={objKey} className="space-y-3">
+                    {/* Objective Header */}
+                    <div className="flex items-center gap-2 px-1">
+                      <Target className="w-5 h-5 text-accent" />
+                      <h3 className="text-h5 font-heading font-semibold text-text-strong">
+                        {group.objective
+                          ? `${group.objective.code}: ${group.objective.name}`
+                          : "Unassigned Tasks"}
+                      </h3>
+                    </div>
+
+                    {/* KR Lists */}
+                    <div className="space-y-3 pl-2">
+                      {Object.entries(group.krs)
+                        .filter(([, krGroup]) => krGroup.tasks.length > 0)
+                        .sort(([, a], [, b]) => (a.kr.sort_order || 0) - (b.kr.sort_order || 0))
+                        .map(([krKey, krGroup]) => (
+                          <CollapsibleTaskList
+                            key={krKey}
+                            title={krGroup.kr.name}
+                            count={krGroup.tasks.length}
+                            tasks={krGroup.tasks}
+                            icon={<Layers className="w-4 h-4 text-text-muted" />}
+                            variant="default"
+                            defaultExpanded={true}
+                            role={userRole}
+                            onStatusChange={handleStatusChange}
+                            onEdit={openEdit}
+                            onDelete={(task) => setDeleteDialog({ open: true, task })}
+                            renderTask={renderTask}
+                          />
+                        ))}
+
+                      {/* Tasks linked to Objective but no specific KR */}
+                      {group.unassignedTasks.length > 0 && (
+                        <CollapsibleTaskList
+                          title={group.objective ? "General Tasks" : "Unassigned"}
+                          count={group.unassignedTasks.length}
+                          tasks={group.unassignedTasks}
+                          icon={<ListTodo className="w-4 h-4 text-text-subtle" />}
+                          variant="muted"
+                          defaultExpanded={true}
+                          role={userRole}
+                          onStatusChange={handleStatusChange}
+                          onEdit={openEdit}
+                          onDelete={(task) => setDeleteDialog({ open: true, task })}
+                          renderTask={renderTask}
+                        />
+                      )}
+                    </div>
+                  </div>
                 ))}
 
-              {Object.values(tasksByObjective).every(
-                (g) => g.tasks.length === 0
+              {Object.values(tasksByOKR).every(
+                (g) => Object.values(g.krs).every((kr) => kr.tasks.length === 0) && g.unassignedTasks.length === 0
               ) && (
                 <EmptyState
                   icon={ListTodo}
                   title="No active tasks"
-                  description="Create tasks to track your progress on objectives."
+                  description="Create tasks to track your progress on OKRs."
                   action={
                     canEdit
                       ? { label: "Create Task", onClick: openCreate }

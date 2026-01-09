@@ -170,22 +170,28 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
         )}>
           {task.title}
         </p>
-        {(task.objective || task.annual_kr || task.description) && (
+        {(task.objective || task.annual_kr || task.description || (task.tags && task.tags.length > 0)) && (
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            {/* Show Objective name (with icon) + optional KR name */}
             {task.objective && (
               <span className="inline-flex items-center gap-1 text-small text-text-muted">
                 <Target className="w-3 h-3" />
-                {task.objective.code}
+                <span className="truncate max-w-[120px]">{task.objective.name}</span>
               </span>
+            )}
+            {task.objective && task.annual_kr && (
+              <span className="text-small text-text-subtle">→</span>
             )}
             {task.annual_kr && (
               <span className="text-small text-text-subtle truncate max-w-[150px]">
-                → {task.annual_kr.name}
+                {task.annual_kr.name}
               </span>
             )}
+            {/* Show description only if no OKR links */}
             {task.description && !task.objective && !task.annual_kr && (
               <span className="text-small text-text-muted truncate">{task.description}</span>
             )}
+            {/* Tags */}
             {task.tags && task.tags.length > 0 && (
               <div className="flex gap-1 ml-1">
                 {task.tags.slice(0, 2).map((tag) => (
