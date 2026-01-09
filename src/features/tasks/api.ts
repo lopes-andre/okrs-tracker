@@ -208,7 +208,7 @@ export async function getTasksWithDetails(
     .select(`
       *,
       objective:objectives(id, code, name),
-      annual_kr:annual_krs(id, name, kr_type, unit, target_value, current_value),
+      annual_kr:annual_krs(id, name, kr_type, unit, target_value, current_value, objective_id, objective:objectives(id, code, name)),
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*))

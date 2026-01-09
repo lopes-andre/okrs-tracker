@@ -25,7 +25,12 @@ import { cn } from "@/lib/utils";
 interface TaskRowProps {
   task: Task & {
     objective?: { code: string; name: string } | null;
-    annual_kr?: { name: string; kr_type?: string } | null;
+    annual_kr?: { 
+      name: string; 
+      kr_type?: string;
+      objective_id?: string;
+      objective?: { code: string; name: string } | null;
+    } | null;
     quarter_target?: { quarter: number } | null;
     assigned_user?: { full_name: string | null; avatar_url: string | null } | null;
     tags?: { id: string; name: string; color?: string | null }[];
@@ -170,42 +175,53 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
         )}>
           {task.title}
         </p>
-        {(task.objective || task.annual_kr || task.description || (task.tags && task.tags.length > 0)) && (
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            {/* Show Objective name (with icon) + optional KR name */}
-            {task.objective && (
-              <span className="inline-flex items-center gap-1 text-small text-text-muted">
-                <Target className="w-3 h-3" />
-                <span className="truncate max-w-[120px]">{task.objective.name}</span>
-              </span>
-            )}
-            {task.objective && task.annual_kr && (
-              <span className="text-small text-text-subtle">→</span>
-            )}
-            {task.annual_kr && (
-              <span className="text-small text-text-subtle truncate max-w-[150px]">
-                {task.annual_kr.name}
-              </span>
-            )}
-            {/* Show description only if no OKR links */}
-            {task.description && !task.objective && !task.annual_kr && (
-              <span className="text-small text-text-muted truncate">{task.description}</span>
-            )}
-            {/* Tags */}
-            {task.tags && task.tags.length > 0 && (
-              <div className="flex gap-1 ml-1">
-                {task.tags.slice(0, 2).map((tag) => (
-                  <Badge key={tag.id} variant="secondary" className="text-[10px] py-0 px-1.5">
-                    {tag.name}
-                  </Badge>
-                ))}
-                {task.tags.length > 2 && (
-                  <span className="text-[10px] text-text-subtle">+{task.tags.length - 2}</span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {(() => {
+          // Get objective from direct link OR from annual_kr's parent
+          const objective = task.objective || task.annual_kr?.objective;
+          const hasOkrLink = objective || task.annual_kr;
+          const showTags = task.tags && task.tags.length > 0;
+          
+          if (!hasOkrLink && !task.description && !showTags) return null;
+          
+          return (
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              {/* Show Objective name (with icon) */}
+              {objective && (
+                <span className="inline-flex items-center gap-1 text-small text-text-muted">
+                  <Target className="w-3 h-3 shrink-0" />
+                  <span className="truncate max-w-[180px]">{objective.name}</span>
+                </span>
+              )}
+              {/* Arrow between objective and KR */}
+              {objective && task.annual_kr && (
+                <span className="text-small text-text-subtle">→</span>
+              )}
+              {/* KR name */}
+              {task.annual_kr && (
+                <span className="text-small text-text-subtle truncate max-w-[180px]">
+                  {task.annual_kr.name}
+                </span>
+              )}
+              {/* Show description only if no OKR links */}
+              {task.description && !hasOkrLink && (
+                <span className="text-small text-text-muted truncate">{task.description}</span>
+              )}
+              {/* Tags */}
+              {showTags && (
+                <div className="flex gap-1 ml-1">
+                  {task.tags!.slice(0, 2).map((tag) => (
+                    <Badge key={tag.id} variant="secondary" className="text-[10px] py-0 px-1.5">
+                      {tag.name}
+                    </Badge>
+                  ))}
+                  {task.tags!.length > 2 && (
+                    <span className="text-[10px] text-text-subtle">+{task.tags!.length - 2}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Quarter Badge */}
