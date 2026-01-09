@@ -57,6 +57,12 @@ export function CheckInDialog({
   const [quarterTargetId, setQuarterTargetId] = useState<string>("");
   const [recordedAt, setRecordedAt] = useState<string>("");
 
+  // Calculate derived values (must be before any early returns to follow hooks rules)
+  const numValue = kr ? (parseFloat(value) || kr.current_value) : 0;
+  const range = kr ? kr.target_value - kr.start_value : 0;
+  const delta = kr ? numValue - kr.current_value : 0;
+  const currentQuarter = getCurrentQuarter();
+  
   // Reset form when dialog opens
   useEffect(() => {
     if (open && kr) {
@@ -70,31 +76,14 @@ export function CheckInDialog({
     }
   }, [open, kr]);
 
-  if (!kr) return null;
-
-  // Calculate preview progress
-  const numValue = parseFloat(value) || kr.current_value;
-  const range = kr.target_value - kr.start_value;
-  const newProgress = range > 0 
-    ? Math.min(Math.max(((numValue - kr.start_value) / range) * 100, 0), 100)
-    : numValue >= kr.target_value ? 100 : 0;
-  const currentProgress = range > 0 
-    ? Math.min(Math.max(((kr.current_value - kr.start_value) / range) * 100, 0), 100)
-    : kr.current_value >= kr.target_value ? 100 : 0;
-
-  // Delta calculation
-  const delta = numValue - kr.current_value;
-
-  // Get current quarter for default selection
-  const currentQuarter = getCurrentQuarter();
-  const currentQuarterTarget = kr.quarter_targets?.find(qt => qt.quarter === currentQuarter);
-  const selectedQuarterTarget = kr.quarter_targets?.find(
+  // Calculate quarter impact preview (must be before early return)
+  const currentQuarterTarget = kr?.quarter_targets?.find(qt => qt.quarter === currentQuarter);
+  const selectedQuarterTarget = kr?.quarter_targets?.find(
     qt => qt.id === (quarterTargetId || currentQuarterTarget?.id)
   );
   
-  // Calculate quarter impact preview
   const quarterImpact = useMemo(() => {
-    if (!selectedQuarterTarget) return null;
+    if (!selectedQuarterTarget || !kr) return null;
     
     // Current quarter progress
     const qtCurrent = selectedQuarterTarget.current_value;
@@ -122,7 +111,18 @@ export function CheckInDialog({
       newProgress: newQtProgress,
       willComplete: newQtProgress >= 100,
     };
-  }, [selectedQuarterTarget, delta, numValue, kr.aggregation]);
+  }, [selectedQuarterTarget, delta, numValue, kr]);
+
+  // Early return AFTER all hooks
+  if (!kr) return null;
+
+  // Calculate preview progress
+  const newProgress = range > 0 
+    ? Math.min(Math.max(((numValue - kr.start_value) / range) * 100, 0), 100)
+    : numValue >= kr.target_value ? 100 : 0;
+  const currentProgress = range > 0 
+    ? Math.min(Math.max(((kr.current_value - kr.start_value) / range) * 100, 0), 100)
+    : kr.current_value >= kr.target_value ? 100 : 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
