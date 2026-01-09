@@ -75,13 +75,17 @@ npm install
    | 1 | `20260108000001_enums_and_functions.sql` | Enums and helper functions |
    | 2 | `20260108000002_core_tables.sql` | Profiles, plans, members, invites |
    | 3 | `20260108000003_okr_tables.sql` | Objectives, KRs, quarter targets, tasks |
-   | 4 | `20260108000004_tracking_tables.sql` | Check-ins, tags |
+   | 4 | `20260108000004_tracking_tables.sql` | Check-ins, tags, task_tags |
    | 5 | `20260108000005_ui_tables.sql` | Mindmap, dashboards, saved views |
    | 6 | `20260108000006_activity_events.sql` | Activity timeline + triggers |
    | 7 | `20260108000007_rls_policies.sql` | Row Level Security policies |
    | 8 | `20260108000008_views.sql` | Database views |
+   | 9 | `20260109000001_tasks_improvements.sql` | Task-KR linking, performance indexes |
+   | 10 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
+   
+   > **Tip**: You can run all migrations at once by copying all SQL files into a single query, but ensure they're in the correct order.
 
 5. **Configure Auth** (optional but recommended):
    - Go to Authentication → URL Configuration
@@ -116,6 +120,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   └── plans/[planId]/      # Plan-specific pages
 │   │       ├── okrs/            # OKR editor
 │   │       ├── tasks/           # Tasks management
+│   │       │   └── logbook/     # Completed tasks history
 │   │       ├── timeline/        # Activity feed
 │   │       ├── analytics/       # Charts & insights
 │   │       ├── mindmap/         # Visual hierarchy
@@ -144,7 +149,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │       ├── toast-utils.ts       # Toast notifications
 │       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations (8 files)
+│   ├── migrations/              # Database migrations (10 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -163,7 +168,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 - `kr_groups` - Grouping for KRs (Audience, Content, etc.)
 - `annual_krs` - Annual key results
 - `quarter_targets` - Quarterly targets for each KR
-- `tasks` - Tasks linked to objectives or quarter targets
+- `tasks` - Tasks linked to objectives, annual KRs, or quarter targets (with optional due time)
 
 ### Tracking Tables
 - `check_ins` - Time-series progress updates
@@ -229,7 +234,7 @@ function MyComponent() {
 ## Troubleshooting
 
 ### "Permission denied" when creating a plan
-- Make sure you ran **all 8 migration files** in order
+- Make sure you ran **all 10 migration files** in order
 - Check that your `.env.local` has the correct Supabase keys
 - Verify you're logged in (check browser cookies)
 
@@ -269,7 +274,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Next.js + TypeScript + Tailwind setup
 - [x] Design system implementation
 - [x] shadcn/ui component library
-- [x] Supabase schema with migrations
+- [x] Supabase schema with migrations (10 files)
 - [x] Row Level Security policies
 - [x] Activity timeline triggers
 - [x] Database views
@@ -278,7 +283,13 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Data access layer (TanStack Query)
 - [x] Plans CRUD
 - [x] Objectives & KRs management
-- [x] Tasks management
+- [x] Tasks management with:
+  - [x] Link tasks to Objectives, Annual KRs, or Quarter Targets
+  - [x] Custom tags for filtering and grouping
+  - [x] Due date + optional due time
+  - [x] Collapsible task lists (Today, Overdue, This Week, etc.)
+  - [x] Completed tasks logbook with pagination
+  - [x] Late completion tracking
 - [x] Timeline page with real data
 - [x] Settings page with member management
 - [x] Analytics overview
@@ -290,6 +301,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [ ] Mindmap visualization (React Flow)
 - [ ] Weekly review flow
 - [ ] Export/import functionality
+- [ ] Task reminders (using due time)
 
 ## License
 
