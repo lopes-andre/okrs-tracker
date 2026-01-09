@@ -97,7 +97,7 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
 
       // Count check-ins in this quarter
       const quarterCheckIns = checkIns.filter((ci) => {
-        const date = new Date(ci.occurred_at);
+        const date = new Date(ci.recorded_at);
         return isWithinInterval(date, { start: quarterStart, end: quarterEnd });
       });
 

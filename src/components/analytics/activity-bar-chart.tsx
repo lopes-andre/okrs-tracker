@@ -49,7 +49,7 @@ export function ActivityBarChart({ checkIns, year }: ActivityBarChartProps) {
       return weekIntervals.map((weekStart) => {
         const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
         const weekCheckIns = checkIns.filter((ci) => {
-          const date = new Date(ci.occurred_at);
+          const date = new Date(ci.recorded_at);
           return isWithinInterval(date, { start: weekStart, end: weekEnd });
         });
 
@@ -70,7 +70,7 @@ export function ActivityBarChart({ checkIns, year }: ActivityBarChartProps) {
         if (monthStart > now) break;
         
         const monthCheckIns = checkIns.filter((ci) => {
-          const date = new Date(ci.occurred_at);
+          const date = new Date(ci.recorded_at);
           return isWithinInterval(date, { start: monthStart, end: monthEnd });
         });
 

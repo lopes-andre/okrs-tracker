@@ -94,8 +94,8 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
     // Get all check-ins for selected KRs
     const relevantCheckIns = checkIns.filter(
       (ci) => selectedKrIds.has(ci.annual_kr_id) &&
-        new Date(ci.occurred_at) >= dateRange.start &&
-        new Date(ci.occurred_at) <= dateRange.end
+        new Date(ci.recorded_at) >= dateRange.start &&
+        new Date(ci.recorded_at) <= dateRange.end
     );
 
     // Create date buckets (weekly for year, daily for shorter ranges)
@@ -116,11 +116,11 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
         // Find the latest check-in on or before this date
         const krCheckIns = relevantCheckIns
           .filter((ci) => ci.annual_kr_id === kr.id)
-          .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+          .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
 
         // Get cumulative value up to this date
         const checkInsUpToDate = krCheckIns.filter(
-          (ci) => new Date(ci.occurred_at) <= date
+          (ci) => new Date(ci.recorded_at) <= date
         );
 
         if (checkInsUpToDate.length > 0) {

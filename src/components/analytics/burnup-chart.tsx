@@ -56,7 +56,7 @@ export function BurnupChart({ krs, checkIns, year }: BurnupChartProps) {
     // Get check-ins for this KR
     const krCheckIns = checkIns
       .filter((ci) => ci.annual_kr_id === selectedKr.id)
-      .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime());
+      .sort((a, b) => new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime());
 
     // Calculate target line (linear progression)
     const targetDelta = selectedKr.targetValue - selectedKr.startValue;
@@ -73,8 +73,8 @@ export function BurnupChart({ krs, checkIns, year }: BurnupChartProps) {
       let actualValue: number | null = null;
       if (!isFuture) {
         const checkInsUpToWeek = krCheckIns.filter((ci) => 
-          isBefore(new Date(ci.occurred_at), weekDate) || 
-          format(new Date(ci.occurred_at), "yyyy-MM-dd") === format(weekDate, "yyyy-MM-dd")
+          isBefore(new Date(ci.recorded_at), weekDate) || 
+          format(new Date(ci.recorded_at), "yyyy-MM-dd") === format(weekDate, "yyyy-MM-dd")
         );
         
         if (checkInsUpToWeek.length > 0) {
