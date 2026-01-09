@@ -30,14 +30,14 @@ interface MetricCardProps {
 function MetricCard({ icon: Icon, label, value, sublabel, variant = "default" }: MetricCardProps) {
   return (
     <div className={cn(
-      "p-4 rounded-card border",
+      "p-4 rounded-card border h-full",
       variant === "success" && "bg-status-success/5 border-status-success/20",
       variant === "warning" && "bg-status-warning/5 border-status-warning/20",
       variant === "danger" && "bg-status-danger/5 border-status-danger/20",
       variant === "accent" && "bg-accent/5 border-accent/20",
       variant === "default" && "bg-bg-1/50 border-border-soft"
     )}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <div className={cn(
           "w-10 h-10 rounded-card flex items-center justify-center shrink-0",
           variant === "success" && "bg-status-success/10",
@@ -55,10 +55,10 @@ function MetricCard({ icon: Icon, label, value, sublabel, variant = "default" }:
             variant === "default" && "text-text-muted"
           )} />
         </div>
-        <div>
-          <p className="text-2xl font-bold font-heading">{value}</p>
-          <p className="text-xs text-text-muted">{label}</p>
-          {sublabel && <p className="text-[10px] text-text-subtle mt-0.5">{sublabel}</p>}
+        <div className="min-w-0 flex-1">
+          <p className="text-2xl font-bold font-heading leading-none">{value}</p>
+          <p className="text-xs text-text-muted mt-1 leading-tight">{label}</p>
+          {sublabel && <p className="text-[10px] text-text-subtle mt-0.5 leading-tight">{sublabel}</p>}
         </div>
       </div>
     </div>
