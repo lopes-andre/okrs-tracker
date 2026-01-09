@@ -1,15 +1,16 @@
 -- Migration: Remove weight columns from objectives and annual_krs tables
 -- Description: Weight is no longer needed as all items will be treated equally
 
+-- First, drop the view that depends on weight columns
+DROP VIEW IF EXISTS v_objective_progress;
+
 -- Drop weight column from objectives table
 ALTER TABLE objectives DROP COLUMN IF EXISTS weight;
 
 -- Drop weight column from annual_krs table  
 ALTER TABLE annual_krs DROP COLUMN IF EXISTS weight;
 
--- Update the v_objective_progress view to use simple average instead of weighted average
-DROP VIEW IF EXISTS v_objective_progress;
-
+-- Recreate the v_objective_progress view using simple average instead of weighted average
 CREATE VIEW v_objective_progress AS
 SELECT 
   o.id,
