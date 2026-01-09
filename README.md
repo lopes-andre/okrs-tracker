@@ -83,6 +83,7 @@ npm install
    | 9 | `20260109000001_tasks_improvements.sql` | Task-KR linking, performance indexes |
    | 10 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
    | 11 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
+   | 12 | `20260111000001_remove_weight_columns.sql` | Remove weight from objectives/KRs |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    

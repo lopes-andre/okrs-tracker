@@ -60,7 +60,6 @@ const createMockKr = (overrides: Partial<AnnualKr> = {}): AnnualKr => ({
   start_value: 0,
   target_value: 100,
   current_value: 50,
-  weight: 1,
   sort_order: 1,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
@@ -108,7 +107,6 @@ const createMockObjective = (overrides: Partial<Objective> = {}): Objective => (
   code: "O1",
   name: "Test Objective",
   description: null,
-  weight: 1,
   sort_order: 1,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
@@ -485,12 +483,12 @@ describe("Full KR Progress Computation", () => {
 
 describe("Rollup Computations", () => {
   describe("computeObjectiveProgress", () => {
-    it("should compute weighted average of KR progresses", () => {
+    it("should compute simple average of KR progresses", () => {
       const objective = createMockObjective();
       
       const krProgresses = [
         {
-          kr: createMockKr({ id: "kr-1", weight: 2 }),
+          kr: createMockKr({ id: "kr-1" }),
           progress: {
             currentValue: 60,
             baseline: 0,
@@ -509,7 +507,7 @@ describe("Rollup Computations", () => {
           },
         },
         {
-          kr: createMockKr({ id: "kr-2", weight: 1 }),
+          kr: createMockKr({ id: "kr-2" }),
           progress: {
             currentValue: 30,
             baseline: 0,
@@ -531,8 +529,8 @@ describe("Rollup Computations", () => {
       
       const result = computeObjectiveProgress(objective, krProgresses);
       
-      // Weighted average: (0.6 * 2 + 0.3 * 1) / 3 = 1.5 / 3 = 0.5
-      expect(result.progress).toBe(0.5);
+      // Simple average: (0.6 + 0.3) / 2 = 0.45
+      expect(result.progress).toBe(0.45);
       expect(result.krCount).toBe(2);
       // Worst status is off_track
       expect(result.paceStatus).toBe("off_track");
@@ -549,10 +547,10 @@ describe("Rollup Computations", () => {
   });
 
   describe("computePlanProgress", () => {
-    it("should compute weighted average of objective progresses", () => {
+    it("should compute simple average of objective progresses", () => {
       const objectives = [
         { 
-          objective: createMockObjective({ id: "obj-1", weight: 1 }), 
+          objective: createMockObjective({ id: "obj-1" }), 
           progress: {
             objectiveId: "obj-1",
             progress: 0.8,
@@ -563,7 +561,7 @@ describe("Rollup Computations", () => {
           },
         },
         { 
-          objective: createMockObjective({ id: "obj-2", weight: 1 }), 
+          objective: createMockObjective({ id: "obj-2" }), 
           progress: {
             objectiveId: "obj-2",
             progress: 0.4,
@@ -577,7 +575,7 @@ describe("Rollup Computations", () => {
       
       const result = computePlanProgress("plan-1", objectives);
       
-      // Average: (0.8 + 0.4) / 2 = 0.6
+      // Simple average: (0.8 + 0.4) / 2 = 0.6
       expect(result.progress).toBe(0.6);
       expect(result.objectiveCount).toBe(2);
       // Worst status is at_risk

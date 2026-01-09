@@ -64,7 +64,6 @@ export interface Objective {
   code: string;
   name: string;
   description: string | null;
-  weight: number;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -94,7 +93,6 @@ export interface AnnualKr {
   start_value: number;
   target_value: number;
   current_value: number;
-  weight: number;
   sort_order: number;
   created_at: string;
   updated_at: string;

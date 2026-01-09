@@ -39,7 +39,6 @@ export function ObjectiveDialog({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [weight, setWeight] = useState("1");
 
   // Reset form when dialog opens/closes or objective changes
   useEffect(() => {
@@ -48,14 +47,12 @@ export function ObjectiveDialog({
         setCode(objective.code);
         setName(objective.name);
         setDescription(objective.description || "");
-        setWeight(String(objective.weight));
       } else {
         // Generate next code
         const nextCode = generateNextCode(existingCodes);
         setCode(nextCode);
         setName("");
         setDescription("");
-        setWeight("1");
       }
     }
   }, [open, objective, existingCodes]);
@@ -78,10 +75,9 @@ export function ObjectiveDialog({
 
     setIsSubmitting(true);
     try {
-      const weightNum = parseFloat(weight) || 1;
       const data = isEditing
-        ? { code, name, description: description || null, weight: weightNum }
-        : { plan_id: planId, code, name, description: description || null, weight: weightNum, sort_order: existingCodes.length };
+        ? { code, name, description: description || null }
+        : { plan_id: planId, code, name, description: description || null, sort_order: existingCodes.length };
 
       await onSubmit(data);
       onOpenChange(false);
@@ -122,24 +118,8 @@ export function ObjectiveDialog({
               )}
             </div>
 
-            {/* Weight */}
-            <div className="space-y-2">
-              <Label htmlFor="weight">Weight</Label>
-              <Input
-                id="weight"
-                type="number"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="1.0"
-                min="0"
-                max="1"
-                step="0.1"
-              />
-              <p className="text-xs text-text-subtle">0 to 1</p>
-            </div>
-
             {/* Name - spans remaining columns */}
-            <div className="col-span-2 space-y-2">
+            <div className="col-span-3 space-y-2">
               <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"

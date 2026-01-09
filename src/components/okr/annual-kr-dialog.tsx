@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, X } from "lucide-react";
+import { 
+  Loader2, 
+  X, 
+  Hash, 
+  Target, 
+  Percent, 
+  TrendingUp,
+  CheckCircle2,
+  BarChart3,
+  Info,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type {
   AnnualKr,
   AnnualKrInsert,
@@ -31,6 +47,7 @@ import type {
   KrGroup,
   Tag,
 } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
 
 interface AnnualKrDialogProps {
   open: boolean;
@@ -43,23 +60,138 @@ interface AnnualKrDialogProps {
   onSubmit: (data: AnnualKrInsert | AnnualKrUpdate, tagIds: string[]) => Promise<void>;
 }
 
-const krTypes: { value: KrType; label: string; description: string }[] = [
-  { value: "metric", label: "Metric", description: "Numeric value with unit" },
-  { value: "count", label: "Count", description: "Integer count of items" },
-  { value: "milestone", label: "Milestone", description: "Binary done/not done" },
-  { value: "rate", label: "Rate", description: "Percentage or ratio" },
-  { value: "average", label: "Average", description: "Averaged over time" },
+// Type configurations with defaults and field visibility
+const krTypeConfig: Record<KrType, {
+  label: string;
+  description: string;
+  icon: typeof Target;
+  example: string;
+  fields: {
+    direction: boolean;
+    aggregation: boolean;
+    startValue: boolean;
+    targetValue: boolean;
+    unit: boolean;
+  };
+  defaults: {
+    direction: KrDirection;
+    aggregation: KrAggregation;
+    startValue: number;
+    targetValue: number | null;
+    unit: string;
+  };
+}> = {
+  metric: {
+    label: "Metric",
+    description: "Track any numeric value over time",
+    icon: TrendingUp,
+    example: "Revenue, followers, MRR",
+    fields: {
+      direction: true,
+      aggregation: true,
+      startValue: true,
+      targetValue: true,
+      unit: true,
+    },
+    defaults: {
+      direction: "increase",
+      aggregation: "cumulative",
+      startValue: 0,
+      targetValue: null,
+      unit: "",
+    },
+  },
+  count: {
+    label: "Count",
+    description: "Count items or completions",
+    icon: Hash,
+    example: "Blog posts, features shipped, calls made",
+    fields: {
+      direction: false, // Always increase
+      aggregation: true,
+      startValue: false, // Always 0
+      targetValue: true,
+      unit: true,
+    },
+    defaults: {
+      direction: "increase",
+      aggregation: "cumulative",
+      startValue: 0,
+      targetValue: null,
+      unit: "",
+    },
+  },
+  milestone: {
+    label: "Milestone",
+    description: "Binary goal - done or not done",
+    icon: CheckCircle2,
+    example: "Launch product, hire manager, complete certification",
+    fields: {
+      direction: false,
+      aggregation: false,
+      startValue: false,
+      targetValue: false,
+      unit: false,
+    },
+    defaults: {
+      direction: "increase",
+      aggregation: "cumulative",
+      startValue: 0,
+      targetValue: 1,
+      unit: "",
+    },
+  },
+  rate: {
+    label: "Rate",
+    description: "Track percentages or conversion rates",
+    icon: Percent,
+    example: "Conversion rate, retention %, NPS score",
+    fields: {
+      direction: true,
+      aggregation: false,
+      startValue: true,
+      targetValue: true,
+      unit: true,
+    },
+    defaults: {
+      direction: "increase",
+      aggregation: "reset_quarterly",
+      startValue: 0,
+      targetValue: null,
+      unit: "%",
+    },
+  },
+  average: {
+    label: "Average",
+    description: "Track averages over time periods",
+    icon: BarChart3,
+    example: "Avg response time, avg deal size, avg rating",
+    fields: {
+      direction: true,
+      aggregation: false,
+      startValue: true,
+      targetValue: true,
+      unit: true,
+    },
+    defaults: {
+      direction: "increase",
+      aggregation: "reset_quarterly",
+      startValue: 0,
+      targetValue: null,
+      unit: "",
+    },
+  },
+};
+
+const directions: { value: KrDirection; label: string; icon: string }[] = [
+  { value: "increase", label: "Increase", icon: "↑" },
+  { value: "decrease", label: "Decrease", icon: "↓" },
+  { value: "maintain", label: "Maintain", icon: "→" },
 ];
 
-const directions: { value: KrDirection; label: string }[] = [
-  { value: "increase", label: "↑ Increase" },
-  { value: "decrease", label: "↓ Decrease" },
-  { value: "maintain", label: "→ Maintain" },
-];
-
-const aggregations: { value: KrAggregation; label: string; description: string }[] = [
-  { value: "reset_quarterly", label: "Reset Quarterly", description: "Each quarter starts fresh" },
-  { value: "cumulative", label: "Cumulative", description: "Year-to-date total" },
+const aggregations: { value: KrAggregation; label: string; shortLabel: string; description: string }[] = [
+  { value: "cumulative", label: "Cumulative", shortLabel: "YTD Total", description: "Year-to-date total" },
+  { value: "reset_quarterly", label: "Reset Quarterly", shortLabel: "Per Quarter", description: "Fresh start each quarter" },
 ];
 
 export function AnnualKrDialog({
@@ -80,13 +212,14 @@ export function AnnualKrDialog({
   const [description, setDescription] = useState("");
   const [krType, setKrType] = useState<KrType>("metric");
   const [direction, setDirection] = useState<KrDirection>("increase");
-  const [aggregation, setAggregation] = useState<KrAggregation>("reset_quarterly");
+  const [aggregation, setAggregation] = useState<KrAggregation>("cumulative");
   const [unit, setUnit] = useState("");
   const [startValue, setStartValue] = useState("0");
   const [targetValue, setTargetValue] = useState("");
-  const [weight, setWeight] = useState("1");
   const [groupId, setGroupId] = useState<string>("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const config = krTypeConfig[krType];
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -100,7 +233,6 @@ export function AnnualKrDialog({
         setUnit(kr.unit || "");
         setStartValue(String(kr.start_value));
         setTargetValue(String(kr.target_value));
-        setWeight(String(kr.weight));
         setGroupId(kr.group_id || "");
         setSelectedTagIds(initialSelectedTags);
       } else {
@@ -108,16 +240,36 @@ export function AnnualKrDialog({
         setDescription("");
         setKrType("metric");
         setDirection("increase");
-        setAggregation("reset_quarterly");
+        setAggregation("cumulative");
         setUnit("");
         setStartValue("0");
         setTargetValue("");
-        setWeight("1");
         setGroupId("");
         setSelectedTagIds([]);
       }
     }
   }, [open, kr, initialSelectedTags]);
+
+  // Update defaults when type changes (only for new KRs)
+  function handleTypeChange(newType: KrType) {
+    setKrType(newType);
+    
+    // Only apply defaults for new KRs
+    if (!isEditing) {
+      const newConfig = krTypeConfig[newType];
+      setDirection(newConfig.defaults.direction);
+      setAggregation(newConfig.defaults.aggregation);
+      setStartValue(String(newConfig.defaults.startValue));
+      setUnit(newConfig.defaults.unit);
+      
+      // Clear target value for milestone (will be auto-set to 1)
+      if (newType === "milestone") {
+        setTargetValue("1");
+      } else if (newConfig.defaults.targetValue !== null) {
+        setTargetValue(String(newConfig.defaults.targetValue));
+      }
+    }
+  }
 
   // Toggle tag selection
   function toggleTag(tagId: string) {
@@ -126,23 +278,42 @@ export function AnnualKrDialog({
     );
   }
 
+  // Get effective values based on type
+  function getEffectiveValues() {
+    const effectiveStartValue = config.fields.startValue ? parseFloat(startValue) || 0 : 0;
+    const effectiveTargetValue = krType === "milestone" ? 1 : parseFloat(targetValue) || 0;
+    const effectiveDirection = config.fields.direction ? direction : "increase";
+    const effectiveAggregation = config.fields.aggregation ? aggregation : "cumulative";
+    const effectiveUnit = config.fields.unit ? (unit || null) : null;
+    
+    return {
+      startValue: effectiveStartValue,
+      targetValue: effectiveTargetValue,
+      direction: effectiveDirection,
+      aggregation: effectiveAggregation,
+      unit: effectiveUnit,
+    };
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !targetValue) return;
+    if (!name.trim()) return;
+    if (krType !== "milestone" && !targetValue) return;
 
     setIsSubmitting(true);
     try {
+      const values = getEffectiveValues();
+      
       const data = isEditing
         ? {
             name,
             description: description || null,
             kr_type: krType,
-            direction,
-            aggregation,
-            unit: unit || null,
-            start_value: parseFloat(startValue) || 0,
-            target_value: parseFloat(targetValue) || 0,
-            weight: parseFloat(weight) || 1,
+            direction: values.direction,
+            aggregation: values.aggregation,
+            unit: values.unit,
+            start_value: values.startValue,
+            target_value: values.targetValue,
             group_id: groupId || null,
           }
         : {
@@ -150,13 +321,12 @@ export function AnnualKrDialog({
             name,
             description: description || null,
             kr_type: krType,
-            direction,
-            aggregation,
-            unit: unit || null,
-            start_value: parseFloat(startValue) || 0,
-            target_value: parseFloat(targetValue) || 0,
-            current_value: parseFloat(startValue) || 0,
-            weight: parseFloat(weight) || 1,
+            direction: values.direction,
+            aggregation: values.aggregation,
+            unit: values.unit,
+            start_value: values.startValue,
+            target_value: values.targetValue,
+            current_value: values.startValue,
             group_id: groupId || null,
             sort_order: 0,
           };
@@ -168,157 +338,282 @@ export function AnnualKrDialog({
     }
   }
 
+  const TypeIcon = config.icon;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading">
+          <DialogTitle className="font-heading text-h4">
             {isEditing ? "Edit Key Result" : "Create Key Result"}
           </DialogTitle>
           <DialogDescription>
             {isEditing
               ? "Update the key result configuration."
-              : "Add a new key result to track progress."}
+              : "Define a measurable outcome to track your progress."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="kr-name">Name *</Label>
-            <Input
-              id="kr-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., LinkedIn followers"
-              required
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="kr-description">Description</Label>
-            <textarea
-              id="kr-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional details about this key result..."
-              rows={2}
-              className="w-full px-3 py-2 text-body-sm rounded-button border border-border-soft bg-white placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"
-            />
-          </div>
-
-          {/* Type, Direction, Aggregation */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Type *</Label>
-              <Select value={krType} onValueChange={(v) => setKrType(v as KrType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {krTypes.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      <div>
-                        <span className="font-medium">{t.label}</span>
-                        <span className="text-text-muted ml-2 text-xs">{t.description}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Direction</Label>
-              <Select value={direction} onValueChange={(v) => setDirection(v as KrDirection)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {directions.map((d) => (
-                    <SelectItem key={d.value} value={d.value}>
-                      {d.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Aggregation</Label>
-              <Select value={aggregation} onValueChange={(v) => setAggregation(v as KrAggregation)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {aggregations.map((a) => (
-                    <SelectItem key={a.value} value={a.value}>
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Type Selection - Card Style */}
+          <div className="space-y-3">
+            <Label className="text-body-sm font-medium">Type</Label>
+            <div className="grid grid-cols-5 gap-2">
+              {(Object.keys(krTypeConfig) as KrType[]).map((type) => {
+                const typeConf = krTypeConfig[type];
+                const Icon = typeConf.icon;
+                const isSelected = krType === type;
+                
+                return (
+                  <TooltipProvider key={type} delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => handleTypeChange(type)}
+                          className={cn(
+                            "flex flex-col items-center gap-1.5 p-3 rounded-card border-2 transition-all",
+                            isSelected
+                              ? "border-accent bg-accent/5 text-accent"
+                              : "border-border-soft bg-bg-0 text-text-muted hover:border-border hover:bg-bg-1"
+                          )}
+                        >
+                          <Icon className={cn("w-5 h-5", isSelected && "text-accent")} />
+                          <span className={cn(
+                            "text-xs font-medium",
+                            isSelected ? "text-accent" : "text-text-strong"
+                          )}>
+                            {typeConf.label}
+                          </span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="max-w-[200px]">
+                        <p className="font-medium">{typeConf.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          e.g., {typeConf.example}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              })}
             </div>
           </div>
 
-          {/* Values */}
-          <div className="grid grid-cols-4 gap-4">
+          {/* Name & Description Section */}
+          <div className="space-y-4 p-4 bg-bg-1 rounded-card">
             <div className="space-y-2">
-              <Label htmlFor="start-value">Start Value</Label>
+              <Label htmlFor="kr-name" className="flex items-center gap-2">
+                <TypeIcon className="w-4 h-4 text-text-muted" />
+                Name *
+              </Label>
               <Input
-                id="start-value"
-                type="number"
-                value={startValue}
-                onChange={(e) => setStartValue(e.target.value)}
-                placeholder="0"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="target-value">Target Value *</Label>
-              <Input
-                id="target-value"
-                type="number"
-                value={targetValue}
-                onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="1000"
+                id="kr-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={
+                  krType === "milestone" 
+                    ? "e.g., Launch new product" 
+                    : krType === "count"
+                    ? "e.g., Blog posts published"
+                    : krType === "rate"
+                    ? "e.g., Conversion rate"
+                    : "e.g., Monthly revenue"
+                }
+                className="bg-bg-0"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="unit">Unit</Label>
-              <Input
-                id="unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                placeholder="followers"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="kr-weight">Weight</Label>
-              <Input
-                id="kr-weight"
-                type="number"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                placeholder="1.0"
-                min="0"
-                max="1"
-                step="0.1"
+              <Label htmlFor="kr-description" className="text-text-muted">
+                Description (optional)
+              </Label>
+              <textarea
+                id="kr-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add context or notes about this key result..."
+                rows={2}
+                className="w-full px-3 py-2 text-body-sm rounded-button border border-border-soft bg-bg-0 placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"
               />
             </div>
           </div>
 
-          {/* Group */}
+          {/* Type-Specific Configuration */}
+          {krType === "milestone" ? (
+            // Milestone: Simple completion goal
+            <div className="p-4 bg-status-success/5 border border-status-success/20 rounded-card">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-status-success mt-0.5" />
+                <div>
+                  <p className="font-medium text-text-strong">Completion Goal</p>
+                  <p className="text-small text-text-muted mt-1">
+                    This key result will be tracked as complete or incomplete. 
+                    Mark it done when you achieve the milestone.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Other types: Show relevant fields
+            <div className="space-y-4">
+              {/* Direction & Aggregation Row */}
+              {(config.fields.direction || config.fields.aggregation) && (
+                <div className={cn(
+                  "grid gap-4",
+                  config.fields.direction && config.fields.aggregation ? "grid-cols-2" : "grid-cols-1"
+                )}>
+                  {config.fields.direction && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5">
+                        Direction
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="w-3.5 h-3.5 text-text-subtle" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">How should progress be measured?</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {directions.map((d) => (
+                          <button
+                            key={d.value}
+                            type="button"
+                            onClick={() => setDirection(d.value)}
+                            className={cn(
+                              "flex items-center justify-center gap-1.5 py-2 px-3 rounded-button border transition-all text-sm",
+                              direction === d.value
+                                ? "border-accent bg-accent/5 text-accent font-medium"
+                                : "border-border-soft text-text-muted hover:border-border"
+                            )}
+                          >
+                            <span className="text-base">{d.icon}</span>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {config.fields.aggregation && (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1.5">
+                        Aggregation
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Info className="w-3.5 h-3.5 text-text-subtle" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">How to track progress across quarters</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </Label>
+                      <Select value={aggregation} onValueChange={(v) => setAggregation(v as KrAggregation)}>
+                        <SelectTrigger>
+                          <SelectValue>
+                            {aggregations.find(a => a.value === aggregation)?.shortLabel}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {aggregations.map((a) => (
+                            <SelectItem key={a.value} value={a.value}>
+                              <span>{a.label}</span>
+                              <span className="text-xs text-text-muted ml-2">{a.description}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Values Row */}
+              <div className={cn(
+                "grid gap-4",
+                config.fields.startValue && config.fields.targetValue && config.fields.unit
+                  ? "grid-cols-3"
+                  : config.fields.targetValue && config.fields.unit
+                  ? "grid-cols-2"
+                  : "grid-cols-1"
+              )}>
+                {config.fields.startValue && (
+                  <div className="space-y-2">
+                    <Label htmlFor="start-value">
+                      {krType === "rate" ? "Current Rate" : "Start Value"}
+                    </Label>
+                    <Input
+                      id="start-value"
+                      type="number"
+                      step="any"
+                      value={startValue}
+                      onChange={(e) => setStartValue(e.target.value)}
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+
+                {config.fields.targetValue && (
+                  <div className="space-y-2">
+                    <Label htmlFor="target-value">
+                      {krType === "count" 
+                        ? "Target Count *" 
+                        : krType === "rate"
+                        ? "Target Rate *"
+                        : "Target Value *"}
+                    </Label>
+                    <Input
+                      id="target-value"
+                      type="number"
+                      step="any"
+                      value={targetValue}
+                      onChange={(e) => setTargetValue(e.target.value)}
+                      placeholder={krType === "rate" ? "10" : krType === "count" ? "52" : "1000"}
+                      required
+                    />
+                  </div>
+                )}
+
+                {config.fields.unit && (
+                  <div className="space-y-2">
+                    <Label htmlFor="unit">
+                      Unit
+                      {krType === "rate" && (
+                        <span className="text-text-subtle ml-1">(default: %)</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="unit"
+                      value={unit}
+                      onChange={(e) => setUnit(e.target.value)}
+                      placeholder={
+                        krType === "rate" 
+                          ? "%" 
+                          : krType === "count"
+                          ? "posts"
+                          : "followers"
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Group Selection */}
           {groups.length > 0 && (
             <div className="space-y-2">
-              <Label>Group</Label>
+              <Label>Group (optional)</Label>
               <Select value={groupId} onValueChange={setGroupId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a group (optional)" />
+                  <SelectValue placeholder="Select a group" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">No group</SelectItem>
@@ -336,12 +631,12 @@ export function AnnualKrDialog({
           {tags.length > 0 && (
             <div className="space-y-2">
               <Label>Tags</Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-bg-1 rounded-button min-h-[60px]">
+              <div className="flex flex-wrap gap-2 p-3 bg-bg-1 rounded-button min-h-[52px]">
                 {tags.map((tag) => (
                   <Badge
                     key={tag.id}
                     variant={selectedTagIds.includes(tag.id) ? "default" : "secondary"}
-                    className="cursor-pointer transition-colors"
+                    className="cursor-pointer transition-all hover:scale-105"
                     onClick={() => toggleTag(tag.id)}
                   >
                     {tag.name}
@@ -350,15 +645,12 @@ export function AnnualKrDialog({
                     )}
                   </Badge>
                 ))}
-                {tags.length === 0 && (
-                  <span className="text-body-sm text-text-muted">No tags available</span>
-                )}
               </div>
               <p className="text-xs text-text-subtle">Click to select/deselect tags</p>
             </div>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
             <Button
               type="button"
               variant="secondary"
@@ -367,7 +659,10 @@ export function AnnualKrDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !name.trim() || !targetValue}>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting || !name.trim() || (krType !== "milestone" && !targetValue)}
+            >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Save Changes" : "Create Key Result"}
             </Button>

@@ -88,7 +88,7 @@ export function CheckInDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!value.trim()) return;
+    if (!value.trim() || !kr) return;
 
     setIsSubmitting(true);
     try {

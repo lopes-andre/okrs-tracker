@@ -82,7 +82,7 @@ export interface ObjectiveProgress {
   expectedProgress: number;
   paceStatus: PaceStatus;
   krCount: number;
-  krProgresses: { krId: string; progress: number; weight: number; paceStatus: PaceStatus }[];
+  krProgresses: { krId: string; progress: number; paceStatus: PaceStatus }[];
 }
 
 export interface PlanProgress {
@@ -410,9 +410,7 @@ function computeMilestoneValue(
  * Determine the effective baseline for progress calculation
  */
 export function computeBaseline(
-  kr: AnnualKr,
-  checkIns: CheckIn[],
-  window: TimeWindow
+  kr: AnnualKr
 ): number {
   // If start_value is explicitly set and non-zero, use it
   if (kr.start_value !== 0 || kr.direction === "decrease") {
@@ -422,11 +420,6 @@ export function computeBaseline(
   // For "increase" direction, default to 0
   if (kr.direction === "increase") {
     return 0;
-  }
-  
-  // For "decrease" direction, use target as baseline if no start_value
-  if (kr.direction === "decrease") {
-    return kr.target_value;
   }
   
   // For "maintain" direction, use target as baseline
@@ -733,7 +726,7 @@ export function computeKrProgress(
   const currentValue = computeCurrentValue(kr, checkIns, tasks, window, config);
   
   // Compute baseline
-  const baseline = computeBaseline(kr, checkIns, window);
+  const baseline = computeBaseline(kr);
   
   // Compute progress
   let progress: number;
@@ -1028,7 +1021,7 @@ function aggregateWeeklyPoint(points: DailyDataPoint[], weekStart: Date): DailyD
 // ============================================================================
 
 /**
- * Compute Objective progress as weighted average of its KRs
+ * Compute Objective progress as simple average of its KRs
  */
 export function computeObjectiveProgress(
   objective: Objective,
@@ -1045,19 +1038,16 @@ export function computeObjectiveProgress(
     };
   }
   
-  // Weighted average
-  let totalWeight = 0;
-  let weightedProgress = 0;
-  let weightedExpected = 0;
+  // Simple average
+  let totalProgress = 0;
+  let totalExpected = 0;
   let worstPaceStatus: PaceStatus = "ahead";
   
   const krResults: ObjectiveProgress["krProgresses"] = [];
   
   for (const { kr, progress } of krProgresses) {
-    const weight = kr.weight > 0 ? kr.weight : 1;
-    totalWeight += weight;
-    weightedProgress += progress.progress * weight;
-    weightedExpected += progress.expectedProgress * weight;
+    totalProgress += progress.progress;
+    totalExpected += progress.expectedProgress;
     
     // Track worst pace status
     if (isPaceWorse(progress.paceStatus, worstPaceStatus)) {
@@ -1067,13 +1057,12 @@ export function computeObjectiveProgress(
     krResults.push({
       krId: kr.id,
       progress: progress.progress,
-      weight,
       paceStatus: progress.paceStatus,
     });
   }
   
-  const avgProgress = totalWeight > 0 ? weightedProgress / totalWeight : 0;
-  const avgExpected = totalWeight > 0 ? weightedExpected / totalWeight : 0;
+  const avgProgress = totalProgress / krProgresses.length;
+  const avgExpected = totalExpected / krProgresses.length;
   
   return {
     objectiveId: objective.id,
@@ -1086,7 +1075,7 @@ export function computeObjectiveProgress(
 }
 
 /**
- * Compute Plan progress as weighted average of Objectives
+ * Compute Plan progress as simple average of Objectives
  */
 export function computePlanProgress(
   planId: string,
@@ -1103,18 +1092,17 @@ export function computePlanProgress(
     };
   }
   
-  let totalWeight = 0;
-  let weightedProgress = 0;
-  let weightedExpected = 0;
+  let totalProgress = 0;
+  let totalExpected = 0;
   let worstPaceStatus: PaceStatus = "ahead";
   
   const results: ObjectiveProgress[] = [];
   
   for (const { objective, progress } of objectiveProgresses) {
-    const weight = objective.weight > 0 ? objective.weight : 1;
-    totalWeight += weight;
-    weightedProgress += progress.progress * weight;
-    weightedExpected += progress.expectedProgress * weight;
+    // Suppress unused variable warning - objective is part of the interface
+    void objective;
+    totalProgress += progress.progress;
+    totalExpected += progress.expectedProgress;
     
     if (isPaceWorse(progress.paceStatus, worstPaceStatus)) {
       worstPaceStatus = progress.paceStatus;
@@ -1123,8 +1111,8 @@ export function computePlanProgress(
     results.push(progress);
   }
   
-  const avgProgress = totalWeight > 0 ? weightedProgress / totalWeight : 0;
-  const avgExpected = totalWeight > 0 ? weightedExpected / totalWeight : 0;
+  const avgProgress = totalProgress / objectiveProgresses.length;
+  const avgExpected = totalExpected / objectiveProgresses.length;
   
   return {
     planId,

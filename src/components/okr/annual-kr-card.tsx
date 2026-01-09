@@ -133,7 +133,6 @@ export function AnnualKrCard({ kr, role, onEdit, onDelete, onEditQuarterTargets,
           </div>
           <p className="text-small text-text-muted">
             {formatValue(kr.current_value)} / {formatValue(kr.target_value)}
-            {kr.unit && ` ${kr.unit}`}
           </p>
         </div>
 

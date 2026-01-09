@@ -62,7 +62,7 @@ export default function AnalyticsPage({
     }).sort((a, b) => b.progress - a.progress);
   }, [objectives]);
 
-  // Compute overall progress from objectives data
+  // Compute overall progress from objectives data (simple average)
   const overallProgress = useMemo(() => {
     if (!objectives.length) return 0;
     const totalProgress = objectives.reduce((sum, obj) => {
@@ -74,10 +74,9 @@ export default function AnalyticsPage({
           : 0;
         return krSum + Math.min(Math.max(progress, 0), 100);
       }, 0) / krs.length;
-      return sum + (objProgress * obj.weight);
+      return sum + objProgress;
     }, 0);
-    const totalWeight = objectives.reduce((sum, obj) => sum + obj.weight, 0);
-    return totalWeight > 0 ? totalProgress / totalWeight : 0;
+    return totalProgress / objectives.length;
   }, [objectives]);
 
   // Determine the current year from the plan

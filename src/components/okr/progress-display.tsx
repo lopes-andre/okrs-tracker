@@ -19,12 +19,9 @@ import { PaceBadge } from "./pace-badge";
 import { 
   formatProgress,
   formatValueWithUnit,
-  formatDelta,
-  formatForecast,
   type ProgressResult,
-  type KrType,
-  type KrDirection,
 } from "@/lib/progress-engine";
+import type { KrType, KrDirection } from "@/lib/supabase/types";
 import { formatDistanceToNow, format } from "date-fns";
 import { cn } from "@/lib/utils";
 

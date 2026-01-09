@@ -107,11 +107,6 @@ export function ObjectiveCard({
                   <Badge variant="secondary" className="text-xs">
                     {krCount} Key Result{krCount !== 1 ? "s" : ""}
                   </Badge>
-                  {objective.weight !== 1 && (
-                    <Badge variant="secondary" className="text-xs">
-                      Weight: {Math.round(objective.weight * 100)}%
-                    </Badge>
-                  )}
                 </div>
               </div>
 
