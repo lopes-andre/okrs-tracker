@@ -27,7 +27,7 @@ export async function getObjectives(planId: string): Promise<Objective[]> {
 }
 
 /**
- * Get objectives with their annual KRs
+ * Get objectives with their annual KRs and quarter targets
  */
 export async function getObjectivesWithKrs(planId: string): Promise<ObjectiveWithKrs[]> {
   const supabase = createClient();
@@ -36,7 +36,10 @@ export async function getObjectivesWithKrs(planId: string): Promise<ObjectiveWit
     .from("objectives")
     .select(`
       *,
-      annual_krs(*)
+      annual_krs(
+        *,
+        quarter_targets(*)
+      )
     `)
     .eq("plan_id", planId)
     .order("sort_order", { ascending: true });
