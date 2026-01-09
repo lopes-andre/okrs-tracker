@@ -11,8 +11,15 @@ import {
   UserPlus,
   Loader2,
   X,
+  History,
+  Target,
+  CheckCircle2,
+  Edit3,
+  ListTodo,
+  Filter,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,8 +51,56 @@ import {
   useRemovePlanMember,
   useDeletePlanInvite,
 } from "@/features";
-import type { OkrRole } from "@/lib/supabase/types";
+import { useTimelinePaginated } from "@/features/timeline/hooks";
+import type { OkrRole, ActivityEventWithUser, EventType } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
+import { formatDistanceToNow, format } from "date-fns";
+
+// Activity Log helpers
+const getEventIcon = (type: EventType, entityType?: string) => {
+  switch (type) {
+    case "created":
+      if (entityType === "check_in") return <Target className="w-3.5 h-3.5" />;
+      if (entityType === "task") return <ListTodo className="w-3.5 h-3.5" />;
+      if (entityType === "member") return <Users className="w-3.5 h-3.5" />;
+      return <Edit3 className="w-3.5 h-3.5" />;
+    case "completed":
+      return <CheckCircle2 className="w-3.5 h-3.5" />;
+    case "deleted":
+      return <Trash2 className="w-3.5 h-3.5" />;
+    default:
+      return <Edit3 className="w-3.5 h-3.5" />;
+  }
+};
+
+const formatEventText = (event: ActivityEventWithUser): string => {
+  const newData = event.new_data as { name?: string; title?: string } | null;
+  const metadata = event.metadata as { name?: string; title?: string } | null;
+  const entityName = newData?.name || newData?.title || metadata?.name || metadata?.title || "";
+  
+  const entityLabel = {
+    task: "Task",
+    check_in: "Check-in",
+    member: "Member",
+    objective: "Objective",
+    annual_kr: "Key Result",
+    quarter_target: "Quarter Target",
+    plan: "Plan",
+  }[event.entity_type] || "Item";
+
+  const action = {
+    created: "created",
+    updated: "updated",
+    deleted: "deleted",
+    completed: "completed",
+    status_changed: "status changed",
+    joined: "joined",
+    left: "left",
+    role_changed: "role changed",
+  }[event.event_type] || event.event_type;
+
+  return `${entityLabel} ${action}${entityName ? `: ${entityName}` : ""}`;
+};
 
 export default function SettingsPage({
   params,
@@ -67,6 +122,14 @@ export default function SettingsPage({
   const deleteInvite = useDeletePlanInvite();
 
   const isOwner = role === "owner";
+
+  // Activity Log state
+  const [logPage, setLogPage] = useState(1);
+  const [logFilter, setLogFilter] = useState<string>("all");
+  const logFilters = logFilter !== "all" ? { event_type: [logFilter as EventType] } : undefined;
+  const { data: logData, isLoading: isLoadingLog, isFetching: isFetchingLog } = useTimelinePaginated(planId, logPage, 15, logFilters);
+  const logEvents = logData?.data || [];
+  const logTotalPages = Math.ceil((logData?.count || 0) / 15);
 
   // Form state for plan details
   const [planName, setPlanName] = useState("");
@@ -159,6 +222,10 @@ export default function SettingsPage({
           <TabsTrigger value="permissions" className="gap-2">
             <Shield className="w-4 h-4" />
             Permissions
+          </TabsTrigger>
+          <TabsTrigger value="activity" className="gap-2">
+            <History className="w-4 h-4" />
+            Activity Log
           </TabsTrigger>
         </TabsList>
 
@@ -513,6 +580,118 @@ export default function SettingsPage({
                   </ul>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Activity Log */}
+        <TabsContent value="activity">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Activity Log</CardTitle>
+                  <CardDescription>
+                    Audit trail of all changes in this plan
+                  </CardDescription>
+                </div>
+                <Select value={logFilter} onValueChange={setLogFilter}>
+                  <SelectTrigger className="w-36">
+                    <Filter className="w-3.5 h-3.5 mr-2" />
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Events</SelectItem>
+                    <SelectItem value="created">Created</SelectItem>
+                    <SelectItem value="updated">Updated</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="deleted">Deleted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingLog ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
+                </div>
+              ) : logEvents.length === 0 ? (
+                <EmptyState
+                  icon={History}
+                  title="No activity yet"
+                  description="Activity will appear here as you make changes to your plan."
+                />
+              ) : (
+                <>
+                  {/* Compact event list */}
+                  <div className="divide-y divide-border-soft">
+                    {logEvents.map((event) => (
+                      <div key={event.id} className="flex items-center gap-3 py-2.5">
+                        {/* Icon */}
+                        <div className="w-7 h-7 rounded-full bg-bg-1 border border-border-soft flex items-center justify-center shrink-0 text-text-muted">
+                          {getEventIcon(event.event_type, event.entity_type)}
+                        </div>
+
+                        {/* Event text */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-body-sm text-text-strong truncate">
+                            {formatEventText(event)}
+                          </p>
+                          <div className="flex items-center gap-2 text-small text-text-muted">
+                            {event.user && (
+                              <>
+                                <span>{event.user.full_name || event.user.email}</span>
+                                <span>•</span>
+                              </>
+                            )}
+                            <span title={format(new Date(event.created_at), "PPpp")}>
+                              {formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Badge */}
+                        <Badge 
+                          variant={
+                            event.event_type === "created" ? "success" :
+                            event.event_type === "completed" ? "success" :
+                            event.event_type === "deleted" ? "warning" :
+                            "outline"
+                          }
+                          className="shrink-0 text-[10px]"
+                        >
+                          {event.entity_type.replace("_", " ")}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {logTotalPages > 1 && (
+                    <div className="mt-4 pt-4 border-t border-border-soft flex justify-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={logPage === 1 || isFetchingLog}
+                        onClick={() => setLogPage((p) => p - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <span className="flex items-center px-3 text-small text-text-muted">
+                        {logPage} / {logTotalPages}
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={logPage >= logTotalPages || isFetchingLog}
+                        onClick={() => setLogPage((p) => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
