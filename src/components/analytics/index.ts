@@ -4,3 +4,6 @@ export { ProgressChart } from "./progress-chart";
 export { PaceAnalysisPanel } from "./pace-analysis-panel";
 export { ActivityBarChart } from "./activity-bar-chart";
 export { BurnupChart } from "./burnup-chart";
+export { ActivityHeatmap } from "./activity-heatmap";
+export { TaskMetricsPanel } from "./task-metrics-panel";
+export { ProductivityPanel } from "./productivity-panel";

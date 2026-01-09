@@ -18,6 +18,9 @@ import { useCheckIns } from "@/features/check-ins/hooks";
 import { 
   useAnalyticsSummary, 
   useKrPerformanceData,
+  useCheckInsByDay,
+  useTaskMetrics,
+  useProductivityStats,
 } from "@/features/analytics/hooks";
 import { 
   SummaryCards, 
@@ -26,6 +29,9 @@ import {
   PaceAnalysisPanel,
   ActivityBarChart,
   BurnupChart,
+  ActivityHeatmap,
+  TaskMetricsPanel,
+  ProductivityPanel,
 } from "@/components/analytics";
 
 export default function AnalyticsPage({
@@ -42,6 +48,9 @@ export default function AnalyticsPage({
   const { data: summary, isLoading: isLoadingSummary } = useAnalyticsSummary(planId, planYear);
   const { data: krPerformanceData, isLoading: isLoadingPerformance } = useKrPerformanceData(planId, planYear);
   const { data: allCheckIns = [], isLoading: isLoadingCheckIns } = useCheckIns(planId);
+  const { data: checkInsByDay = [], isLoading: isLoadingHeatmap } = useCheckInsByDay(planId);
+  const { data: taskMetrics, isLoading: isLoadingTaskMetrics } = useTaskMetrics(planId);
+  const { data: productivityStats, isLoading: isLoadingProductivity } = useProductivityStats(planId);
 
   const isLoading = isLoadingPlan || isLoadingSummary || isLoadingPerformance || isLoadingCheckIns;
 
@@ -173,13 +182,18 @@ export default function AnalyticsPage({
           )}
         </TabsContent>
 
-        {/* Activity Heatmap Tab - Coming in Phase 3 */}
+        {/* Activity Heatmap Tab */}
         <TabsContent value="heatmap">
-          <EmptyState
-            icon={Calendar}
-            title="Activity Heatmap Coming Soon"
-            description="Visualize your check-in activity patterns throughout the year."
-          />
+          <div className="space-y-6">
+            {/* Heatmap Calendar */}
+            <ActivityHeatmap data={checkInsByDay} year={planYear} />
+            
+            {/* Task Metrics & Productivity */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {taskMetrics && <TaskMetricsPanel metrics={taskMetrics} />}
+              {productivityStats && <ProductivityPanel stats={productivityStats} />}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </>
