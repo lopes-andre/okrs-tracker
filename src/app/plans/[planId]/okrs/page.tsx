@@ -12,6 +12,7 @@ import {
   AnnualKrDialog,
   QuarterTargetsDialog,
   DeleteConfirmationDialog,
+  CheckInDialog,
 } from "@/components/okr";
 import {
   usePlan,
@@ -29,6 +30,7 @@ import {
   useKrGroups,
   useTags,
   useQuarterTargetsByKr,
+  useCreateCheckIn,
 } from "@/features";
 import type { 
   Objective, 
@@ -38,6 +40,8 @@ import type {
   ObjectiveUpdate,
   AnnualKrInsert,
   AnnualKrUpdate,
+  CheckInInsert,
+  QuarterTarget,
 } from "@/lib/supabase/types";
 
 // Stats Card Component
@@ -94,6 +98,7 @@ export default function OKRsPage({
   const deleteAnnualKr = useDeleteAnnualKr();
   const setKrTags = useSetKrTags();
   const upsertQuarterTargets = useUpsertQuarterTargets();
+  const createCheckIn = useCreateCheckIn();
 
   // Dialog states
   const [objectiveDialogOpen, setObjectiveDialogOpen] = useState(false);
@@ -114,6 +119,9 @@ export default function OKRsPage({
     name: string;
     objectiveId?: string;
   } | null>(null);
+
+  const [checkInDialogOpen, setCheckInDialogOpen] = useState(false);
+  const [checkInKr, setCheckInKr] = useState<(AnnualKr & { quarter_targets?: QuarterTarget[] }) | null>(null);
 
   // Permission check
   const canEdit = role === "owner" || role === "editor";
@@ -175,6 +183,15 @@ export default function OKRsPage({
   function handleEditQuarterTargets(kr: AnnualKr) {
     setQuarterTargetsKr(kr);
     setQuarterTargetsDialogOpen(true);
+  }
+
+  function handleCheckIn(kr: AnnualKr & { quarter_targets?: QuarterTarget[] }) {
+    setCheckInKr(kr);
+    setCheckInDialogOpen(true);
+  }
+
+  async function handleCheckInSubmit(checkIn: Omit<CheckInInsert, "recorded_by">) {
+    await createCheckIn.mutateAsync(checkIn as CheckInInsert);
   }
 
   async function handleObjectiveSubmit(data: ObjectiveInsert | ObjectiveUpdate) {
@@ -306,6 +323,10 @@ export default function OKRsPage({
                 const kr = objective.annual_krs?.find((k) => k.id === krId);
                 if (kr) handleEditQuarterTargets(kr);
               }}
+              onCheckIn={(krId) => {
+                const kr = objective.annual_krs?.find((k) => k.id === krId);
+                if (kr) handleCheckIn(kr);
+              }}
             />
           ))}
         </div>
@@ -370,6 +391,13 @@ export default function OKRsPage({
         }
         itemName={deleteTarget?.name || ""}
         onConfirm={handleDelete}
+      />
+
+      <CheckInDialog
+        open={checkInDialogOpen}
+        onOpenChange={setCheckInDialogOpen}
+        kr={checkInKr}
+        onSubmit={handleCheckInSubmit}
       />
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import {
   Target,
@@ -19,9 +19,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { TasksSection } from "@/components/tasks";
+import { CheckInDialog, CheckInList } from "@/components/okr";
 import { usePlan, usePlanRole } from "@/features/plans/hooks";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
+import { useRecentCheckIns, useCreateCheckIn } from "@/features/check-ins/hooks";
+import type { AnnualKr, QuarterTarget, CheckInInsert } from "@/lib/supabase/types";
 
 export default function PlanOverviewPage({
   params,
@@ -34,9 +37,38 @@ export default function PlanOverviewPage({
   const { data: role } = usePlanRole(planId);
   const { data: objectives = [], isLoading: objectivesLoading } = useObjectives(planId);
   const { data: annualKrs = [] } = useAnnualKrs(planId);
+  const { data: recentCheckIns = [] } = useRecentCheckIns(planId, 5);
+  const createCheckIn = useCreateCheckIn();
+
+  // Dialog state
+  const [checkInDialogOpen, setCheckInDialogOpen] = useState(false);
+  const [checkInKr, setCheckInKr] = useState<(AnnualKr & { quarter_targets?: QuarterTarget[] }) | null>(null);
+  const [showKrPicker, setShowKrPicker] = useState(false);
 
   const isLoading = planLoading || objectivesLoading;
   const canEdit = role === "owner" || role === "editor";
+
+  // Handle quick check-in: show KR picker first
+  function handleQuickCheckIn() {
+    if (annualKrs.length === 1) {
+      // Single KR: go directly to check-in
+      setCheckInKr(annualKrs[0]);
+      setCheckInDialogOpen(true);
+    } else if (annualKrs.length > 1) {
+      // Multiple KRs: show picker
+      setShowKrPicker(true);
+    }
+  }
+
+  function handleSelectKrForCheckIn(kr: AnnualKr) {
+    setCheckInKr(kr);
+    setShowKrPicker(false);
+    setCheckInDialogOpen(true);
+  }
+
+  async function handleCheckInSubmit(checkIn: Omit<CheckInInsert, "recorded_by">) {
+    await createCheckIn.mutateAsync(checkIn as CheckInInsert);
+  }
 
   // Calculate stats from real data
   const totalObjectives = objectives.length;
@@ -85,7 +117,9 @@ export default function PlanOverviewPage({
         description={plan?.description || "Annual OKR tracking dashboard"}
       >
         <Button variant="secondary">Weekly Review</Button>
-        <Button>Quick Check-in</Button>
+        <Button onClick={handleQuickCheckIn} disabled={annualKrs.length === 0}>
+          Quick Check-in
+        </Button>
       </PageHeader>
 
       {/* Stats Grid */}
@@ -318,6 +352,31 @@ export default function PlanOverviewPage({
             </Card>
           )}
 
+          {/* Recent Check-ins */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-h5">Recent Check-ins</CardTitle>
+              {canEdit && annualKrs.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 gap-1"
+                  onClick={handleQuickCheckIn}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              <CheckInList 
+                checkIns={recentCheckIns} 
+                showKrName 
+                compact 
+              />
+            </CardContent>
+          </Card>
+
           {/* Quick Actions */}
           {canEdit && (
             <Card>
@@ -348,6 +407,61 @@ export default function PlanOverviewPage({
           )}
         </div>
       </div>
+
+      {/* KR Picker Dialog */}
+      {showKrPicker && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowKrPicker(false)}
+        >
+          <Card 
+            className="w-full max-w-md mx-4 max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <CardTitle>Select Key Result</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {annualKrs.map((kr) => {
+                const progress = kr.target_value 
+                  ? Math.round((kr.current_value || 0) / kr.target_value * 100)
+                  : 0;
+                
+                return (
+                  <button
+                    key={kr.id}
+                    onClick={() => handleSelectKrForCheckIn(kr)}
+                    className="w-full p-3 rounded-card border border-border-soft bg-bg-0 hover:border-border hover:shadow-card-hover transition-all text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-text-strong truncate">
+                          {kr.name}
+                        </p>
+                        <p className="text-small text-text-muted mt-0.5">
+                          {kr.current_value?.toLocaleString()} / {kr.target_value?.toLocaleString()}
+                          {kr.unit && ` ${kr.unit}`}
+                        </p>
+                      </div>
+                      <Badge variant={progress >= 70 ? "success" : progress >= 40 ? "warning" : "outline"}>
+                        {progress}%
+                      </Badge>
+                    </div>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Check-in Dialog */}
+      <CheckInDialog
+        open={checkInDialogOpen}
+        onOpenChange={setCheckInDialogOpen}
+        kr={checkInKr}
+        onSubmit={handleCheckInSubmit}
+      />
     </>
   );
 }

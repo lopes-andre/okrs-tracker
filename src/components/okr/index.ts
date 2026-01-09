@@ -5,3 +5,7 @@ export { ObjectiveDialog } from "./objective-dialog";
 export { AnnualKrDialog } from "./annual-kr-dialog";
 export { QuarterTargetsDialog } from "./quarter-targets-dialog";
 export { DeleteConfirmationDialog } from "./delete-confirmation-dialog";
+export { CheckInDialog } from "./check-in-dialog";
+export { CheckInList } from "./check-in-list";
+export { PaceBadge } from "./pace-badge";
+export { ProgressDisplay, ProgressInline, ProgressMini } from "./progress-display";

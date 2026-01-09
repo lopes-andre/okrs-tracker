@@ -33,6 +33,7 @@ interface ObjectiveCardProps {
   onEditKr: (krId: string) => void;
   onDeleteKr: (krId: string) => void;
   onEditQuarterTargets?: (krId: string) => void;
+  onCheckIn?: (krId: string) => void;
 }
 
 export function ObjectiveCard({
@@ -44,6 +45,7 @@ export function ObjectiveCard({
   onEditKr,
   onDeleteKr,
   onEditQuarterTargets,
+  onCheckIn,
 }: ObjectiveCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const canEdit = role === "owner" || role === "editor";
@@ -177,6 +179,7 @@ export function ObjectiveCard({
                     onEditQuarterTargets={
                       onEditQuarterTargets ? () => onEditQuarterTargets(kr.id) : undefined
                     }
+                    onCheckIn={onCheckIn ? () => onCheckIn(kr.id) : undefined}
                   />
                 ))}
               </>

@@ -41,3 +41,6 @@ export * from "./dashboards/hooks";
 // Mindmap
 export * from "./mindmap/api";
 export * from "./mindmap/hooks";
+
+// Progress Engine
+export * from "./progress";
