@@ -40,7 +40,7 @@ export interface KrPerformanceRow {
   progress: number; // 0-1
   paceStatus: string;
   expectedValue: number;
-  forecast: number;
+  forecast: number | null;
   lastCheckInDate: string | null;
   checkInCount: number;
   trend: "up" | "down" | "stable";

@@ -5,11 +5,7 @@ import { useMemo } from "react";
 import { queryKeys } from "@/lib/query-client";
 import * as api from "./api";
 import type { AnalyticsSummary, KrPerformanceRow } from "./api";
-import {
-  computeKrProgress,
-  type KrProgressResult,
-  type PaceStatus,
-} from "@/lib/progress-engine";
+import { computeKrProgress } from "@/lib/progress-engine";
 import type { AnnualKr, CheckIn, Task } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -86,7 +82,7 @@ export function useAnalyticsSummary(
         objProgressSum += progressResult.progress;
         krCount++;
         
-        if (progressResult.isComplete) {
+        if (progressResult.progress >= 1) {
           krsCompleted++;
         }
       });
@@ -231,7 +227,7 @@ export function useKrPerformanceData(
           progress: progressResult.progress,
           paceStatus: progressResult.paceStatus,
           expectedValue: progressResult.expectedProgress * (kr.target_value - kr.start_value) + kr.start_value,
-          forecast: progressResult.forecast,
+          forecast: progressResult.forecastValue,
           lastCheckInDate: lastCheckIn?.recorded_at || null,
           checkInCount: krCheckIns.length,
           trend,
