@@ -82,6 +82,7 @@ npm install
    | 8 | `20260108000008_views.sql` | Database views |
    | 9 | `20260109000001_tasks_improvements.sql` | Task-KR linking, performance indexes |
    | 10 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
+   | 11 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    
@@ -149,7 +150,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │       ├── toast-utils.ts       # Toast notifications
 │       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations (10 files)
+│   ├── migrations/              # Database migrations (11 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -234,7 +235,7 @@ function MyComponent() {
 ## Troubleshooting
 
 ### "Permission denied" when creating a plan
-- Make sure you ran **all 10 migration files** in order
+- Make sure you ran **all 11 migration files** in order
 - Check that your `.env.local` has the correct Supabase keys
 - Verify you're logged in (check browser cookies)
 

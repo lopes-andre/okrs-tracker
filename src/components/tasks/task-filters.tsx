@@ -10,11 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { TaskStatus, TaskPriority, Objective } from "@/lib/supabase/types";
+import type { TaskStatus, TaskPriority, TaskEffort, Objective } from "@/lib/supabase/types";
 
 export interface TaskFilterValues {
   status?: TaskStatus[];
   priority?: TaskPriority[];
+  effort?: TaskEffort[];
   objective_id?: string;
   due_date_from?: string;
   due_date_to?: string;
@@ -39,10 +40,17 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
+const effortOptions: { value: TaskEffort; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "moderate", label: "Moderate" },
+  { value: "heavy", label: "Heavy" },
+];
+
 export function TaskFilters({ filters, onChange, objectives = [] }: TaskFiltersProps) {
   const hasFilters =
     (filters.status && filters.status.length > 0) ||
     (filters.priority && filters.priority.length > 0) ||
+    (filters.effort && filters.effort.length > 0) ||
     filters.objective_id ||
     filters.due_date_from ||
     filters.due_date_to;
@@ -61,6 +69,14 @@ export function TaskFilters({ filters, onChange, objectives = [] }: TaskFiltersP
       ? current.filter((p) => p !== priority)
       : [...current, priority];
     onChange({ ...filters, priority: updated.length > 0 ? updated : undefined });
+  }
+
+  function toggleEffort(effort: TaskEffort) {
+    const current = filters.effort || [];
+    const updated = current.includes(effort)
+      ? current.filter((e) => e !== effort)
+      : [...current, effort];
+    onChange({ ...filters, effort: updated.length > 0 ? updated : undefined });
   }
 
   function clearFilters() {
@@ -97,6 +113,23 @@ export function TaskFilters({ filters, onChange, objectives = [] }: TaskFiltersP
           </SelectTrigger>
           <SelectContent>
             {priorityOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Effort Filter */}
+        <Select
+          value=""
+          onValueChange={(v) => v && toggleEffort(v as TaskEffort)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Effort" />
+          </SelectTrigger>
+          <SelectContent>
+            {effortOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
               </SelectItem>
@@ -155,6 +188,17 @@ export function TaskFilters({ filters, onChange, objectives = [] }: TaskFiltersP
               onClick={() => togglePriority(priority)}
             >
               {priorityOptions.find((o) => o.value === priority)?.label}
+              <X className="w-3 h-3 ml-1" />
+            </Badge>
+          ))}
+          {filters.effort?.map((effort) => (
+            <Badge
+              key={effort}
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => toggleEffort(effort)}
+            >
+              {effortOptions.find((o) => o.value === effort)?.label}
               <X className="w-3 h-3 ml-1" />
             </Badge>
           ))}

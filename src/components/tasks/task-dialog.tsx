@@ -27,6 +27,7 @@ import type {
   TaskUpdate,
   TaskStatus,
   TaskPriority,
+  TaskEffort,
   Objective,
   AnnualKr,
   Tag,
@@ -62,6 +63,12 @@ const priorityOptions: { value: TaskPriority; label: string }[] = [
   { value: "low", label: "Low" },
 ];
 
+const effortOptions: { value: TaskEffort; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "moderate", label: "Moderate" },
+  { value: "heavy", label: "Heavy" },
+];
+
 export function TaskDialog({
   open,
   onOpenChange,
@@ -83,6 +90,7 @@ export function TaskDialog({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>("pending");
   const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [effort, setEffort] = useState<TaskEffort>("moderate");
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [showTimeInput, setShowTimeInput] = useState(false);
@@ -106,6 +114,7 @@ export function TaskDialog({
         setDescription(task.description || "");
         setStatus(task.status);
         setPriority(task.priority);
+        setEffort(task.effort || "moderate");
         
         // Parse due_date and due_time
         if (task.due_date) {
@@ -141,6 +150,7 @@ export function TaskDialog({
         setDescription("");
         setStatus("pending");
         setPriority("medium");
+        setEffort("moderate");
         setDueDate("");
         setDueTime("");
         setShowTimeInput(false);
@@ -200,6 +210,7 @@ export function TaskDialog({
             description: description || null,
             status,
             priority,
+            effort,
             due_date: dueDate || null,
             due_time: showTimeInput && dueTime ? dueTime : null,
             objective_id: finalObjectiveId,
@@ -211,6 +222,7 @@ export function TaskDialog({
             description: description || null,
             status,
             priority,
+            effort,
             due_date: dueDate || null,
             due_time: showTimeInput && dueTime ? dueTime : null,
             objective_id: finalObjectiveId,
@@ -267,16 +279,33 @@ export function TaskDialog({
             />
           </div>
 
-          {/* Status and Priority - Side by side */}
+          {/* Status */}
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statusOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Priority and Effort - Side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as TaskStatus)}>
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map((opt) => (
+                  {priorityOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -286,13 +315,13 @@ export function TaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
+              <Label>Effort</Label>
+              <Select value={effort} onValueChange={(v) => setEffort(v as TaskEffort)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {priorityOptions.map((opt) => (
+                  {effortOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>

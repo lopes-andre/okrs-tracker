@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Task, TaskStatus, TaskPriority, OkrRole } from "@/lib/supabase/types";
+import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 interface TaskRowProps {
@@ -40,6 +40,12 @@ const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
   high: { label: "High", color: "text-status-danger bg-status-danger/10 border-status-danger/20" },
   medium: { label: "Medium", color: "text-status-warning bg-status-warning/10 border-status-warning/20" },
   low: { label: "Low", color: "text-text-muted bg-bg-1 border-border-soft" },
+};
+
+const effortConfig: Record<TaskEffort, { label: string; color: string }> = {
+  light: { label: "Light", color: "text-status-success bg-status-success/10 border-status-success/20" },
+  moderate: { label: "Moderate", color: "text-accent bg-accent/10 border-accent/20" },
+  heavy: { label: "Heavy", color: "text-status-info bg-status-info/10 border-status-info/20" },
 };
 
 interface DueDateDisplay {
@@ -210,6 +216,16 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
       >
         {priorityConfig[task.priority].label}
       </Badge>
+
+      {/* Effort Badge */}
+      {task.effort && (
+        <Badge
+          variant="outline"
+          className={cn("shrink-0 text-xs", effortConfig[task.effort].color)}
+        >
+          {effortConfig[task.effort].label}
+        </Badge>
+      )}
 
       {/* Due Date / Completion Status */}
       {dueDate.text && (

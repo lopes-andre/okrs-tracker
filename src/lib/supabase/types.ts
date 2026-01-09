@@ -9,6 +9,7 @@ export type KrDirection = 'increase' | 'decrease' | 'maintain';
 export type KrAggregation = 'reset_quarterly' | 'cumulative';
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskEffort = 'light' | 'moderate' | 'heavy';
 export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
 export type MindmapEntityType = 'plan' | 'objective' | 'annual_kr' | 'quarter_target';
 export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan';
@@ -120,6 +121,7 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  effort: TaskEffort;
   due_date: string | null;
   due_time: string | null;
   completed_at: string | null;
@@ -331,6 +333,7 @@ export interface ActivityEventWithUser extends ActivityEvent {
 export interface TaskFilters {
   status?: TaskStatus | TaskStatus[];
   priority?: TaskPriority | TaskPriority[];
+  effort?: TaskEffort | TaskEffort[];
   assigned_to?: string;
   objective_id?: string;
   annual_kr_id?: string;
