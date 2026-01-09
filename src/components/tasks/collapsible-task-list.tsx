@@ -44,11 +44,11 @@ const variantStyles = {
     titleClass: "",
   },
   accent: {
-    // Blue styling for "Today" - uses status-info blue
+    // Blue styling for "Today" - blue border/badge but dark title for emphasis
     border: "border-status-info/30",
     header: "bg-status-info/5",
     badge: "info" as const,
-    titleClass: "text-status-info",
+    titleClass: "", // Keep title dark like other lists for emphasis
   },
   danger: {
     border: "border-status-danger/30",
