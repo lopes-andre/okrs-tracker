@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, Plus, X, Tag as TagIcon, Clock } from "lucide-react";
+import { 
+  Loader2, 
+  Plus, 
+  X, 
+  Tag as TagIcon, 
+  Clock,
+  AlertTriangle,
+  BatteryLow,
+  BatteryMedium,
+  BatteryFull,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +42,7 @@ import type {
   AnnualKr,
   Tag,
 } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
 
 // Type for creating - without plan_id since the hook adds it
 type TaskCreateData = Omit<TaskInsert, "plan_id">;
@@ -57,16 +68,29 @@ const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-const priorityOptions: { value: TaskPriority; label: string }[] = [
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
+// Priority options with icons and descriptions
+const priorityOptions: { 
+  value: TaskPriority; 
+  label: string; 
+  description: string;
+  color: string;
+}[] = [
+  { value: "high", label: "Critical", description: "High impact if delayed", color: "text-status-danger" },
+  { value: "medium", label: "Important", description: "Should be addressed soon", color: "text-status-warning" },
+  { value: "low", label: "Minor", description: "Low impact, handle when convenient", color: "text-text-muted" },
 ];
 
-const effortOptions: { value: TaskEffort; label: string }[] = [
-  { value: "light", label: "Light" },
-  { value: "moderate", label: "Moderate" },
-  { value: "heavy", label: "Heavy" },
+// Effort options with icons and descriptions
+const effortOptions: { 
+  value: TaskEffort; 
+  label: string; 
+  description: string;
+  color: string;
+  Icon: typeof BatteryLow;
+}[] = [
+  { value: "light", label: "Light", description: "Quick task, low energy", color: "text-status-success", Icon: BatteryLow },
+  { value: "moderate", label: "Moderate", description: "Requires some focus", color: "text-text-muted", Icon: BatteryMedium },
+  { value: "heavy", label: "Heavy", description: "Significant time investment", color: "text-text-strong", Icon: BatteryFull },
 ];
 
 export function TaskDialog({
@@ -299,15 +323,29 @@ export function TaskDialog({
           {/* Priority and Effort - Side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Priority</Label>
+              <Label className="flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Priority
+              </Label>
               <Select value={priority} onValueChange={(v) => setPriority(v as TaskPriority)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    <span className="flex items-center gap-2">
+                      <AlertTriangle className={cn("w-3.5 h-3.5", priorityOptions.find(o => o.value === priority)?.color)} />
+                      {priorityOptions.find(o => o.value === priority)?.label}
+                    </span>
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {priorityOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className={cn("w-3.5 h-3.5", opt.color)} />
+                        <div>
+                          <span className="font-medium">{opt.label}</span>
+                          <p className="text-xs text-text-muted">{opt.description}</p>
+                        </div>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -315,17 +353,41 @@ export function TaskDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Effort</Label>
+              <Label className="flex items-center gap-1.5">
+                <BatteryMedium className="w-3.5 h-3.5" />
+                Effort
+              </Label>
               <Select value={effort} onValueChange={(v) => setEffort(v as TaskEffort)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {(() => {
+                      const opt = effortOptions.find(o => o.value === effort);
+                      if (!opt) return null;
+                      const Icon = opt.Icon;
+                      return (
+                        <span className="flex items-center gap-2">
+                          <Icon className={cn("w-3.5 h-3.5", opt.color)} />
+                          {opt.label}
+                        </span>
+                      );
+                    })()}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {effortOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
+                  {effortOptions.map((opt) => {
+                    const Icon = opt.Icon;
+                    return (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon className={cn("w-3.5 h-3.5", opt.color)} />
+                          <div>
+                            <span className="font-medium">{opt.label}</span>
+                            <p className="text-xs text-text-muted">{opt.description}</p>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

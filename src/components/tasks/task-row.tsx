@@ -9,6 +9,11 @@ import {
   Trash2,
   Calendar,
   Target,
+  AlertTriangle,
+  Battery,
+  BatteryLow,
+  BatteryMedium,
+  BatteryFull,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +24,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -41,16 +52,58 @@ interface TaskRowProps {
   onDelete: () => void;
 }
 
-const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
-  high: { label: "High", color: "text-status-danger bg-status-danger/10 border-status-danger/20" },
-  medium: { label: "Medium", color: "text-status-warning bg-status-warning/10 border-status-warning/20" },
-  low: { label: "Low", color: "text-text-muted bg-bg-1 border-border-soft" },
+// Priority: Alert/Impact style - filled, dominant, answers "Why does this matter?"
+const priorityConfig: Record<TaskPriority, { 
+  label: string; 
+  tooltip: string;
+  color: string;
+  iconColor: string;
+}> = {
+  high: { 
+    label: "Critical", 
+    tooltip: "Critical — High impact if delayed",
+    color: "bg-status-danger text-white border-status-danger",
+    iconColor: "text-white",
+  },
+  medium: { 
+    label: "Important", 
+    tooltip: "Important — Should be addressed soon",
+    color: "bg-status-warning text-white border-status-warning",
+    iconColor: "text-white",
+  },
+  low: { 
+    label: "Minor", 
+    tooltip: "Minor — Low impact, handle when convenient",
+    color: "bg-bg-1 text-text-muted border-border",
+    iconColor: "text-text-muted",
+  },
 };
 
-const effortConfig: Record<TaskEffort, { label: string; color: string }> = {
-  light: { label: "Light", color: "text-status-success bg-status-success/10 border-status-success/20" },
-  moderate: { label: "Moderate", color: "text-accent bg-accent/10 border-accent/20" },
-  heavy: { label: "Heavy", color: "text-status-info bg-status-info/10 border-status-info/20" },
+// Effort: Battery/Energy style - outlined, informational, answers "What does this cost me?"
+const effortConfig: Record<TaskEffort, { 
+  label: string; 
+  tooltip: string;
+  color: string;
+  Icon: typeof Battery;
+}> = {
+  light: { 
+    label: "Light", 
+    tooltip: "Light — Quick task, low energy needed",
+    color: "border-status-success/50 text-status-success bg-transparent",
+    Icon: BatteryLow,
+  },
+  moderate: { 
+    label: "Moderate", 
+    tooltip: "Moderate — Requires some focus and time",
+    color: "border-text-muted/50 text-text-muted bg-transparent",
+    Icon: BatteryMedium,
+  },
+  heavy: { 
+    label: "Heavy", 
+    tooltip: "Heavy — Significant time and energy investment",
+    color: "border-text-strong/50 text-text-strong bg-transparent",
+    Icon: BatteryFull,
+  },
 };
 
 interface DueDateDisplay {
@@ -231,22 +284,50 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
         </Badge>
       )}
 
-      {/* Priority Badge */}
-      <Badge
-        variant="outline"
-        className={cn("shrink-0 text-xs", priorityConfig[task.priority].color)}
-      >
-        {priorityConfig[task.priority].label}
-      </Badge>
+      {/* Priority Badge - Filled, dominant, alert-style */}
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge
+              className={cn(
+                "shrink-0 text-xs gap-1 cursor-default",
+                priorityConfig[task.priority].color
+              )}
+            >
+              <AlertTriangle className={cn("w-3 h-3", priorityConfig[task.priority].iconColor)} />
+              {priorityConfig[task.priority].label}
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {priorityConfig[task.priority].tooltip}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-      {/* Effort Badge */}
+      {/* Effort Badge - Outlined, informational, battery-style */}
       {task.effort && (
-        <Badge
-          variant="outline"
-          className={cn("shrink-0 text-xs", effortConfig[task.effort].color)}
-        >
-          {effortConfig[task.effort].label}
-        </Badge>
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "shrink-0 text-xs gap-1 cursor-default",
+                  effortConfig[task.effort].color
+                )}
+              >
+                {(() => {
+                  const EffortIcon = effortConfig[task.effort].Icon;
+                  return <EffortIcon className="w-3 h-3" />;
+                })()}
+                {effortConfig[task.effort].label}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {effortConfig[task.effort].tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
 
       {/* Due Date / Completion Status */}
