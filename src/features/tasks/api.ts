@@ -20,6 +20,9 @@ import {
   startOfMonth, 
   endOfMonth, 
   isBefore, 
+  isAfter,
+  isSameDay,
+  parseISO,
   format,
   startOfDay,
 } from "date-fns";
@@ -254,10 +257,11 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
   // Fetch all non-completed tasks with one query for efficiency
   const allTasks = await getTasksWithDetails(planId, filters);
   
-  const dates = getDateBoundaries();
-  const todayDate = new Date(dates.today);
-  const weekEnd = new Date(dates.weekEnd);
-  const monthEnd = new Date(dates.monthEnd);
+  // Get today's date boundaries using local timezone
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const weekEnd = endOfWeek(now, { weekStartsOn: 0 }); // Sunday as start
+  const monthEnd = endOfMonth(now);
 
   const result = {
     today: [] as TaskWithDetails[],
@@ -296,25 +300,29 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
       continue;
     }
 
-    const dueDate = new Date(task.due_date);
-    const dueDateStr = format(dueDate, 'yyyy-MM-dd');
+    // Parse the due date - task.due_date is in YYYY-MM-DD format
+    // Use parseISO to avoid timezone issues
+    const dueDate = parseISO(task.due_date);
 
-    if (isBefore(dueDate, todayDate)) {
-      result.overdue.push(task);
-      result.counts.overdue++;
-    } else if (dueDateStr === dates.today) {
+    // Check categorization
+    if (isSameDay(dueDate, todayStart)) {
       // Due today
       result.today.push(task);
       result.counts.today++;
-    } else if (dueDate <= weekEnd) {
-      // Rest of this week (after today)
+    } else if (isBefore(dueDate, todayStart)) {
+      // Overdue (before today)
+      result.overdue.push(task);
+      result.counts.overdue++;
+    } else if (!isAfter(dueDate, weekEnd)) {
+      // Rest of this week (after today, up to and including week end)
       result.thisWeek.push(task);
       result.counts.thisWeek++;
-    } else if (dueDate <= monthEnd) {
+    } else if (!isAfter(dueDate, monthEnd)) {
+      // This month (after this week, up to month end)
       result.thisMonth.push(task);
       result.counts.thisMonth++;
     } else {
-      // Future tasks go into backlog for now (removed "future" category)
+      // Future tasks go into backlog
       result.backlog.push(task);
       result.counts.backlog++;
     }

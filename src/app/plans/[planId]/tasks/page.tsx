@@ -290,7 +290,7 @@ export default function TasksPage({
         <Card
           className={cn(
             "cursor-pointer transition-all hover:border-status-info/50",
-            counts.today > 0 && "border-status-info/30 bg-status-info/5",
+            counts.today > 0 && "border-status-info/30",
             activeFilter === "today" && "ring-2 ring-status-info/30"
           )}
           onClick={() => handleStatsClick("today")}
