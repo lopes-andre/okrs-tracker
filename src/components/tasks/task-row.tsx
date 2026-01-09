@@ -7,7 +7,6 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  AlertCircle,
   Calendar,
   Target,
 } from "lucide-react";
@@ -43,44 +42,92 @@ const priorityConfig: Record<TaskPriority, { label: string; color: string }> = {
   low: { label: "Low", color: "text-text-muted bg-bg-1 border-border-soft" },
 };
 
-// Status icons for potential future use
-// const statusConfig: Record<TaskStatus, { label: string; icon: typeof Circle }> = {
-//   pending: { label: "To Do", icon: Circle },
-//   in_progress: { label: "In Progress", icon: Clock },
-//   completed: { label: "Done", icon: CheckCircle2 },
-//   cancelled: { label: "Cancelled", icon: AlertCircle },
-// };
+interface DueDateDisplay {
+  text: string;
+  timeText?: string;
+  variant: "overdue" | "today" | "soon" | "normal" | "completed" | "completed-late";
+}
 
-function formatDueDate(dateStr: string | null): { text: string; isOverdue: boolean; isDueSoon: boolean } {
-  if (!dateStr) return { text: "", isOverdue: false, isDueSoon: false };
+function formatTime(timeStr: string | null): string {
+  if (!timeStr) return "";
+  // Parse HH:MM:SS or HH:MM format
+  const [hours, minutes] = timeStr.split(":");
+  const h = parseInt(hours, 10);
+  const m = minutes;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${m} ${ampm}`;
+}
+
+function formatDueDate(
+  dateStr: string | null,
+  timeStr: string | null,
+  isCompleted: boolean,
+  completedAt: string | null
+): DueDateDisplay {
+  // For completed tasks, show completion status
+  if (isCompleted) {
+    if (!dateStr) {
+      return { text: "Completed", variant: "completed" };
+    }
+    
+    const dueDate = new Date(dateStr);
+    dueDate.setHours(23, 59, 59, 999); // End of due day
+    
+    if (completedAt) {
+      const completedDate = new Date(completedAt);
+      if (completedDate > dueDate) {
+        const diffMs = completedDate.getTime() - dueDate.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        return { 
+          text: `Completed ${diffDays}d late`, 
+          variant: "completed-late" 
+        };
+      }
+    }
+    return { text: "Completed", variant: "completed" };
+  }
+
+  // For non-completed tasks
+  if (!dateStr) return { text: "", variant: "normal" };
   
   const date = new Date(dateStr);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   const diffDays = Math.ceil((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const formattedTime = formatTime(timeStr);
   
   if (diffDays < 0) {
-    return { text: `${Math.abs(diffDays)}d overdue`, isOverdue: true, isDueSoon: false };
+    return { text: `${Math.abs(diffDays)}d overdue`, timeText: formattedTime, variant: "overdue" };
   } else if (diffDays === 0) {
-    return { text: "Today", isOverdue: false, isDueSoon: true };
+    return { text: "Today", timeText: formattedTime, variant: "today" };
   } else if (diffDays === 1) {
-    return { text: "Tomorrow", isOverdue: false, isDueSoon: true };
+    return { text: "Tomorrow", timeText: formattedTime, variant: "soon" };
   } else if (diffDays <= 7) {
-    return { text: `${diffDays}d`, isOverdue: false, isDueSoon: true };
+    return { text: `in ${diffDays}d`, timeText: formattedTime, variant: "soon" };
   } else {
     return { 
       text: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), 
-      isOverdue: false, 
-      isDueSoon: false 
+      timeText: formattedTime,
+      variant: "normal"
     };
   }
 }
 
+const variantStyles: Record<DueDateDisplay["variant"], string> = {
+  overdue: "text-status-danger font-medium",
+  today: "text-accent font-medium", // Blue for today
+  soon: "text-status-warning",
+  normal: "text-text-muted",
+  completed: "text-status-success",
+  "completed-late": "text-status-warning",
+};
+
 export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRowProps) {
   const canEdit = role === "owner" || role === "editor";
   const isCompleted = task.status === "completed";
-  const dueDate = formatDueDate(task.due_date);
+  const dueDate = formatDueDate(task.due_date, task.due_time, isCompleted, task.completed_at);
 
   function handleToggleComplete() {
     if (!canEdit) return;
@@ -164,18 +211,19 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
         {priorityConfig[task.priority].label}
       </Badge>
 
-      {/* Due Date */}
+      {/* Due Date / Completion Status */}
       {dueDate.text && (
         <span
           className={cn(
             "text-small shrink-0 flex items-center gap-1",
-            dueDate.isOverdue && "text-status-danger font-medium",
-            dueDate.isDueSoon && !dueDate.isOverdue && "text-status-warning",
-            !dueDate.isOverdue && !dueDate.isDueSoon && "text-text-muted"
+            variantStyles[dueDate.variant]
           )}
         >
           <Calendar className="w-3 h-3" />
-          {dueDate.text}
+          <span>{dueDate.text}</span>
+          {dueDate.timeText && (
+            <span className="text-text-subtle text-[10px]">@ {dueDate.timeText}</span>
+          )}
         </span>
       )}
 

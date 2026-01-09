@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useMemo } from "react";
-import { BarChart3, TrendingUp, TrendingDown, Calendar, Download, Loader2, Target } from "lucide-react";
+import { BarChart3, TrendingUp, Calendar, Download, Loader2, Target } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
@@ -62,8 +62,28 @@ export default function AnalyticsPage({
     }).sort((a, b) => b.progress - a.progress);
   }, [objectives]);
 
+  // Compute overall progress from objectives data
+  const overallProgress = useMemo(() => {
+    if (!objectives.length) return 0;
+    const totalProgress = objectives.reduce((sum, obj) => {
+      const krs = obj.annual_krs || [];
+      if (krs.length === 0) return sum;
+      const objProgress = krs.reduce((krSum, kr) => {
+        const progress = kr.target_value > kr.start_value
+          ? ((kr.current_value - kr.start_value) / (kr.target_value - kr.start_value)) * 100
+          : 0;
+        return krSum + Math.min(Math.max(progress, 0), 100);
+      }, 0) / krs.length;
+      return sum + (objProgress * obj.weight);
+    }, 0);
+    const totalWeight = objectives.reduce((sum, obj) => sum + obj.weight, 0);
+    return totalWeight > 0 ? totalProgress / totalWeight : 0;
+  }, [objectives]);
+
   // Determine the current year from the plan
   const planYear = plan?.year || new Date().getFullYear();
+  const projectedYearEnd = Math.min(overallProgress * 4, 100); // Simple projection based on Q1 pace
+  const checkInsThisMonth = activityStats?.total_events || 0;
 
   if (isLoadingStats || isLoadingObjectives) {
     return (
@@ -72,10 +92,6 @@ export default function AnalyticsPage({
       </div>
     );
   }
-
-  const overallProgress = planStats?.overall_progress || 0;
-  const projectedYearEnd = Math.min(overallProgress * 4, 100); // Simple projection based on Q1 pace
-  const checkInsThisMonth = activityStats?.total || 0;
 
   return (
     <>
@@ -134,22 +150,9 @@ export default function AnalyticsPage({
                       <span className="font-heading text-h1-mobile font-bold">
                         {overallProgress.toFixed(0)}%
                       </span>
-                      {planStats?.trend && planStats.trend > 0 ? (
-                        <span className="text-status-success text-small flex items-center gap-1 mb-2">
-                          <TrendingUp className="w-3 h-3" />
-                          +{planStats.trend.toFixed(0)}%
-                        </span>
-                      ) : planStats?.trend && planStats.trend < 0 ? (
-                        <span className="text-status-danger text-small flex items-center gap-1 mb-2">
-                          <TrendingDown className="w-3 h-3" />
-                          {planStats.trend.toFixed(0)}%
-                        </span>
-                      ) : null}
                     </div>
                     <p className="text-small text-text-muted">
-                      {planStats?.current_quarter_progress
-                        ? `Q${Math.floor((new Date().getMonth() / 3) + 1)} at ${planStats.current_quarter_progress.toFixed(0)}%`
-                        : "No quarter data"}
+                      Q{Math.floor((new Date().getMonth() / 3) + 1)} of {planYear}
                     </p>
                   </CardContent>
                 </Card>
@@ -255,25 +258,23 @@ export default function AnalyticsPage({
                     <div className="h-64 flex flex-col justify-center gap-4 px-4">
                       <div className="flex items-center gap-4">
                         <div className="w-4 h-4 rounded-full bg-status-success" />
-                        <span className="text-body-sm flex-1">On Track</span>
+                        <span className="text-body-sm flex-1">Objectives</span>
                         <span className="font-medium">
-                          {planStats?.on_track_krs || 0}
+                          {planStats?.objective_count || 0}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="w-4 h-4 rounded-full bg-status-warning" />
-                        <span className="text-body-sm flex-1">At Risk</span>
+                        <span className="text-body-sm flex-1">Key Results</span>
                         <span className="font-medium">
-                          {planStats?.at_risk_krs || 0}
+                          {planStats?.kr_count || 0}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="w-4 h-4 rounded-full bg-status-danger" />
-                        <span className="text-body-sm flex-1">Behind</span>
+                        <div className="w-4 h-4 rounded-full bg-accent" />
+                        <span className="text-body-sm flex-1">Check-ins</span>
                         <span className="font-medium">
-                          {(planStats?.kr_count || 0) -
-                            (planStats?.on_track_krs || 0) -
-                            (planStats?.at_risk_krs || 0)}
+                          {planStats?.check_in_count || 0}
                         </span>
                       </div>
                     </div>

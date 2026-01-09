@@ -118,7 +118,7 @@ export default function TasksLogbookPage({
 
   // Extract data
   const completedTasks = data?.data || [];
-  const totalCount = data?.total || 0;
+  const totalCount = data?.count || 0;
   const totalPages = data?.totalPages || 1;
   const hasNextPage = data?.hasMore || false;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Loader2, Plus, X, Tag as TagIcon } from "lucide-react";
+import { Loader2, Plus, X, Tag as TagIcon, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,7 @@ interface TaskDialogProps {
   annualKrs?: AnnualKr[];
   tags?: Tag[];
   selectedTags?: string[];
+  initialObjectiveId?: string; // For pre-populating objective when editing task with KR
   onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[]) => Promise<void>;
   onCreateTag?: (name: string) => Promise<Tag>;
 }
@@ -70,6 +71,7 @@ export function TaskDialog({
   annualKrs = [],
   tags = [],
   selectedTags: initialSelectedTags = [],
+  initialObjectiveId = "",
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {
@@ -82,6 +84,8 @@ export function TaskDialog({
   const [status, setStatus] = useState<TaskStatus>("pending");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
+  const [showTimeInput, setShowTimeInput] = useState(false);
   const [objectiveId, setObjectiveId] = useState<string>("");
   const [annualKrId, setAnnualKrId] = useState<string>("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
@@ -102,8 +106,34 @@ export function TaskDialog({
         setDescription(task.description || "");
         setStatus(task.status);
         setPriority(task.priority);
-        setDueDate(task.due_date || "");
-        setObjectiveId(task.objective_id || "");
+        
+        // Parse due_date and due_time
+        if (task.due_date) {
+          // If due_date is a timestamp, split date and time
+          if (task.due_date.includes("T")) {
+            const [date, time] = task.due_date.split("T");
+            setDueDate(date);
+            if (time && time !== "00:00:00" && time !== "00:00") {
+              setDueTime(time.substring(0, 5)); // HH:MM
+              setShowTimeInput(true);
+            } else {
+              setDueTime("");
+              setShowTimeInput(false);
+            }
+          } else {
+            setDueDate(task.due_date);
+            setDueTime(task.due_time || "");
+            setShowTimeInput(!!task.due_time);
+          }
+        } else {
+          setDueDate("");
+          setDueTime("");
+          setShowTimeInput(false);
+        }
+        
+        // Use initialObjectiveId if provided (for tasks linked via KR)
+        // Otherwise use task.objective_id
+        setObjectiveId(initialObjectiveId || task.objective_id || "");
         setAnnualKrId(task.annual_kr_id || "");
         setSelectedTagIds(initialSelectedTags);
       } else {
@@ -112,13 +142,15 @@ export function TaskDialog({
         setStatus("pending");
         setPriority("medium");
         setDueDate("");
+        setDueTime("");
+        setShowTimeInput(false);
         setObjectiveId("");
         setAnnualKrId("");
         setSelectedTagIds([]);
       }
       setNewTagName("");
     }
-  }, [open, task, initialSelectedTags]);
+  }, [open, task, initialSelectedTags, initialObjectiveId]);
 
   // When objective changes, reset KR selection if the KR doesn't belong to new objective
   useEffect(() => {
@@ -169,6 +201,7 @@ export function TaskDialog({
             status,
             priority,
             due_date: dueDate || null,
+            due_time: showTimeInput && dueTime ? dueTime : null,
             objective_id: finalObjectiveId,
             annual_kr_id: finalAnnualKrId,
           }
@@ -179,6 +212,7 @@ export function TaskDialog({
             status,
             priority,
             due_date: dueDate || null,
+            due_time: showTimeInput && dueTime ? dueTime : null,
             objective_id: finalObjectiveId,
             annual_kr_id: finalAnnualKrId,
             quarter_target_id: null,
@@ -207,7 +241,7 @@ export function TaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="task-title">Title *</Label>
@@ -233,7 +267,7 @@ export function TaskDialog({
             />
           </div>
 
-          {/* Status and Priority */}
+          {/* Status and Priority - Side by side */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Status</Label>
@@ -268,15 +302,55 @@ export function TaskDialog({
             </div>
           </div>
 
-          {/* Due Date */}
+          {/* Due Date and Time */}
           <div className="space-y-2">
             <Label htmlFor="task-due-date">Due Date</Label>
-            <Input
-              id="task-due-date"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+            <div className="flex gap-2 items-start">
+              <div className="flex-1">
+                <Input
+                  id="task-due-date"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+              
+              {/* Time toggle button / time input */}
+              {showTimeInput ? (
+                <div className="flex gap-1 items-center">
+                  <Input
+                    type="time"
+                    value={dueTime}
+                    onChange={(e) => setDueTime(e.target.value)}
+                    className="w-28"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-text-muted hover:text-text-strong"
+                    onClick={() => {
+                      setShowTimeInput(false);
+                      setDueTime("");
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 px-3 gap-1.5"
+                  onClick={() => setShowTimeInput(true)}
+                  disabled={!dueDate}
+                >
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm">Add time</span>
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-text-subtle">
               Leave empty for ideas/backlog tasks
             </p>
@@ -426,7 +500,7 @@ export function TaskDialog({
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
             <Button
               type="button"
               variant="secondary"

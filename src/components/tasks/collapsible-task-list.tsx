@@ -13,7 +13,7 @@ interface CollapsibleTaskListProps {
   count: number;
   tasks: TaskWithDetails[];
   icon?: React.ReactNode;
-  variant?: "default" | "danger" | "warning" | "success" | "muted";
+  variant?: "default" | "accent" | "danger" | "warning" | "success" | "muted";
   defaultExpanded?: boolean;
   maxItems?: number;
   showPagination?: boolean;
@@ -41,26 +41,37 @@ const variantStyles = {
     border: "border-border-soft",
     header: "bg-bg-1/50",
     badge: "default" as const,
+    titleClass: "",
+  },
+  accent: {
+    border: "border-accent/30",
+    header: "bg-accent/5",
+    badge: "info" as const,
+    titleClass: "text-accent",
   },
   danger: {
     border: "border-status-danger/30",
     header: "bg-status-danger/5",
     badge: "danger" as const,
+    titleClass: "",
   },
   warning: {
     border: "border-status-warning/30",
     header: "bg-status-warning/5",
     badge: "warning" as const,
+    titleClass: "",
   },
   success: {
     border: "border-status-success/30",
     header: "bg-status-success/5",
     badge: "success" as const,
+    titleClass: "",
   },
   muted: {
     border: "border-border-soft",
     header: "bg-bg-1",
     badge: "outline" as const,
+    titleClass: "",
   },
 };
 
@@ -115,7 +126,7 @@ export function CollapsibleTaskList({
               )}
             </button>
             {icon && <span className="shrink-0">{icon}</span>}
-            <CardTitle className="text-h5">{title}</CardTitle>
+            <CardTitle className={cn("text-h5", styles.titleClass)}>{title}</CardTitle>
           </div>
           <Badge variant={styles.badge}>{count}</Badge>
         </div>

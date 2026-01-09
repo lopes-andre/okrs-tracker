@@ -121,6 +121,7 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string | null;
+  due_time: string | null;
   completed_at: string | null;
   assigned_to: string | null;
   sort_order: number;

@@ -70,7 +70,8 @@ function getDateBoundaries() {
  * Apply common filters to a task query
  */
 function applyTaskFilters(
-  query: ReturnType<ReturnType<typeof createClient>['from']>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
   filters?: TaskFilters
 ) {
   if (!filters) return query;
@@ -234,18 +235,18 @@ export async function getTasksWithDetails(
  * Returns tasks organized for the main tasks page UI
  */
 export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters, 'listView'>): Promise<{
+  today: TaskWithDetails[];
   overdue: TaskWithDetails[];
   thisWeek: TaskWithDetails[];
   thisMonth: TaskWithDetails[];
-  future: TaskWithDetails[];
   backlog: TaskWithDetails[];
   completed: TaskWithDetails[];
   counts: {
     active: number;
+    today: number;
     overdue: number;
     thisWeek: number;
     thisMonth: number;
-    future: number;
     backlog: number;
     completed: number;
   };
@@ -254,23 +255,23 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
   const allTasks = await getTasksWithDetails(planId, filters);
   
   const dates = getDateBoundaries();
-  const today = new Date(dates.today);
+  const todayDate = new Date(dates.today);
   const weekEnd = new Date(dates.weekEnd);
   const monthEnd = new Date(dates.monthEnd);
 
   const result = {
+    today: [] as TaskWithDetails[],
     overdue: [] as TaskWithDetails[],
     thisWeek: [] as TaskWithDetails[],
     thisMonth: [] as TaskWithDetails[],
-    future: [] as TaskWithDetails[],
     backlog: [] as TaskWithDetails[],
     completed: [] as TaskWithDetails[],
     counts: {
       active: 0,
+      today: 0,
       overdue: 0,
       thisWeek: 0,
       thisMonth: 0,
-      future: 0,
       backlog: 0,
       completed: 0,
     },
@@ -296,19 +297,26 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
     }
 
     const dueDate = new Date(task.due_date);
+    const dueDateStr = format(dueDate, 'yyyy-MM-dd');
 
-    if (isBefore(dueDate, today)) {
+    if (isBefore(dueDate, todayDate)) {
       result.overdue.push(task);
       result.counts.overdue++;
+    } else if (dueDateStr === dates.today) {
+      // Due today
+      result.today.push(task);
+      result.counts.today++;
     } else if (dueDate <= weekEnd) {
+      // Rest of this week (after today)
       result.thisWeek.push(task);
       result.counts.thisWeek++;
     } else if (dueDate <= monthEnd) {
       result.thisMonth.push(task);
       result.counts.thisMonth++;
     } else {
-      result.future.push(task);
-      result.counts.future++;
+      // Future tasks go into backlog for now (removed "future" category)
+      result.backlog.push(task);
+      result.counts.backlog++;
     }
   }
 
@@ -648,10 +656,10 @@ export async function getTaskTags(taskId: string): Promise<string[]> {
 export async function getTaskCounts(planId: string): Promise<{
   total: number;
   active: number;
+  today: number;
   overdue: number;
   thisWeek: number;
   thisMonth: number;
-  future: number;
   backlog: number;
   completed: number;
 }> {
@@ -660,10 +668,10 @@ export async function getTaskCounts(planId: string): Promise<{
   return {
     total: grouped.counts.active + grouped.counts.completed,
     active: grouped.counts.active,
+    today: grouped.counts.today,
     overdue: grouped.counts.overdue,
     thisWeek: grouped.counts.thisWeek,
     thisMonth: grouped.counts.thisMonth,
-    future: grouped.counts.future,
     backlog: grouped.counts.backlog,
     completed: grouped.counts.completed,
   };

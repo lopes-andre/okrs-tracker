@@ -8,15 +8,14 @@ import {
   AlertTriangle,
   ListTodo,
   Target,
-  Filter,
   LayoutList,
   Layers,
   CheckCircle2,
   CalendarDays,
-  CalendarClock,
   Lightbulb,
   History,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -39,7 +38,6 @@ import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useTags, useCreateTag } from "@/features/tags/hooks";
 import { usePlanRole } from "@/features/plans/hooks";
 import type {
-  Task,
   TaskStatus,
   TaskInsert,
   TaskUpdate,
@@ -49,7 +47,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 // Type for the stats card filter
-type StatsFilter = "all" | "overdue" | "thisWeek" | "completed";
+type StatsFilter = "all" | "today" | "overdue" | "thisWeek" | "completed";
 
 export default function TasksPage({
   params,
@@ -80,6 +78,7 @@ export default function TasksPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithDetails | null>(null);
   const [editingTaskTags, setEditingTaskTags] = useState<string[]>([]);
+  const [editingObjectiveId, setEditingObjectiveId] = useState<string>("");
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     task: TaskWithDetails | null;
@@ -93,41 +92,35 @@ export default function TasksPage({
   // Stats from grouped data
   const counts = groupedTasks?.counts || {
     active: 0,
+    today: 0,
     overdue: 0,
     thisWeek: 0,
     thisMonth: 0,
-    future: 0,
     backlog: 0,
     completed: 0,
   };
 
   // Task lists
+  const todayTasks = groupedTasks?.today || [];
   const overdueTasks = groupedTasks?.overdue || [];
   const thisWeekTasks = groupedTasks?.thisWeek || [];
   const thisMonthTasks = groupedTasks?.thisMonth || [];
-  const futureTasks = groupedTasks?.future || [];
   const backlogTasks = groupedTasks?.backlog || [];
 
   // All active tasks for grouping
   const allActiveTasks = useMemo(() => {
     if (!groupedTasks) return [];
     return [
+      ...todayTasks,
       ...overdueTasks,
       ...thisWeekTasks,
       ...thisMonthTasks,
-      ...futureTasks,
       ...backlogTasks,
     ];
-  }, [
-    groupedTasks,
-    overdueTasks,
-    thisWeekTasks,
-    thisMonthTasks,
-    futureTasks,
-    backlogTasks,
-  ]);
+  }, [groupedTasks, todayTasks, overdueTasks, thisWeekTasks, thisMonthTasks, backlogTasks]);
 
   // Group tasks by objective for "By Objective" view
+  // Also consider tasks linked via annual_kr
   const tasksByObjective = useMemo(() => {
     const grouped: Record<
       string,
@@ -140,16 +133,27 @@ export default function TasksPage({
     });
 
     allActiveTasks.forEach((task) => {
-      const key = task.objective_id || "none";
-      if (grouped[key]) {
-        grouped[key].tasks.push(task);
-      } else {
-        grouped["none"].tasks.push(task);
+      // Check if task is linked via objective_id
+      if (task.objective_id && grouped[task.objective_id]) {
+        grouped[task.objective_id].tasks.push(task);
+        return;
       }
+      
+      // Check if task is linked via annual_kr_id - find the objective
+      if (task.annual_kr_id) {
+        const kr = annualKrs.find((k) => k.id === task.annual_kr_id);
+        if (kr && grouped[kr.objective_id]) {
+          grouped[kr.objective_id].tasks.push(task);
+          return;
+        }
+      }
+      
+      // Otherwise, unassigned
+      grouped["none"].tasks.push(task);
     });
 
     return grouped;
-  }, [allActiveTasks, objectives]);
+  }, [allActiveTasks, objectives, annualKrs]);
 
   // Handlers
   type TaskDialogData = Omit<TaskInsert, "plan_id"> | TaskUpdate;
@@ -184,18 +188,32 @@ export default function TasksPage({
   }
 
   async function handleCreateTag(name: string) {
-    return createTag.mutateAsync({ name, kind: "custom" });
+    return createTag.mutateAsync({ name, kind: "custom", color: null });
   }
 
   function openEdit(task: TaskWithDetails) {
     setEditingTask(task);
     setEditingTaskTags(task.tags?.map((t) => t.id) || []);
+    
+    // Fix: When task has annual_kr_id, find its objective
+    if (task.annual_kr_id && !task.objective_id) {
+      const kr = annualKrs.find((k) => k.id === task.annual_kr_id);
+      if (kr) {
+        setEditingObjectiveId(kr.objective_id);
+      } else {
+        setEditingObjectiveId("");
+      }
+    } else {
+      setEditingObjectiveId(task.objective_id || "");
+    }
+    
     setDialogOpen(true);
   }
 
   function openCreate() {
     setEditingTask(null);
     setEditingTaskTags([]);
+    setEditingObjectiveId("");
     setDialogOpen(true);
   }
 
@@ -205,10 +223,10 @@ export default function TasksPage({
   }
 
   // Determine which sections to show based on filter
+  const showToday = activeFilter === "all" || activeFilter === "today";
   const showOverdue = activeFilter === "all" || activeFilter === "overdue";
   const showThisWeek = activeFilter === "all" || activeFilter === "thisWeek";
   const showThisMonth = activeFilter === "all";
-  const showFuture = activeFilter === "all";
   const showBacklog = activeFilter === "all";
   const showCompleted = activeFilter === "all" || activeFilter === "completed";
 
@@ -254,7 +272,7 @@ export default function TasksPage({
       </PageHeader>
 
       {/* Stats Cards - Clickable Filters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <Card
           className={cn(
             "cursor-pointer transition-all hover:border-accent/50",
@@ -266,6 +284,21 @@ export default function TasksPage({
             <ListTodo className="w-5 h-5 mx-auto mb-1 text-text-muted" />
             <p className="text-h4 font-bold text-text-strong">{counts.active}</p>
             <p className="text-small text-text-muted">Active</p>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={cn(
+            "cursor-pointer transition-all hover:border-accent/50",
+            counts.today > 0 && "border-accent/30 bg-accent/5",
+            activeFilter === "today" && "ring-2 ring-accent/30"
+          )}
+          onClick={() => handleStatsClick("today")}
+        >
+          <CardContent className="pt-4 text-center">
+            <Calendar className="w-5 h-5 mx-auto mb-1 text-accent" />
+            <p className="text-h4 font-bold text-accent">{counts.today}</p>
+            <p className="text-small text-text-muted">Today</p>
           </CardContent>
         </Card>
 
@@ -330,7 +363,9 @@ export default function TasksPage({
           <span className="text-small text-text-muted">Showing:</span>
           <Badge
             variant={
-              activeFilter === "overdue"
+              activeFilter === "today"
+                ? "info"
+                : activeFilter === "overdue"
                 ? "danger"
                 : activeFilter === "thisWeek"
                 ? "warning"
@@ -339,7 +374,9 @@ export default function TasksPage({
             className="cursor-pointer"
             onClick={() => setActiveFilter("all")}
           >
-            {activeFilter === "overdue"
+            {activeFilter === "today"
+              ? "Due Today"
+              : activeFilter === "overdue"
               ? "Overdue Tasks"
               : activeFilter === "thisWeek"
               ? "Due This Week"
@@ -391,6 +428,24 @@ export default function TasksPage({
             />
           ) : (
             <>
+              {/* Today - Blue, prominent, first */}
+              {showToday && (
+                <CollapsibleTaskList
+                  title="Today"
+                  count={counts.today}
+                  tasks={todayTasks}
+                  icon={<Calendar className="w-4 h-4 text-accent" />}
+                  variant="accent"
+                  defaultExpanded={true}
+                  role={userRole}
+                  onStatusChange={handleStatusChange}
+                  onEdit={openEdit}
+                  onDelete={(task) => setDeleteDialog({ open: true, task })}
+                  renderTask={renderTask}
+                  emptyMessage="No tasks due today"
+                />
+              )}
+
               {/* Overdue */}
               {showOverdue && (
                 <CollapsibleTaskList
@@ -423,7 +478,7 @@ export default function TasksPage({
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
                   renderTask={renderTask}
-                  emptyMessage="No tasks due this week"
+                  emptyMessage="No tasks due later this week"
                 />
               )}
 
@@ -433,9 +488,9 @@ export default function TasksPage({
                   title="This Month"
                   count={counts.thisMonth}
                   tasks={thisMonthTasks}
-                  icon={<CalendarDays className="w-4 h-4 text-accent" />}
+                  icon={<CalendarDays className="w-4 h-4 text-text-muted" />}
                   variant="default"
-                  defaultExpanded={true}
+                  defaultExpanded={false}
                   role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
@@ -445,25 +500,7 @@ export default function TasksPage({
                 />
               )}
 
-              {/* Future */}
-              {showFuture && (
-                <CollapsibleTaskList
-                  title="Future"
-                  count={counts.future}
-                  tasks={futureTasks}
-                  icon={<CalendarClock className="w-4 h-4 text-text-muted" />}
-                  variant="default"
-                  defaultExpanded={false}
-                  role={userRole}
-                  onStatusChange={handleStatusChange}
-                  onEdit={openEdit}
-                  onDelete={(task) => setDeleteDialog({ open: true, task })}
-                  renderTask={renderTask}
-                  emptyMessage="No future tasks"
-                />
-              )}
-
-              {/* Ideas Backlog (no due date) */}
+              {/* Ideas Backlog (no due date + future) */}
               {showBacklog && (
                 <CollapsibleTaskList
                   title="Ideas Backlog"
@@ -477,7 +514,7 @@ export default function TasksPage({
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
                   renderTask={renderTask}
-                  emptyMessage="No tasks without due dates"
+                  emptyMessage="No tasks in backlog"
                 />
               )}
 
@@ -602,6 +639,7 @@ export default function TasksPage({
         annualKrs={annualKrs}
         tags={tags}
         selectedTags={editingTaskTags}
+        initialObjectiveId={editingObjectiveId}
         onSubmit={editingTask ? handleUpdate : handleCreate}
         onCreateTag={handleCreateTag}
       />
