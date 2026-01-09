@@ -96,9 +96,8 @@ export function useCreateCheckIn() {
   return useMutation({
     mutationFn: (checkIn: Parameters<typeof api.createCheckIn>[0]) => api.createCheckIn(checkIn),
     onSuccess: (data) => {
-      // Invalidate check-in queries
-      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.byKr(data.annual_kr_id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.all });
+      // Invalidate ALL check-in queries (critical for quarterly progress updates)
+      queryClient.invalidateQueries({ queryKey: ["checkIns"] });
       
       // Also invalidate KR queries since current_value is updated
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.detail(data.annual_kr_id) });

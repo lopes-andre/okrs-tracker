@@ -70,9 +70,12 @@ export function CheckInDialog({
       setNote("");
       setEvidenceUrl("");
       setQuarterTargetId("");
-      // Default to now
+      // Default to now (use local time for datetime-local input)
       const now = new Date();
-      setRecordedAt(now.toISOString().slice(0, 16)); // Format: YYYY-MM-DDTHH:MM
+      const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+      setRecordedAt(localDateTime);
     }
   }, [open, kr]);
 
@@ -151,44 +154,21 @@ export function CheckInDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="font-heading flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-accent" />
-            Record Check-in
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="font-heading flex items-center gap-2 text-base">
+            <TrendingUp className="w-4 h-4 text-accent" />
+            Check-in: {kr.name}
           </DialogTitle>
-          <DialogDescription>
-            Update progress for this key result
-          </DialogDescription>
+          <p className="text-xs text-text-muted">
+            Current: {formatValue(kr.current_value)} → Target: {formatValue(kr.target_value)}
+          </p>
         </DialogHeader>
 
-        {/* KR Summary */}
-        <div className="p-3 rounded-card bg-bg-1 border border-border-soft">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-button bg-white border border-border-soft flex items-center justify-center shrink-0">
-              <Target className="w-4 h-4 text-text-muted" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-body-sm font-medium text-text-strong">
-                {kr.name}
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-small text-text-muted">
-                  Current: {formatValue(kr.current_value)}
-                </span>
-                <span className="text-small text-text-subtle">→</span>
-                <span className="text-small text-text-muted">
-                  Target: {formatValue(kr.target_value)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* New Value */}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {/* New Value + Progress in one section */}
           <div className="space-y-2">
-            <Label htmlFor="checkin-value">
+            <Label htmlFor="checkin-value" className="text-xs">
               New Value {kr.unit && <span className="text-text-muted">({kr.unit})</span>}
             </Label>
             <div className="relative">
@@ -199,188 +179,118 @@ export function CheckInDialog({
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder={`Enter new value...`}
-                className="pr-20"
+                className="pr-16 h-9"
                 required
               />
               {delta !== 0 && (
                 <Badge 
                   variant={delta > 0 ? "success" : "warning"}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5"
                 >
                   {delta > 0 ? "+" : ""}{formatValue(delta)}
                 </Badge>
               )}
             </div>
-          </div>
-
-          {/* Progress Preview */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-small">
-              <span className="text-text-muted">Progress</span>
+            {/* Progress inline */}
+            <div className="flex items-center gap-2">
+              <Progress value={newProgress} className="h-1.5 flex-1" />
               <span className={cn(
-                "font-medium",
-                newProgress > currentProgress ? "text-status-success" : "text-text-strong"
+                "text-xs font-medium shrink-0",
+                newProgress > currentProgress ? "text-status-success" : "text-text-muted"
               )}>
                 {Math.round(currentProgress)}% → {Math.round(newProgress)}%
               </span>
             </div>
-            <Progress value={newProgress} className="h-2" />
           </div>
 
-          {/* Quarter Target Selection */}
+          {/* Quarter Target - compact */}
           {kr.quarter_targets && kr.quarter_targets.length > 0 && (
-            <div className="space-y-3">
-              <Label>Quarter Target</Label>
-              <Select 
-                value={quarterTargetId || currentQuarterTarget?.id || ""} 
-                onValueChange={setQuarterTargetId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select quarter" />
-                </SelectTrigger>
-                <SelectContent>
-                  {kr.quarter_targets.map((qt) => (
-                    <SelectItem key={qt.id} value={qt.id}>
-                      <span className="flex items-center gap-2">
-                        Q{qt.quarter}
-                        <span className="text-text-muted text-xs">
-                          (Target: {formatValue(qt.target_value)})
-                        </span>
-                        {qt.quarter === currentQuarter && (
-                          <Badge variant="info" className="text-[10px] ml-1">Current</Badge>
-                        )}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={quarterTargetId || currentQuarterTarget?.id || ""} 
+                  onValueChange={setQuarterTargetId}
+                >
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Select quarter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {kr.quarter_targets.map((qt) => (
+                      <SelectItem key={qt.id} value={qt.id} className="text-xs">
+                        Q{qt.quarter} (Target: {formatValue(qt.target_value)})
+                        {qt.quarter === currentQuarter && " - Current"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {quarterImpact?.willComplete && delta > 0 && (
+                  <Badge variant="success" className="text-[10px] gap-0.5 shrink-0">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Goal!
+                  </Badge>
+                )}
+              </div>
               
-              {/* Quarter Impact Preview */}
+              {/* Quarter Impact - super compact */}
               {quarterImpact && selectedQuarterTarget && (
                 <div className={cn(
-                  "p-3 rounded-card border transition-all",
-                  quarterImpact.willComplete && delta > 0
-                    ? "bg-status-success/5 border-status-success/30"
-                    : "bg-bg-1 border-border-soft"
+                  "flex items-center justify-between px-2 py-1.5 rounded text-xs",
+                  quarterImpact.willComplete ? "bg-status-success/10" : "bg-bg-1"
                 )}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold text-text-muted">
-                      Q{selectedQuarterTarget.quarter} Impact
+                  <span className="text-text-muted">Q{selectedQuarterTarget.quarter}:</span>
+                  <span className="flex items-center gap-1">
+                    <span>{formatValue(quarterImpact.current)}</span>
+                    <ArrowRight className="w-3 h-3 text-text-subtle" />
+                    <span className={delta > 0 ? "text-status-success font-medium" : ""}>
+                      {formatValue(quarterImpact.newValue)}
                     </span>
-                    {quarterImpact.willComplete && delta > 0 && (
-                      <Badge variant="success" className="text-[10px] gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Goal Reached!
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-small mb-2">
-                    <div className="flex-1">
-                      <p className="text-xs text-text-muted">Current</p>
-                      <p className="font-medium">{formatValue(quarterImpact.current)}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-text-subtle" />
-                    <div className="flex-1">
-                      <p className="text-xs text-text-muted">After</p>
-                      <p className={cn(
-                        "font-medium",
-                        delta > 0 ? "text-status-success" : delta < 0 ? "text-status-danger" : ""
-                      )}>
-                        {formatValue(quarterImpact.newValue)}
-                      </p>
-                    </div>
-                    <div className="flex-1 text-right">
-                      <p className="text-xs text-text-muted">Target</p>
-                      <p className="font-medium">{formatValue(quarterImpact.target)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-text-muted">Q{selectedQuarterTarget.quarter} Progress</span>
-                      <span className={cn(
-                        "font-medium",
-                        quarterImpact.newProgress > quarterImpact.currentProgress 
-                          ? "text-status-success" 
-                          : ""
-                      )}>
-                        {Math.round(quarterImpact.currentProgress)}% → {Math.round(quarterImpact.newProgress)}%
-                      </span>
-                    </div>
-                    <Progress 
-                      value={quarterImpact.newProgress} 
-                      className={cn(
-                        "h-1.5",
-                        quarterImpact.willComplete && "[&>div]:bg-status-success"
-                      )} 
-                    />
-                  </div>
+                    <span className="text-text-subtle">/ {formatValue(quarterImpact.target)}</span>
+                  </span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Note */}
-          <div className="space-y-2">
-            <Label htmlFor="checkin-note" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5" />
-              Note (optional)
-            </Label>
-            <textarea
-              id="checkin-note"
+          {/* Note - single line */}
+          <div>
+            <Input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="What contributed to this progress?"
-              rows={2}
-              className="w-full px-3 py-2 text-body-sm rounded-button border border-border-soft bg-white placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent resize-none"
+              placeholder="Note (optional)"
+              className="h-8 text-xs"
             />
           </div>
 
-          {/* Evidence URL */}
-          <div className="space-y-2">
-            <Label htmlFor="checkin-evidence" className="flex items-center gap-1.5">
-              <LinkIcon className="w-3.5 h-3.5" />
-              Evidence URL (optional)
-            </Label>
+          {/* Evidence + Date in one row */}
+          <div className="grid grid-cols-2 gap-2">
             <Input
-              id="checkin-evidence"
               type="url"
               value={evidenceUrl}
               onChange={(e) => setEvidenceUrl(e.target.value)}
-              placeholder="https://..."
+              placeholder="Evidence URL"
+              className="h-8 text-xs"
             />
-            <p className="text-xs text-text-subtle">
-              Link to screenshot, analytics, post, or other proof
-            </p>
-          </div>
-
-          {/* Date/Time */}
-          <div className="space-y-2">
-            <Label htmlFor="checkin-date" className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              Recorded At
-            </Label>
             <Input
-              id="checkin-date"
               type="datetime-local"
               value={recordedAt}
               onChange={(e) => setRecordedAt(e.target.value)}
+              className="h-8 text-xs"
             />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || !value.trim()}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Record Check-in
+            <Button type="submit" size="sm" disabled={isSubmitting || !value.trim()}>
+              {isSubmitting && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              Record
             </Button>
           </DialogFooter>
         </form>
