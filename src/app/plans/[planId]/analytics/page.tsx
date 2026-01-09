@@ -19,7 +19,14 @@ import {
   useAnalyticsSummary, 
   useKrPerformanceData,
 } from "@/features/analytics/hooks";
-import { SummaryCards, KrPerformanceTable, ProgressChart } from "@/components/analytics";
+import { 
+  SummaryCards, 
+  KrPerformanceTable, 
+  ProgressChart,
+  PaceAnalysisPanel,
+  ActivityBarChart,
+  BurnupChart,
+} from "@/components/analytics";
 
 export default function AnalyticsPage({
   params,
@@ -98,9 +105,27 @@ export default function AnalyticsPage({
               {/* Summary Cards */}
               {summary && <SummaryCards summary={summary} />}
               
-              {/* Progress Chart */}
+              {/* Charts Row */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Progress Chart */}
+                {krPerformanceData && krPerformanceData.length > 0 && (
+                  <ProgressChart 
+                    krs={krPerformanceData} 
+                    checkIns={allCheckIns}
+                    year={planYear}
+                  />
+                )}
+                
+                {/* Activity Bar Chart */}
+                <ActivityBarChart 
+                  checkIns={allCheckIns}
+                  year={planYear}
+                />
+              </div>
+              
+              {/* Burn-Up Chart */}
               {krPerformanceData && krPerformanceData.length > 0 && (
-                <ProgressChart 
+                <BurnupChart 
                   krs={krPerformanceData} 
                   checkIns={allCheckIns}
                   year={planYear}
@@ -129,13 +154,23 @@ export default function AnalyticsPage({
           )}
         </TabsContent>
 
-        {/* Pace Analysis Tab - Coming in Phase 2 */}
+        {/* Pace Analysis Tab */}
         <TabsContent value="pace">
-          <EmptyState
-            icon={TrendingUp}
-            title="Pace Analysis Coming Soon"
-            description="See where you should be today vs. where you are, with forecasts and recommendations."
-          />
+          {!hasData ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="No KRs yet"
+              description="Create key results to see pace analysis."
+              action={{
+                label: "Create KR",
+                href: `/plans/${planId}/okrs`,
+              }}
+            />
+          ) : (
+            krPerformanceData && (
+              <PaceAnalysisPanel krs={krPerformanceData} year={planYear} />
+            )
+          )}
         </TabsContent>
 
         {/* Activity Heatmap Tab - Coming in Phase 3 */}
