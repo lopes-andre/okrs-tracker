@@ -6,14 +6,16 @@ import {
   Background,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
   useReactFlow,
   ReactFlowProvider,
   type NodeTypes,
   type NodeDragHandler,
+  type OnNodesChange,
+  type OnEdgesChange,
   BackgroundVariant,
   Panel,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -57,10 +59,6 @@ const nodeTypes: NodeTypes = {
   task: TaskNode,
 };
 
-// ============================================================================
-// CUSTOM EDGE STYLES
-// ============================================================================
-
 const defaultEdgeOptions = {
   style: {
     strokeWidth: 2,
@@ -70,7 +68,7 @@ const defaultEdgeOptions = {
 };
 
 // ============================================================================
-// MINDMAP CANVAS INNER (requires ReactFlowProvider)
+// MINDMAP CANVAS INNER
 // ============================================================================
 
 interface MindmapCanvasInnerProps {
@@ -92,7 +90,7 @@ function MindmapCanvasInner({
 }: MindmapCanvasInnerProps) {
   const { fitView, zoomIn, zoomOut } = useReactFlow();
   
-  // Layout configuration
+  // State
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
@@ -101,25 +99,16 @@ function MindmapCanvasInner({
   const [useSavedLayout, setUseSavedLayout] = useState(true);
   const [filters, setFilters] = useState<MindmapFilters>(DEFAULT_FILTERS);
   
-  // Ref for export
+  // Refs
   const flowRef = useRef<HTMLDivElement>(null);
-  const getFlowElement = useCallback(() => flowRef.current?.querySelector(".react-flow") as HTMLElement | null, []);
+  const initialFitDone = useRef(false);
   
-  // Persistence
-  const {
-    savedPositions,
-    hasSavedLayout,
-    saveLayout,
-    isSaving,
-  } = usePersistence({ planId: plan.id });
+  // Persistence - only load data, don't trigger updates
+  const { savedPositions, hasSavedLayout, saveLayout, isSaving } = usePersistence({ planId: plan.id });
 
-  // Auto-save timeout ref
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasPositionsChanged = useRef(false);
-
-  // Transform data to nodes and edges
-  const { allNodes, allEdges } = useMemo(() => {
-    const { nodes, edges } = transformOkrDataToMindmap({
+  // Transform OKR data to mindmap nodes/edges
+  const baseData = useMemo(() => {
+    return transformOkrDataToMindmap({
       plan,
       objectives,
       tasks,
@@ -128,91 +117,79 @@ function MindmapCanvasInner({
       viewMode,
       focusNodeId: focusNodeId || undefined,
     });
+  }, [plan, objectives, tasks, checkIns, layoutConfig, viewMode, focusNodeId]);
 
-    // Apply saved positions if available, enabled, and in tree mode
-    const positionedNodes = useSavedLayout && hasSavedLayout && viewMode === "tree"
-      ? applySavedPositions(nodes, savedPositions)
-      : nodes;
-
-    return { allNodes: positionedNodes, allEdges: edges };
-  }, [plan, objectives, tasks, checkIns, layoutConfig, viewMode, focusNodeId, savedPositions, hasSavedLayout, useSavedLayout]);
+  // Apply saved positions in tree mode only
+  const positionedNodes = useMemo(() => {
+    if (useSavedLayout && hasSavedLayout && viewMode === "tree") {
+      return applySavedPositions(baseData.nodes, savedPositions);
+    }
+    return baseData.nodes;
+  }, [baseData.nodes, savedPositions, hasSavedLayout, useSavedLayout, viewMode]);
 
   // Collapse/expand management
   const {
     toggleCollapse,
     collapseAll,
     expandAll,
-    visibleNodes: collapsedVisibleNodes,
-    visibleEdges: collapsedVisibleEdges,
+    visibleNodes: collapsedNodes,
+    visibleEdges: collapsedEdges,
     collapsedNodeIds,
-  } = useCollapse({ nodes: allNodes, edges: allEdges });
-  
+  } = useCollapse({ nodes: positionedNodes, edges: baseData.edges });
+
   // Apply filters
-  const { visibleNodes, visibleEdges } = useMemo(() => {
-    const filteredNodes = collapsedVisibleNodes.filter((node) => {
+  const displayData = useMemo(() => {
+    const filteredNodes = collapsedNodes.filter((node) => {
       const data = node.data as MindmapNodeData;
       if (data.type === "plan") return true;
       return nodePassesFilters(data.progress, data.paceStatus, filters);
     });
     
-    const visibleNodeIds = new Set(filteredNodes.map((n) => n.id));
-    const filteredEdges = collapsedVisibleEdges.filter(
-      (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+    const visibleIds = new Set(filteredNodes.map((n) => n.id));
+    const filteredEdges = collapsedEdges.filter(
+      (edge) => visibleIds.has(edge.source) && visibleIds.has(edge.target)
     );
     
-    return { visibleNodes: filteredNodes, visibleEdges: filteredEdges };
-  }, [collapsedVisibleNodes, collapsedVisibleEdges, filters]);
+    return { nodes: filteredNodes, edges: filteredEdges };
+  }, [collapsedNodes, collapsedEdges, filters]);
 
-  // React Flow state
-  const [nodes, setNodes, onNodesChange] = useNodesState(visibleNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
+  // Local state for React Flow (allows dragging)
+  const [nodes, setNodes] = useState<MindmapNode[]>(displayData.nodes);
+  const [edges, setEdges] = useState<MindmapEdge[]>(displayData.edges);
 
-  // Update nodes when visibility changes
+  // Sync display data to local state when it changes
+  const prevDisplayRef = useRef(displayData);
   useEffect(() => {
-    setNodes(visibleNodes);
-    setEdges(visibleEdges);
-  }, [visibleNodes, visibleEdges, setNodes, setEdges]);
-
-  // Schedule auto-save after position changes
-  const scheduleAutoSave = useCallback(() => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
+    if (prevDisplayRef.current !== displayData) {
+      setNodes(displayData.nodes);
+      setEdges(displayData.edges);
+      prevDisplayRef.current = displayData;
     }
-    
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      if (hasPositionsChanged.current) {
-        saveLayout();
-        hasPositionsChanged.current = false;
-      }
-    }, 2000);
-  }, [saveLayout]);
+  }, [displayData]);
 
-  // Handle node drag end
+  // Handle node changes (dragging)
+  const onNodesChange: OnNodesChange = useCallback((changes) => {
+    setNodes((nds) => applyNodeChanges(changes, nds) as MindmapNode[]);
+  }, []);
+
+  const onEdgesChange: OnEdgesChange = useCallback((changes) => {
+    setEdges((eds) => applyEdgeChanges(changes, eds) as MindmapEdge[]);
+  }, []);
+
+  // Handle node drag end - save positions
   const handleNodeDragStop: NodeDragHandler = useCallback(() => {
-    hasPositionsChanged.current = true;
-    scheduleAutoSave();
-  }, [scheduleAutoSave]);
-
-  // Cleanup auto-save timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
+    // Debounced save could be added here
   }, []);
 
   // Handle node click
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: MindmapNode) => {
-      const hasChildren = allEdges.some((e) => e.source === node.id);
+      const hasChildren = baseData.edges.some((e) => e.source === node.id);
       
       if (hasChildren && node.data) {
         const rect = (event.target as HTMLElement).getBoundingClientRect();
         const clickY = event.clientY - rect.top;
-        const nodeHeight = rect.height;
-        
-        if (clickY > nodeHeight * 0.8) {
+        if (clickY > rect.height * 0.8) {
           toggleCollapse(node.id);
           return;
         }
@@ -222,7 +199,7 @@ function MindmapCanvasInner({
         setSelectedNode(node.data);
       }
     },
-    [allEdges, toggleCollapse]
+    [baseData.edges, toggleCollapse]
   );
 
   // Handle node double-click
@@ -233,49 +210,41 @@ function MindmapCanvasInner({
         return;
       }
       
-      const hasChildren = allEdges.some((e) => e.source === node.id);
+      const hasChildren = baseData.edges.some((e) => e.source === node.id);
       if (hasChildren) {
         toggleCollapse(node.id);
       }
     },
-    [allEdges, toggleCollapse, viewMode]
+    [baseData.edges, toggleCollapse, viewMode]
   );
 
-  // Toggle quarters visibility
-  const toggleQuarters = useCallback(() => {
-    setLayoutConfig((prev) => ({ ...prev, showQuarters: !prev.showQuarters }));
-  }, []);
+  // Fit view on initial load
+  useEffect(() => {
+    if (!initialFitDone.current && nodes.length > 0) {
+      const timer = setTimeout(() => {
+        fitView({ padding: 0.2, duration: 300 });
+        initialFitDone.current = true;
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [nodes.length, fitView]);
 
-  // Toggle tasks visibility
-  const toggleTasks = useCallback(() => {
-    setLayoutConfig((prev) => ({ ...prev, showTasks: !prev.showTasks }));
-  }, []);
-
-  // Reset to auto-layout
-  const resetLayout = useCallback(() => {
-    setUseSavedLayout(false);
-    setTimeout(() => setUseSavedLayout(true), 100);
-  }, []);
-
-  // Minimap node color
+  // Minimap color
   const minimapNodeColor = useCallback((node: MindmapNode) => {
-    const colors = {
+    const colors: Record<string, string> = {
       plan: "#3b82f6",
       objective: "#6366f1",
       kr: "#8b5cf6",
       quarter: "#a78bfa",
       task: "#c4b5fd",
     };
-    return colors[node.type as keyof typeof colors] || "#94a3b8";
+    return colors[node.type || ""] || "#94a3b8";
   }, []);
 
-  // Refit view on layout change
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fitView({ padding: 0.2, duration: 300 });
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [visibleNodes.length, fitView]);
+  const getFlowElement = useCallback(
+    () => flowRef.current?.querySelector(".react-flow") as HTMLElement | null,
+    []
+  );
 
   return (
     <div ref={flowRef} className={cn("w-full h-full relative", className)}>
@@ -293,45 +262,24 @@ function MindmapCanvasInner({
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2}
-        attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
         nodesConnectable={false}
         nodesDraggable={true}
         panOnScroll
-        selectionOnDrag={false}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="var(--color-border-soft)"
-        />
-
-        <Controls
-          showZoom={false}
-          showFitView={false}
-          showInteractive={false}
-          className="!bg-bg-0 !border-border-soft !rounded-card !shadow-card"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--color-border-soft)" />
+        <Controls showZoom={false} showFitView={false} showInteractive={false} className="!bg-bg-0 !border-border-soft !rounded-card !shadow-card" />
 
         {/* Top Left: Filters and Export */}
         <Panel position="top-left" className="flex items-center gap-2">
-          <FilterPanel
-            filters={filters}
-            onChange={setFilters}
-            onReset={() => setFilters(DEFAULT_FILTERS)}
-          />
-          <ExportButton
-            getFlowElement={getFlowElement}
-            fileName={`mindmap-${plan.name.toLowerCase().replace(/\s+/g, "-")}`}
-          />
+          <FilterPanel filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} />
+          <ExportButton getFlowElement={getFlowElement} fileName={`mindmap-${plan.name.toLowerCase().replace(/\s+/g, "-")}`} />
         </Panel>
 
-        {/* Top Right: View Mode and Controls */}
+        {/* Top Right: Controls */}
         <Panel position="top-right" className="flex items-center gap-2">
           <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
           
-          {/* Zoom Controls */}
           <div className="flex items-center gap-1 ml-2">
             <Button variant="secondary" size="icon-sm" onClick={() => zoomOut()} title="Zoom Out">
               <ZoomOut className="w-4 h-4" />
@@ -339,17 +287,11 @@ function MindmapCanvasInner({
             <Button variant="secondary" size="icon-sm" onClick={() => zoomIn()} title="Zoom In">
               <ZoomIn className="w-4 h-4" />
             </Button>
-            <Button 
-              variant="secondary" 
-              size="icon-sm" 
-              onClick={() => fitView({ padding: 0.2, duration: 300 })}
-              title="Fit View"
-            >
+            <Button variant="secondary" size="icon-sm" onClick={() => fitView({ padding: 0.2, duration: 300 })} title="Fit View">
               <Maximize2 className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Collapse/Expand */}
           <div className="flex items-center gap-1 border-l border-border-soft pl-2">
             <Button variant="secondary" size="icon-sm" onClick={collapseAll} title="Collapse All">
               <Shrink className="w-4 h-4" />
@@ -359,126 +301,64 @@ function MindmapCanvasInner({
             </Button>
           </div>
 
-          {/* Layout Controls */}
           <div className="flex items-center gap-1 border-l border-border-soft pl-2">
-            <Button 
-              variant="secondary" 
-              size="icon-sm" 
-              onClick={() => saveLayout()}
-              disabled={isSaving}
-              title="Save Layout"
-            >
+            <Button variant="secondary" size="icon-sm" onClick={() => saveLayout()} disabled={isSaving} title="Save Layout">
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             </Button>
-            <Button variant="secondary" size="icon-sm" onClick={resetLayout} title="Reset to Auto-Layout">
+            <Button variant="secondary" size="icon-sm" onClick={() => { setUseSavedLayout(false); setTimeout(() => setUseSavedLayout(true), 100); }} title="Reset Layout">
               <RotateCcw className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Visibility Toggles */}
           <div className="flex items-center gap-1 border-l border-border-soft pl-2">
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={toggleQuarters}
-              className={cn(!layoutConfig.showQuarters && "opacity-50")}
-              title={layoutConfig.showQuarters ? "Hide Quarters" : "Show Quarters"}
-            >
+            <Button variant="secondary" size="icon-sm" onClick={() => setLayoutConfig(c => ({ ...c, showQuarters: !c.showQuarters }))} className={cn(!layoutConfig.showQuarters && "opacity-50")} title="Toggle Quarters">
               <GitBranch className="w-4 h-4" />
             </Button>
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={toggleTasks}
-              className={cn(!layoutConfig.showTasks && "opacity-50")}
-              title={layoutConfig.showTasks ? "Hide Tasks" : "Show Tasks"}
-            >
+            <Button variant="secondary" size="icon-sm" onClick={() => setLayoutConfig(c => ({ ...c, showTasks: !c.showTasks }))} className={cn(!layoutConfig.showTasks && "opacity-50")} title="Toggle Tasks">
               <ListTodo className="w-4 h-4" />
             </Button>
-            <Button
-              variant="secondary"
-              size="icon-sm"
-              onClick={() => setShowMinimap(!showMinimap)}
-              title={showMinimap ? "Hide Minimap" : "Show Minimap"}
-            >
+            <Button variant="secondary" size="icon-sm" onClick={() => setShowMinimap(!showMinimap)} title="Toggle Minimap">
               {showMinimap ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </Button>
           </div>
         </Panel>
 
-        {/* Minimap */}
-        {showMinimap && (
-          <MiniMap
-            nodeColor={minimapNodeColor}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            className="!bg-bg-0 !border-border-soft !rounded-card"
-          />
-        )}
+        {showMinimap && <MiniMap nodeColor={minimapNodeColor} nodeStrokeWidth={3} zoomable pannable className="!bg-bg-0 !border-border-soft !rounded-card" />}
 
         {/* Legend */}
         <Panel position="bottom-right" className="!mb-12">
           <div className="bg-bg-0 border border-border-soft rounded-card p-3 shadow-card text-xs">
             <div className="font-medium text-text-strong mb-2">Legend</div>
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-status-success" />
-                <span className="text-text-muted">Ahead</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-accent" />
-                <span className="text-text-muted">On Track</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-status-warning" />
-                <span className="text-text-muted">At Risk</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-status-danger" />
-                <span className="text-text-muted">Off Track</span>
-              </div>
-            </div>
-            <div className="border-t border-border-soft mt-2 pt-2 text-[10px] text-text-subtle">
-              {viewMode === "tree" && "Drag nodes • Double-click to collapse"}
-              {viewMode === "radial" && "Double-click to collapse"}
-              {viewMode === "focus" && "Double-click to focus on branch"}
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-status-success" /><span className="text-text-muted">Ahead</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-accent" /><span className="text-text-muted">On Track</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-status-warning" /><span className="text-text-muted">At Risk</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-status-danger" /><span className="text-text-muted">Off Track</span></div>
             </div>
           </div>
         </Panel>
 
-        {/* Status indicators */}
+        {/* Status */}
         <Panel position="bottom-left" className="!mb-12 flex flex-col gap-2">
-          {collapsedVisibleNodes.length !== visibleNodes.length && (
+          {collapsedNodes.length !== displayData.nodes.length && (
             <div className="bg-bg-0 border border-status-warning/30 rounded-card px-3 py-2 shadow-card text-xs">
-              <span className="text-status-warning">
-                Showing {visibleNodes.length} of {collapsedVisibleNodes.length} nodes (filtered)
-              </span>
+              <span className="text-status-warning">Showing {displayData.nodes.length} of {collapsedNodes.length} nodes</span>
             </div>
           )}
-          
           {collapsedNodeIds.size > 0 && (
             <div className="bg-bg-0 border border-border-soft rounded-card px-3 py-2 shadow-card text-xs">
-              <span className="text-text-muted">
-                {collapsedNodeIds.size} branch{collapsedNodeIds.size > 1 ? "es" : ""} collapsed
-              </span>
+              <span className="text-text-muted">{collapsedNodeIds.size} collapsed</span>
             </div>
           )}
-          
           {hasSavedLayout && viewMode === "tree" && (
             <div className="bg-bg-0 border border-accent/30 rounded-card px-3 py-2 shadow-card text-xs">
-              <span className="text-accent">✓ Custom layout saved</span>
+              <span className="text-accent">✓ Layout saved</span>
             </div>
           )}
         </Panel>
       </ReactFlow>
 
-      {/* Node Detail Panel */}
-      <NodeDetailPanel
-        nodeData={selectedNode}
-        onClose={() => setSelectedNode(null)}
-        onNavigate={onNodeNavigate}
-      />
+      <NodeDetailPanel nodeData={selectedNode} onClose={() => setSelectedNode(null)} onNavigate={onNodeNavigate} />
     </div>
   );
 }
@@ -496,14 +376,7 @@ interface MindmapCanvasProps {
   className?: string;
 }
 
-export function MindmapCanvas({
-  plan,
-  objectives,
-  tasks,
-  checkIns,
-  onNodeClick,
-  className,
-}: MindmapCanvasProps) {
+export function MindmapCanvas({ plan, objectives, tasks, checkIns, onNodeClick, className }: MindmapCanvasProps) {
   const handleNodeNavigate = useCallback(
     (entityType: string, entityId: string) => {
       if (onNodeClick) {

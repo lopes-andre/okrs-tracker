@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useReactFlow, type Viewport } from "@xyflow/react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useReactFlow } from "@xyflow/react";
 import type { MindmapNode, MindmapNodeData } from "../types";
 import { useMindmapData, useSaveMindmapLayout } from "@/features/mindmap/hooks";
 import type { MindmapNode as DbMindmapNode, MindmapEntityType } from "@/lib/supabase/types";
@@ -35,19 +35,23 @@ export function usePersistence({
   const [pendingSave, setPendingSave] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Build saved positions map
-  const savedPositions = new Map<string, { x: number; y: number; isCollapsed: boolean }>();
-  
-  if (mindmapData?.nodes) {
-    mindmapData.nodes.forEach((node: DbMindmapNode) => {
-      const key = `${node.entity_type}-${node.entity_id}`;
-      savedPositions.set(key, {
-        x: node.position_x,
-        y: node.position_y,
-        isCollapsed: node.is_collapsed,
+  // Build saved positions map - MEMOIZED to prevent infinite loops
+  const savedPositions = useMemo(() => {
+    const positions = new Map<string, { x: number; y: number; isCollapsed: boolean }>();
+    
+    if (mindmapData?.nodes) {
+      mindmapData.nodes.forEach((node: DbMindmapNode) => {
+        const key = `${node.entity_type}-${node.entity_id}`;
+        positions.set(key, {
+          x: node.position_x,
+          y: node.position_y,
+          isCollapsed: node.is_collapsed,
+        });
       });
-    });
-  }
+    }
+    
+    return positions;
+  }, [mindmapData?.nodes]);
 
   const hasSavedLayout = savedPositions.size > 0;
   const viewId = mindmapData?.view?.id || null;
