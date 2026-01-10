@@ -22,6 +22,8 @@ import { PlanNode, ObjectiveNode, KrNode, QuarterNode, TaskNode } from "./nodes"
 import { transformOkrDataToMindmap } from "./data-transformer";
 import { NodeDetailPanel } from "./node-detail-panel";
 import { ViewModeSwitcher } from "./view-mode-switcher";
+import { FilterPanel, DEFAULT_FILTERS, nodePassesFilters, type MindmapFilters } from "./filter-panel";
+import { ExportButton } from "./export-button";
 import { useCollapse } from "./hooks/use-collapse";
 import { usePersistence, applySavedPositions } from "./hooks/use-persistence";
 import type { LayoutConfig, MindmapNode, MindmapEdge, MindmapNodeData, ViewMode } from "./types";
@@ -104,6 +106,11 @@ function MindmapCanvasInner({
   const [showMinimap, setShowMinimap] = useState(true);
   const [selectedNode, setSelectedNode] = useState<MindmapNodeData | null>(null);
   const [useSavedLayout, setUseSavedLayout] = useState(true);
+  const [filters, setFilters] = useState<MindmapFilters>(DEFAULT_FILTERS);
+  
+  // Ref for export
+  const flowRef = useRef<HTMLDivElement>(null);
+  const getFlowElement = useCallback(() => flowRef.current?.querySelector(".react-flow") as HTMLElement | null, []);
   
   // Persistence
   const {
@@ -144,10 +151,32 @@ function MindmapCanvasInner({
     toggleCollapse,
     collapseAll,
     expandAll,
-    visibleNodes,
-    visibleEdges,
+    visibleNodes: collapsedVisibleNodes,
+    visibleEdges: collapsedVisibleEdges,
     collapsedNodeIds,
   } = useCollapse({ nodes: allNodes, edges: allEdges });
+  
+  // Apply filters
+  const { visibleNodes, visibleEdges } = useMemo(() => {
+    // Filter nodes based on filters
+    const filteredNodes = collapsedVisibleNodes.filter((node) => {
+      const data = node.data as MindmapNodeData;
+      // Always show plan node
+      if (data.type === "plan") return true;
+      // Apply filters to other nodes
+      return nodePassesFilters(data.progress, data.paceStatus, filters);
+    });
+    
+    // Build set of visible node IDs
+    const visibleNodeIds = new Set(filteredNodes.map((n) => n.id));
+    
+    // Filter edges to only include edges between visible nodes
+    const filteredEdges = collapsedVisibleEdges.filter(
+      (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+    );
+    
+    return { visibleNodes: filteredNodes, visibleEdges: filteredEdges };
+  }, [collapsedVisibleNodes, collapsedVisibleEdges, filters]);
 
   // React Flow state
   const [nodes, setNodes, onNodesChange] = useNodesState(visibleNodes);
@@ -297,7 +326,7 @@ function MindmapCanvasInner({
   }, [visibleNodes.length, fitView]);
 
   return (
-    <div className={cn("w-full h-full relative", className)}>
+    <div ref={flowRef} className={cn("w-full h-full relative", className)}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -335,7 +364,20 @@ function MindmapCanvasInner({
           className="!bg-bg-0 !border-border-soft !rounded-card !shadow-card"
         />
 
-        {/* Custom Control Panel */}
+        {/* Top Left: Filters and Export */}
+        <Panel position="top-left" className="flex items-center gap-2">
+          <FilterPanel
+            filters={filters}
+            onChange={setFilters}
+            onReset={() => setFilters(DEFAULT_FILTERS)}
+          />
+          <ExportButton
+            getFlowElement={getFlowElement}
+            fileName={`mindmap-${plan.name.toLowerCase().replace(/\s+/g, "-")}`}
+          />
+        </Panel>
+
+        {/* Top Right: View Mode and Controls */}
         <Panel position="top-right" className="flex items-center gap-2">
           {/* View Mode Switcher */}
           <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
@@ -519,6 +561,15 @@ function MindmapCanvasInner({
 
         {/* Status indicators */}
         <Panel position="bottom-left" className="!mb-12 flex flex-col gap-2">
+          {/* Filter count */}
+          {collapsedVisibleNodes.length !== visibleNodes.length && (
+            <div className="bg-bg-0 border border-status-warning/30 rounded-card px-3 py-2 shadow-card text-xs">
+              <span className="text-status-warning">
+                Showing {visibleNodes.length} of {collapsedVisibleNodes.length} nodes (filtered)
+              </span>
+            </div>
+          )}
+          
           {/* Collapsed count */}
           {collapsedNodeIds.size > 0 && (
             <div className="bg-bg-0 border border-border-soft rounded-card px-3 py-2 shadow-card text-xs">
@@ -529,7 +580,7 @@ function MindmapCanvasInner({
           )}
           
           {/* Saved layout indicator */}
-          {hasSavedLayout && (
+          {hasSavedLayout && viewMode === "tree" && (
             <div className="bg-bg-0 border border-accent/30 rounded-card px-3 py-2 shadow-card text-xs">
               <span className="text-accent">✓ Custom layout saved</span>
             </div>

@@ -1,6 +1,8 @@
 export { MindmapCanvas } from "./mindmap-canvas";
 export { NodeDetailPanel } from "./node-detail-panel";
 export { ViewModeSwitcher } from "./view-mode-switcher";
+export { FilterPanel, DEFAULT_FILTERS, nodePassesFilters, type MindmapFilters } from "./filter-panel";
+export { ExportButton } from "./export-button";
 export * from "./types";
 export * from "./nodes";
 export * from "./hooks";

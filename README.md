@@ -383,7 +383,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
-### ✅ Mindmap Visualization (Phase 1-4 Complete)
+### ✅ Mindmap Visualization (All 5 Phases Complete!)
 - [x] React Flow integration with custom node types
 - [x] Plan, Objective, KR, Quarter, Task nodes
 - [x] Progress bars and pace badges on nodes
@@ -402,8 +402,12 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - **Tree**: Hierarchical top-to-bottom layout (default)
   - **Radial**: Circular layout with proportional angle distribution
   - **Focus**: Centers on selected node with ancestors above
-- [x] 32 unit tests for layout, collapse, persistence, and view modes
-- [ ] Quick actions and export (Phase 5)
+- [x] **Filter Panel** with:
+  - Pace status filter (Ahead, On Track, At Risk, Off Track)
+  - Progress range filter (min/max percentage)
+  - Show/hide completed items toggle
+- [x] **Export** to PNG and SVG formats
+- [x] 44 unit tests for layout, collapse, persistence, view modes, and filters
 
 ## License
 
