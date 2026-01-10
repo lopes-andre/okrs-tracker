@@ -379,10 +379,22 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 
 ### 🔜 Coming Next
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
-- [ ] Mindmap visualization (React Flow)
 - [ ] Weekly review flow
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
+
+### ✅ Mindmap Visualization (Phase 1 Complete)
+- [x] React Flow integration with custom node types
+- [x] Plan, Objective, KR, Quarter, Task nodes
+- [x] Auto-layout algorithm (tree layout)
+- [x] Progress bars and pace badges on nodes
+- [x] Zoom, pan, and minimap controls
+- [x] Toggle visibility for quarters and tasks
+- [ ] Collapse/expand branches (Phase 2)
+- [ ] Drag-to-reposition nodes (Phase 2)
+- [ ] Persist node positions (Phase 3)
+- [ ] View modes - tree/radial/focus (Phase 4)
+- [ ] Quick actions and export (Phase 5)
 
 ## License
 
