@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -12,6 +12,7 @@ import {
   ReactFlowProvider,
   type NodeTypes,
   type OnNodesChange,
+  type NodeDragHandler,
   BackgroundVariant,
   Panel,
 } from "@xyflow/react";
@@ -21,6 +22,7 @@ import { PlanNode, ObjectiveNode, KrNode, QuarterNode, TaskNode } from "./nodes"
 import { transformOkrDataToMindmap } from "./data-transformer";
 import { NodeDetailPanel } from "./node-detail-panel";
 import { useCollapse } from "./hooks/use-collapse";
+import { usePersistence, applySavedPositions } from "./hooks/use-persistence";
 import type { LayoutConfig, MindmapNode, MindmapEdge, MindmapNodeData } from "./types";
 import { DEFAULT_LAYOUT_CONFIG } from "./types";
 import type { Plan, ObjectiveWithKrs, Task, CheckIn } from "@/lib/supabase/types";
@@ -34,9 +36,11 @@ import {
   Eye,
   EyeOff,
   ListTodo,
-  Minimize2,
   Expand,
   Shrink,
+  Save,
+  RotateCcw,
+  Loader2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -90,12 +94,26 @@ function MindmapCanvasInner({
   onNodeNavigate,
   className,
 }: MindmapCanvasInnerProps) {
-  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNodes, getViewport } = useReactFlow();
   
   // Layout configuration
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
   const [showMinimap, setShowMinimap] = useState(true);
   const [selectedNode, setSelectedNode] = useState<MindmapNodeData | null>(null);
+  const [useSavedLayout, setUseSavedLayout] = useState(true);
+  
+  // Persistence
+  const {
+    savedPositions,
+    hasSavedLayout,
+    saveLayout,
+    isSaving,
+    isLoading: isPersistenceLoading,
+  } = usePersistence({ planId: plan.id });
+
+  // Auto-save timeout ref
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasPositionsChanged = useRef(false);
 
   // Transform data to nodes and edges
   const { allNodes, allEdges } = useMemo(() => {
@@ -106,8 +124,14 @@ function MindmapCanvasInner({
       checkIns,
       config: layoutConfig,
     });
-    return { allNodes: nodes, allEdges: edges };
-  }, [plan, objectives, tasks, checkIns, layoutConfig]);
+
+    // Apply saved positions if available and enabled
+    const positionedNodes = useSavedLayout && hasSavedLayout
+      ? applySavedPositions(nodes, savedPositions)
+      : nodes;
+
+    return { allNodes: positionedNodes, allEdges: edges };
+  }, [plan, objectives, tasks, checkIns, layoutConfig, savedPositions, hasSavedLayout, useSavedLayout]);
 
   // Collapse/expand management
   const {
@@ -128,6 +152,35 @@ function MindmapCanvasInner({
     setNodes(visibleNodes);
     setEdges(visibleEdges);
   }, [visibleNodes, visibleEdges, setNodes, setEdges]);
+
+  // Schedule auto-save after position changes
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (hasPositionsChanged.current) {
+        saveLayout();
+        hasPositionsChanged.current = false;
+      }
+    }, 2000); // Auto-save 2 seconds after last drag
+  }, [saveLayout]);
+
+  // Handle node drag end - schedule auto-save
+  const handleNodeDragStop: NodeDragHandler = useCallback((event, node, nodes) => {
+    hasPositionsChanged.current = true;
+    scheduleAutoSave();
+  }, [scheduleAutoSave]);
+
+  // Cleanup auto-save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle node click - double click to toggle collapse, single click to select
   const handleNodeClick = useCallback(
@@ -183,6 +236,18 @@ function MindmapCanvasInner({
     }));
   }, []);
 
+  // Reset to auto-layout
+  const resetLayout = useCallback(() => {
+    setUseSavedLayout(false);
+    // Re-enable saved layout on next save
+    setTimeout(() => setUseSavedLayout(true), 100);
+  }, []);
+
+  // Manual save
+  const handleManualSave = useCallback(() => {
+    saveLayout();
+  }, [saveLayout]);
+
   // Minimap node color
   const minimapNodeColor = useCallback((node: MindmapNode) => {
     const colors = {
@@ -227,6 +292,7 @@ function MindmapCanvasInner({
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeDragStop={handleNodeDragStop}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
@@ -308,6 +374,35 @@ function MindmapCanvasInner({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Expand All</TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Layout Controls */}
+            <div className="flex items-center gap-1 mr-2 border-l border-border-soft pl-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="secondary" 
+                    size="icon-sm" 
+                    onClick={handleManualSave}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Save Layout</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon-sm" onClick={resetLayout}>
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reset to Auto-Layout</TooltipContent>
               </Tooltip>
             </div>
 
@@ -399,21 +494,29 @@ function MindmapCanvasInner({
               </div>
             </div>
             <div className="border-t border-border-soft mt-2 pt-2 text-[10px] text-text-subtle">
-              Double-click to collapse/expand
+              Drag nodes to rearrange • Double-click to collapse
             </div>
           </div>
         </Panel>
 
-        {/* Collapsed count indicator */}
-        {collapsedNodeIds.size > 0 && (
-          <Panel position="bottom-left" className="!mb-12">
+        {/* Status indicators */}
+        <Panel position="bottom-left" className="!mb-12 flex flex-col gap-2">
+          {/* Collapsed count */}
+          {collapsedNodeIds.size > 0 && (
             <div className="bg-bg-0 border border-border-soft rounded-card px-3 py-2 shadow-card text-xs">
               <span className="text-text-muted">
                 {collapsedNodeIds.size} branch{collapsedNodeIds.size > 1 ? "es" : ""} collapsed
               </span>
             </div>
-          </Panel>
-        )}
+          )}
+          
+          {/* Saved layout indicator */}
+          {hasSavedLayout && (
+            <div className="bg-bg-0 border border-accent/30 rounded-card px-3 py-2 shadow-card text-xs">
+              <span className="text-accent">✓ Custom layout saved</span>
+            </div>
+          )}
+        </Panel>
       </ReactFlow>
 
       {/* Node Detail Panel */}
