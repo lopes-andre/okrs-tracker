@@ -11,7 +11,6 @@ import {
   useReactFlow,
   ReactFlowProvider,
   type NodeTypes,
-  type OnNodesChange,
   type NodeDragHandler,
   BackgroundVariant,
   Panel,
@@ -45,12 +44,6 @@ import {
   RotateCcw,
   Loader2,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 // ============================================================================
 // NODE TYPES REGISTRATION
@@ -97,7 +90,7 @@ function MindmapCanvasInner({
   onNodeNavigate,
   className,
 }: MindmapCanvasInnerProps) {
-  const { fitView, zoomIn, zoomOut, getNodes, getViewport } = useReactFlow();
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
   
   // Layout configuration
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
@@ -118,7 +111,6 @@ function MindmapCanvasInner({
     hasSavedLayout,
     saveLayout,
     isSaving,
-    isLoading: isPersistenceLoading,
   } = usePersistence({ planId: plan.id });
 
   // Auto-save timeout ref
@@ -138,7 +130,6 @@ function MindmapCanvasInner({
     });
 
     // Apply saved positions if available, enabled, and in tree mode
-    // (Don't apply saved positions in radial/focus modes as they use dynamic layouts)
     const positionedNodes = useSavedLayout && hasSavedLayout && viewMode === "tree"
       ? applySavedPositions(nodes, savedPositions)
       : nodes;
@@ -158,19 +149,13 @@ function MindmapCanvasInner({
   
   // Apply filters
   const { visibleNodes, visibleEdges } = useMemo(() => {
-    // Filter nodes based on filters
     const filteredNodes = collapsedVisibleNodes.filter((node) => {
       const data = node.data as MindmapNodeData;
-      // Always show plan node
       if (data.type === "plan") return true;
-      // Apply filters to other nodes
       return nodePassesFilters(data.progress, data.paceStatus, filters);
     });
     
-    // Build set of visible node IDs
     const visibleNodeIds = new Set(filteredNodes.map((n) => n.id));
-    
-    // Filter edges to only include edges between visible nodes
     const filteredEdges = collapsedVisibleEdges.filter(
       (edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
     );
@@ -199,11 +184,11 @@ function MindmapCanvasInner({
         saveLayout();
         hasPositionsChanged.current = false;
       }
-    }, 2000); // Auto-save 2 seconds after last drag
+    }, 2000);
   }, [saveLayout]);
 
-  // Handle node drag end - schedule auto-save
-  const handleNodeDragStop: NodeDragHandler = useCallback((event, node, nodes) => {
+  // Handle node drag end
+  const handleNodeDragStop: NodeDragHandler = useCallback(() => {
     hasPositionsChanged.current = true;
     scheduleAutoSave();
   }, [scheduleAutoSave]);
@@ -217,26 +202,22 @@ function MindmapCanvasInner({
     };
   }, []);
 
-  // Handle node click - double click to toggle collapse, single click to select
+  // Handle node click
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: MindmapNode) => {
-      // Check if node has children (can be collapsed)
       const hasChildren = allEdges.some((e) => e.source === node.id);
       
       if (hasChildren && node.data) {
-        // If clicking the expand button area (bottom of node), toggle collapse
         const rect = (event.target as HTMLElement).getBoundingClientRect();
         const clickY = event.clientY - rect.top;
         const nodeHeight = rect.height;
         
-        // If click is in bottom 20% of node, toggle collapse
         if (clickY > nodeHeight * 0.8) {
           toggleCollapse(node.id);
           return;
         }
       }
       
-      // Otherwise, select the node
       if (node.data) {
         setSelectedNode(node.data);
       }
@@ -244,16 +225,14 @@ function MindmapCanvasInner({
     [allEdges, toggleCollapse]
   );
 
-  // Handle node double-click for collapse/expand or focus
+  // Handle node double-click
   const handleNodeDoubleClick = useCallback(
     (event: React.MouseEvent, node: MindmapNode) => {
-      // In focus mode, double-click focuses on the clicked node
       if (viewMode === "focus") {
         setFocusNodeId(node.id);
         return;
       }
       
-      // In other modes, toggle collapse if node has children
       const hasChildren = allEdges.some((e) => e.source === node.id);
       if (hasChildren) {
         toggleCollapse(node.id);
@@ -264,31 +243,19 @@ function MindmapCanvasInner({
 
   // Toggle quarters visibility
   const toggleQuarters = useCallback(() => {
-    setLayoutConfig((prev) => ({
-      ...prev,
-      showQuarters: !prev.showQuarters,
-    }));
+    setLayoutConfig((prev) => ({ ...prev, showQuarters: !prev.showQuarters }));
   }, []);
 
   // Toggle tasks visibility
   const toggleTasks = useCallback(() => {
-    setLayoutConfig((prev) => ({
-      ...prev,
-      showTasks: !prev.showTasks,
-    }));
+    setLayoutConfig((prev) => ({ ...prev, showTasks: !prev.showTasks }));
   }, []);
 
   // Reset to auto-layout
   const resetLayout = useCallback(() => {
     setUseSavedLayout(false);
-    // Re-enable saved layout on next save
     setTimeout(() => setUseSavedLayout(true), 100);
   }, []);
-
-  // Manual save
-  const handleManualSave = useCallback(() => {
-    saveLayout();
-  }, [saveLayout]);
 
   // Minimap node color
   const minimapNodeColor = useCallback((node: MindmapNode) => {
@@ -301,21 +268,6 @@ function MindmapCanvasInner({
     };
     return colors[node.type as keyof typeof colors] || "#94a3b8";
   }, []);
-
-  // Close detail panel
-  const handleCloseDetailPanel = useCallback(() => {
-    setSelectedNode(null);
-  }, []);
-
-  // Handle navigation from detail panel
-  const handleNavigate = useCallback(
-    (entityType: string, entityId: string) => {
-      if (onNodeNavigate) {
-        onNodeNavigate(entityType, entityId);
-      }
-    },
-    [onNodeNavigate]
-  );
 
   // Refit view on layout change
   useEffect(() => {
@@ -348,7 +300,6 @@ function MindmapCanvasInner({
         panOnScroll
         selectionOnDrag={false}
       >
-        {/* Background */}
         <Background
           variant={BackgroundVariant.Dots}
           gap={20}
@@ -356,7 +307,6 @@ function MindmapCanvasInner({
           color="var(--color-border-soft)"
         />
 
-        {/* Controls */}
         <Controls
           showZoom={false}
           showFitView={false}
@@ -379,143 +329,81 @@ function MindmapCanvasInner({
 
         {/* Top Right: View Mode and Controls */}
         <Panel position="top-right" className="flex items-center gap-2">
-          {/* View Mode Switcher */}
           <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
           
-          <TooltipProvider>
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1 ml-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon-sm" onClick={() => zoomOut()}>
-                    <ZoomOut className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Zoom Out</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon-sm" onClick={() => zoomIn()}>
-                    <ZoomIn className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Zoom In</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="secondary" 
-                    size="icon-sm" 
-                    onClick={() => fitView({ padding: 0.2, duration: 300 })}
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Fit View</TooltipContent>
-              </Tooltip>
-            </div>
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1 ml-2">
+            <Button variant="secondary" size="icon-sm" onClick={() => zoomOut()} title="Zoom Out">
+              <ZoomOut className="w-4 h-4" />
+            </Button>
+            <Button variant="secondary" size="icon-sm" onClick={() => zoomIn()} title="Zoom In">
+              <ZoomIn className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="icon-sm" 
+              onClick={() => fitView({ padding: 0.2, duration: 300 })}
+              title="Fit View"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </Button>
+          </div>
 
-            {/* Collapse/Expand */}
-            <div className="flex items-center gap-1 mr-2 border-l border-border-soft pl-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon-sm" onClick={collapseAll}>
-                    <Shrink className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Collapse All</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon-sm" onClick={expandAll}>
-                    <Expand className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Expand All</TooltipContent>
-              </Tooltip>
-            </div>
+          {/* Collapse/Expand */}
+          <div className="flex items-center gap-1 border-l border-border-soft pl-2">
+            <Button variant="secondary" size="icon-sm" onClick={collapseAll} title="Collapse All">
+              <Shrink className="w-4 h-4" />
+            </Button>
+            <Button variant="secondary" size="icon-sm" onClick={expandAll} title="Expand All">
+              <Expand className="w-4 h-4" />
+            </Button>
+          </div>
 
-            {/* Layout Controls */}
-            <div className="flex items-center gap-1 mr-2 border-l border-border-soft pl-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="secondary" 
-                    size="icon-sm" 
-                    onClick={handleManualSave}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Save Layout</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="secondary" size="icon-sm" onClick={resetLayout}>
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Reset to Auto-Layout</TooltipContent>
-              </Tooltip>
-            </div>
+          {/* Layout Controls */}
+          <div className="flex items-center gap-1 border-l border-border-soft pl-2">
+            <Button 
+              variant="secondary" 
+              size="icon-sm" 
+              onClick={() => saveLayout()}
+              disabled={isSaving}
+              title="Save Layout"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            </Button>
+            <Button variant="secondary" size="icon-sm" onClick={resetLayout} title="Reset to Auto-Layout">
+              <RotateCcw className="w-4 h-4" />
+            </Button>
+          </div>
 
-            {/* Visibility Toggles */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon-sm"
-                  onClick={toggleQuarters}
-                  className={cn(!layoutConfig.showQuarters && "opacity-50")}
-                >
-                  <GitBranch className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {layoutConfig.showQuarters ? "Hide" : "Show"} Quarters
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon-sm"
-                  onClick={toggleTasks}
-                  className={cn(!layoutConfig.showTasks && "opacity-50")}
-                >
-                  <ListTodo className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {layoutConfig.showTasks ? "Hide" : "Show"} Tasks
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon-sm"
-                  onClick={() => setShowMinimap(!showMinimap)}
-                >
-                  {showMinimap ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {showMinimap ? "Hide" : "Show"} Minimap
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {/* Visibility Toggles */}
+          <div className="flex items-center gap-1 border-l border-border-soft pl-2">
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={toggleQuarters}
+              className={cn(!layoutConfig.showQuarters && "opacity-50")}
+              title={layoutConfig.showQuarters ? "Hide Quarters" : "Show Quarters"}
+            >
+              <GitBranch className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={toggleTasks}
+              className={cn(!layoutConfig.showTasks && "opacity-50")}
+              title={layoutConfig.showTasks ? "Hide Tasks" : "Show Tasks"}
+            >
+              <ListTodo className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={() => setShowMinimap(!showMinimap)}
+              title={showMinimap ? "Hide Minimap" : "Show Minimap"}
+            >
+              {showMinimap ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          </div>
         </Panel>
 
         {/* Minimap */}
@@ -561,7 +449,6 @@ function MindmapCanvasInner({
 
         {/* Status indicators */}
         <Panel position="bottom-left" className="!mb-12 flex flex-col gap-2">
-          {/* Filter count */}
           {collapsedVisibleNodes.length !== visibleNodes.length && (
             <div className="bg-bg-0 border border-status-warning/30 rounded-card px-3 py-2 shadow-card text-xs">
               <span className="text-status-warning">
@@ -570,7 +457,6 @@ function MindmapCanvasInner({
             </div>
           )}
           
-          {/* Collapsed count */}
           {collapsedNodeIds.size > 0 && (
             <div className="bg-bg-0 border border-border-soft rounded-card px-3 py-2 shadow-card text-xs">
               <span className="text-text-muted">
@@ -579,7 +465,6 @@ function MindmapCanvasInner({
             </div>
           )}
           
-          {/* Saved layout indicator */}
           {hasSavedLayout && viewMode === "tree" && (
             <div className="bg-bg-0 border border-accent/30 rounded-card px-3 py-2 shadow-card text-xs">
               <span className="text-accent">✓ Custom layout saved</span>
@@ -591,8 +476,8 @@ function MindmapCanvasInner({
       {/* Node Detail Panel */}
       <NodeDetailPanel
         nodeData={selectedNode}
-        onClose={handleCloseDetailPanel}
-        onNavigate={handleNavigate}
+        onClose={() => setSelectedNode(null)}
+        onNavigate={onNodeNavigate}
       />
     </div>
   );
