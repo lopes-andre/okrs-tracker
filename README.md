@@ -383,7 +383,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
-### ✅ Mindmap Visualization (All 5 Phases Complete!)
+### 🚧 Mindmap Visualization (All 5 Phases Implemented - Needs Debugging)
 - [x] React Flow integration with custom node types
 - [x] Plan, Objective, KR, Quarter, Task nodes
 - [x] Progress bars and pace badges on nodes
@@ -408,6 +408,12 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - Show/hide completed items toggle
 - [x] **Export** to PNG and SVG formats
 - [x] 44 unit tests for layout, collapse, persistence, view modes, and filters
+
+#### Known Issues (Jan 9, 2026)
+The Mindmap page loads without errors, but some features need debugging:
+- Features may not work as expected (needs investigation)
+- View mode switching, filtering, and export should be tested
+- The infinite loop errors were fixed, but integration behavior needs review
 
 ## License
 
