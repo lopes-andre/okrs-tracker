@@ -170,7 +170,7 @@ function getNodeDimensions(type: string): { width: number; height: number } {
 // ============================================================================
 
 /**
- * Calculate radial/circular layout
+ * Calculate radial/circular layout with improved spacing
  */
 export function calculateRadialLayout(
   nodes: MindmapNode[],
@@ -201,37 +201,177 @@ export function calculateRadialLayout(
   // Position root at center
   positions.set(rootNode.id, { x: 0, y: 0 });
 
-  // BFS to position nodes in rings
-  const visited = new Set<string>([rootNode.id]);
-  let currentRing = [rootNode.id];
-  let ringRadius = config.levelSpacing;
+  // Calculate subtree sizes for better angle distribution
+  const subtreeSizes = new Map<string, number>();
+  
+  function calculateSubtreeSize(nodeId: string): number {
+    const children = childrenMap.get(nodeId) || [];
+    if (children.length === 0) {
+      subtreeSizes.set(nodeId, 1);
+      return 1;
+    }
+    const size = children.reduce((sum, childId) => sum + calculateSubtreeSize(childId), 0);
+    subtreeSizes.set(nodeId, size);
+    return size;
+  }
+  
+  calculateSubtreeSize(rootNode.id);
 
-  while (currentRing.length > 0) {
-    const nextRing: string[] = [];
-    
-    currentRing.forEach((nodeId) => {
+  // Position children with proportional angles
+  function positionChildren(
+    parentId: string,
+    startAngle: number,
+    endAngle: number,
+    radius: number
+  ) {
+    const children = childrenMap.get(parentId) || [];
+    if (children.length === 0) return;
+
+    const totalSubtreeSize = children.reduce(
+      (sum, childId) => sum + (subtreeSizes.get(childId) || 1),
+      0
+    );
+
+    let currentAngle = startAngle;
+
+    children.forEach((childId) => {
+      const childSize = subtreeSizes.get(childId) || 1;
+      const angleSpan = ((endAngle - startAngle) * childSize) / totalSubtreeSize;
+      const childAngle = currentAngle + angleSpan / 2;
+
+      const x = radius * Math.cos(childAngle);
+      const y = radius * Math.sin(childAngle);
+      positions.set(childId, { x, y });
+
+      // Position grandchildren
+      positionChildren(
+        childId,
+        currentAngle,
+        currentAngle + angleSpan,
+        radius + config.levelSpacing
+      );
+
+      currentAngle += angleSpan;
+    });
+  }
+
+  // Start positioning from root's children
+  positionChildren(
+    rootNode.id,
+    -Math.PI, // Start from left
+    Math.PI,  // End at left (full circle)
+    config.levelSpacing * 1.5
+  );
+
+  return positions;
+}
+
+// ============================================================================
+// FOCUS LAYOUT
+// ============================================================================
+
+/**
+ * Calculate focus layout - centers on a specific node and shows its branch
+ */
+export function calculateFocusLayout(
+  nodes: MindmapNode[],
+  edges: MindmapEdge[],
+  focusNodeId: string,
+  config: LayoutConfig
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>();
+  
+  if (nodes.length === 0) return positions;
+
+  // Build adjacency maps
+  const childrenMap = new Map<string, string[]>();
+  const parentMap = new Map<string, string>();
+  
+  edges.forEach((edge) => {
+    const children = childrenMap.get(edge.source) || [];
+    children.push(edge.target);
+    childrenMap.set(edge.source, children);
+    parentMap.set(edge.target, edge.source);
+  });
+
+  // Find the focus node, or fallback to root
+  const focusNode = nodes.find((n) => n.id === focusNodeId);
+  if (!focusNode) {
+    return calculateTreeLayout(nodes, edges, config);
+  }
+
+  // Get ancestors (path to root)
+  const ancestors: string[] = [];
+  let current = focusNodeId;
+  while (parentMap.has(current)) {
+    const parent = parentMap.get(current)!;
+    ancestors.unshift(parent);
+    current = parent;
+  }
+
+  // Get descendants
+  const descendants: string[] = [];
+  const queue = [focusNodeId];
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    if (nodeId !== focusNodeId) {
+      descendants.push(nodeId);
+    }
+    const children = childrenMap.get(nodeId) || [];
+    queue.push(...children);
+  }
+
+  // Position focus node at center
+  positions.set(focusNodeId, { x: 0, y: 0 });
+
+  // Position ancestors above (root at top, working down to focus)
+  // ancestors array is [root, ..., direct_parent]
+  // We want root at the top (most negative y), direct parent closest to focus
+  const numAncestors = ancestors.length;
+  ancestors.forEach((ancestorId, index) => {
+    // index 0 (root) should be at -(numAncestors)*spacing (furthest)
+    // index numAncestors-1 (direct parent) should be at -1*spacing (closest)
+    const yOffset = -(numAncestors - index) * config.levelSpacing;
+    positions.set(ancestorId, { x: 0, y: yOffset });
+  });
+
+  // Position descendants below using tree layout
+  const siblingSpacing = config.nodeSpacing;
+  let currentLevel: string[] = [focusNodeId];
+  let yOffset = config.levelSpacing;
+
+  while (currentLevel.length > 0) {
+    const nextLevel: string[] = [];
+    let xPositions: { id: string; width: number }[] = [];
+
+    currentLevel.forEach((nodeId) => {
       const children = childrenMap.get(nodeId) || [];
       children.forEach((childId) => {
-        if (!visited.has(childId)) {
-          visited.add(childId);
-          nextRing.push(childId);
-        }
+        nextLevel.push(childId);
+        const dims = getNodeDimensions(
+          nodes.find((n) => n.id === childId)?.type || "objective"
+        );
+        xPositions.push({ id: childId, width: dims.width });
       });
     });
 
-    if (nextRing.length === 0) break;
+    if (nextLevel.length === 0) break;
 
-    // Position nodes in this ring
-    const angleStep = (2 * Math.PI) / nextRing.length;
-    nextRing.forEach((nodeId, index) => {
-      const angle = index * angleStep - Math.PI / 2; // Start from top
-      const x = ringRadius * Math.cos(angle);
-      const y = ringRadius * Math.sin(angle);
-      positions.set(nodeId, { x, y });
+    // Calculate total width
+    const totalWidth = xPositions.reduce(
+      (sum, item, idx) => sum + item.width + (idx > 0 ? siblingSpacing : 0),
+      0
+    );
+    let currentX = -totalWidth / 2;
+
+    xPositions.forEach((item, idx) => {
+      if (idx > 0) currentX += siblingSpacing;
+      positions.set(item.id, { x: currentX + item.width / 2, y: yOffset });
+      currentX += item.width;
     });
 
-    currentRing = nextRing;
-    ringRadius += config.levelSpacing;
+    currentLevel = nextLevel;
+    yOffset += config.levelSpacing;
   }
 
   return positions;

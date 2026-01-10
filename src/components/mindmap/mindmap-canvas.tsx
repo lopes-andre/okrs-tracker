@@ -21,9 +21,10 @@ import "@xyflow/react/dist/style.css";
 import { PlanNode, ObjectiveNode, KrNode, QuarterNode, TaskNode } from "./nodes";
 import { transformOkrDataToMindmap } from "./data-transformer";
 import { NodeDetailPanel } from "./node-detail-panel";
+import { ViewModeSwitcher } from "./view-mode-switcher";
 import { useCollapse } from "./hooks/use-collapse";
 import { usePersistence, applySavedPositions } from "./hooks/use-persistence";
-import type { LayoutConfig, MindmapNode, MindmapEdge, MindmapNodeData } from "./types";
+import type { LayoutConfig, MindmapNode, MindmapEdge, MindmapNodeData, ViewMode } from "./types";
 import { DEFAULT_LAYOUT_CONFIG } from "./types";
 import type { Plan, ObjectiveWithKrs, Task, CheckIn } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -98,6 +99,8 @@ function MindmapCanvasInner({
   
   // Layout configuration
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
+  const [viewMode, setViewMode] = useState<ViewMode>("tree");
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
   const [showMinimap, setShowMinimap] = useState(true);
   const [selectedNode, setSelectedNode] = useState<MindmapNodeData | null>(null);
   const [useSavedLayout, setUseSavedLayout] = useState(true);
@@ -123,15 +126,18 @@ function MindmapCanvasInner({
       tasks,
       checkIns,
       config: layoutConfig,
+      viewMode,
+      focusNodeId: focusNodeId || undefined,
     });
 
-    // Apply saved positions if available and enabled
-    const positionedNodes = useSavedLayout && hasSavedLayout
+    // Apply saved positions if available, enabled, and in tree mode
+    // (Don't apply saved positions in radial/focus modes as they use dynamic layouts)
+    const positionedNodes = useSavedLayout && hasSavedLayout && viewMode === "tree"
       ? applySavedPositions(nodes, savedPositions)
       : nodes;
 
     return { allNodes: positionedNodes, allEdges: edges };
-  }, [plan, objectives, tasks, checkIns, layoutConfig, savedPositions, hasSavedLayout, useSavedLayout]);
+  }, [plan, objectives, tasks, checkIns, layoutConfig, viewMode, focusNodeId, savedPositions, hasSavedLayout, useSavedLayout]);
 
   // Collapse/expand management
   const {
@@ -209,15 +215,22 @@ function MindmapCanvasInner({
     [allEdges, toggleCollapse]
   );
 
-  // Handle node double-click for collapse/expand
+  // Handle node double-click for collapse/expand or focus
   const handleNodeDoubleClick = useCallback(
     (event: React.MouseEvent, node: MindmapNode) => {
+      // In focus mode, double-click focuses on the clicked node
+      if (viewMode === "focus") {
+        setFocusNodeId(node.id);
+        return;
+      }
+      
+      // In other modes, toggle collapse if node has children
       const hasChildren = allEdges.some((e) => e.source === node.id);
       if (hasChildren) {
         toggleCollapse(node.id);
       }
     },
-    [allEdges, toggleCollapse]
+    [allEdges, toggleCollapse, viewMode]
   );
 
   // Toggle quarters visibility
@@ -324,9 +337,12 @@ function MindmapCanvasInner({
 
         {/* Custom Control Panel */}
         <Panel position="top-right" className="flex items-center gap-2">
+          {/* View Mode Switcher */}
+          <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+          
           <TooltipProvider>
             {/* Zoom Controls */}
-            <div className="flex items-center gap-1 mr-2">
+            <div className="flex items-center gap-1 ml-2">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="secondary" size="icon-sm" onClick={() => zoomOut()}>
@@ -494,7 +510,9 @@ function MindmapCanvasInner({
               </div>
             </div>
             <div className="border-t border-border-soft mt-2 pt-2 text-[10px] text-text-subtle">
-              Drag nodes to rearrange • Double-click to collapse
+              {viewMode === "tree" && "Drag nodes • Double-click to collapse"}
+              {viewMode === "radial" && "Double-click to collapse"}
+              {viewMode === "focus" && "Double-click to focus on branch"}
             </div>
           </div>
         </Panel>

@@ -17,7 +17,8 @@ import type {
   CheckIn,
 } from "@/lib/supabase/types";
 import { computeKrProgress, computeObjectiveProgress, type PaceStatus } from "@/lib/progress-engine";
-import { calculateTreeLayout, applyLayout } from "./layout";
+import { calculateTreeLayout, calculateRadialLayout, calculateFocusLayout, applyLayout } from "./layout";
+import type { ViewMode } from "./types";
 
 // ============================================================================
 // DATA TRANSFORMATION
@@ -29,6 +30,8 @@ export interface TransformInput {
   tasks: Task[];
   checkIns: CheckIn[];
   config: LayoutConfig;
+  viewMode?: ViewMode;
+  focusNodeId?: string; // For focus mode
 }
 
 export interface TransformOutput {
@@ -45,6 +48,8 @@ export function transformOkrDataToMindmap({
   tasks,
   checkIns,
   config,
+  viewMode = "tree",
+  focusNodeId,
 }: TransformInput): TransformOutput {
   const nodes: MindmapNode[] = [];
   const edges: MindmapEdge[] = [];
@@ -265,8 +270,27 @@ export function transformOkrDataToMindmap({
     });
   });
 
-  // Apply auto-layout
-  const positions = calculateTreeLayout(nodes, edges, config);
+  // Apply layout based on view mode
+  let positions: Map<string, { x: number; y: number }>;
+  
+  switch (viewMode) {
+    case "radial":
+      positions = calculateRadialLayout(nodes, edges, config);
+      break;
+    case "focus":
+      positions = calculateFocusLayout(
+        nodes,
+        edges,
+        focusNodeId || `plan-${plan.id}`,
+        config
+      );
+      break;
+    case "tree":
+    default:
+      positions = calculateTreeLayout(nodes, edges, config);
+      break;
+  }
+
   const positionedNodes = applyLayout(nodes, positions);
 
   return { nodes: positionedNodes, edges };

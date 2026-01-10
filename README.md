@@ -383,15 +383,14 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
-### ✅ Mindmap Visualization (Phase 1-3 Complete)
+### ✅ Mindmap Visualization (Phase 1-4 Complete)
 - [x] React Flow integration with custom node types
 - [x] Plan, Objective, KR, Quarter, Task nodes
-- [x] Auto-layout algorithm (tree layout)
 - [x] Progress bars and pace badges on nodes
 - [x] Zoom, pan, and minimap controls
 - [x] Toggle visibility for quarters and tasks
 - [x] Collapse/expand branches with visual indicators
-- [x] Double-click to collapse/expand
+- [x] Double-click to collapse/expand (or focus in Focus mode)
 - [x] Collapse All / Expand All buttons
 - [x] Node detail panel on click
 - [x] Drag-to-reposition nodes
@@ -399,9 +398,11 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Restore saved positions on load
 - [x] Manual save layout button
 - [x] Reset to auto-layout button
-- [x] "Custom layout saved" indicator
-- [x] 29 unit tests for layout, collapse, and persistence
-- [ ] View modes - tree/radial/focus (Phase 4)
+- [x] **View Mode Switcher** with three modes:
+  - **Tree**: Hierarchical top-to-bottom layout (default)
+  - **Radial**: Circular layout with proportional angle distribution
+  - **Focus**: Centers on selected node with ancestors above
+- [x] 32 unit tests for layout, collapse, persistence, and view modes
 - [ ] Quick actions and export (Phase 5)
 
 ## License
