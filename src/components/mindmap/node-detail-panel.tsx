@@ -3,7 +3,7 @@
 import { 
   X, 
   Target, 
-  Bullseye, 
+  Crosshair, 
   TrendingUp,
   Calendar,
   CheckCircle2,
@@ -103,7 +103,7 @@ export function NodeDetailPanel({ nodeData, onClose, onNavigate }: NodeDetailPan
 function NodeTypeIcon({ type }: { type: string }) {
   const icons: Record<string, typeof Target> = {
     plan: Target,
-    objective: Bullseye,
+    objective: Crosshair,
     kr: TrendingUp,
     quarter: Calendar,
     task: CheckCircle2,

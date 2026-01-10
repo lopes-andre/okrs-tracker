@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { type NodeProps } from "@xyflow/react";
-import { Bullseye, ChevronDown, ChevronRight } from "lucide-react";
+import { Target, ChevronDown, ChevronRight } from "lucide-react";
 import { BaseNodeWrapper, PaceBadge, NodeProgressBar } from "./base-node";
 import type { ObjectiveNodeData } from "../types";
 import { NODE_DIMENSIONS } from "../types";
@@ -21,7 +21,7 @@ function ObjectiveNodeComponent({ data, selected }: NodeProps<ObjectiveNodeData>
         {/* Header */}
         <div className="flex items-start gap-2 mb-2">
           <div className="w-8 h-8 rounded-card bg-accent/5 flex items-center justify-center shrink-0">
-            <Bullseye className="w-4 h-4 text-accent" />
+            <Target className="w-4 h-4 text-accent" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
