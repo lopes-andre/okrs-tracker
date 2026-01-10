@@ -9,6 +9,7 @@ import {
   Percent,
   Calculator,
   ToggleLeft,
+  ChevronRight,
 } from "lucide-react";
 import { BaseNodeWrapper, PaceBadge, NodeProgressBar } from "./base-node";
 import type { KrNodeData } from "../types";
@@ -81,12 +82,27 @@ function KrNodeComponent({ data, selected }: NodeProps<KrNodeData>) {
         </div>
       </div>
 
-      {/* Quarter targets indicator */}
-      {data.quarterTargetsCount > 0 && (
-        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10">
-          <span className="text-[8px] px-1.5 py-0.5 bg-bg-0 border border-border-soft rounded-full text-text-muted">
-            Q1-Q4
-          </span>
+      {/* Collapse/Expand Indicator for Quarter Targets */}
+      {(data.childCount ?? data.quarterTargetsCount) > 0 && (
+        <div 
+          className={cn(
+            "absolute -bottom-2 left-1/2 -translate-x-1/2 z-10",
+            "flex items-center gap-1 px-1.5 py-0.5",
+            "bg-bg-0 border border-border-soft rounded-full",
+            "cursor-pointer hover:bg-bg-1 transition-colors",
+            "shadow-sm"
+          )}
+        >
+          {data.isCollapsed ? (
+            <>
+              <ChevronRight className="w-2.5 h-2.5 text-text-muted" />
+              <span className="text-[8px] text-text-muted font-medium">
+                {data.childCount ?? data.quarterTargetsCount}
+              </span>
+            </>
+          ) : (
+            <span className="text-[8px] text-text-muted">Q1-Q4</span>
+          )}
         </div>
       )}
     </BaseNodeWrapper>

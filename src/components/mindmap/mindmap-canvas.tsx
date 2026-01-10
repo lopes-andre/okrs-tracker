@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ReactFlow,
   Background,
@@ -8,11 +8,10 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   type NodeTypes,
-  type EdgeTypes,
   type OnNodesChange,
-  type OnEdgesChange,
-  type OnConnect,
   BackgroundVariant,
   Panel,
 } from "@xyflow/react";
@@ -20,7 +19,9 @@ import "@xyflow/react/dist/style.css";
 
 import { PlanNode, ObjectiveNode, KrNode, QuarterNode, TaskNode } from "./nodes";
 import { transformOkrDataToMindmap } from "./data-transformer";
-import type { LayoutConfig, ViewMode, MindmapNode, MindmapEdge } from "./types";
+import { NodeDetailPanel } from "./node-detail-panel";
+import { useCollapse } from "./hooks/use-collapse";
+import type { LayoutConfig, MindmapNode, MindmapEdge, MindmapNodeData } from "./types";
 import { DEFAULT_LAYOUT_CONFIG } from "./types";
 import type { Plan, ObjectiveWithKrs, Task, CheckIn } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -30,10 +31,12 @@ import {
   ZoomOut,
   Maximize2,
   GitBranch,
-  Circle,
   Eye,
   EyeOff,
   ListTodo,
+  Minimize2,
+  Expand,
+  Shrink,
 } from "lucide-react";
 import {
   Tooltip,
@@ -67,32 +70,35 @@ const defaultEdgeOptions = {
 };
 
 // ============================================================================
-// MINDMAP CANVAS COMPONENT
+// MINDMAP CANVAS INNER (requires ReactFlowProvider)
 // ============================================================================
 
-interface MindmapCanvasProps {
+interface MindmapCanvasInnerProps {
   plan: Plan;
   objectives: ObjectiveWithKrs[];
   tasks: Task[];
   checkIns: CheckIn[];
-  onNodeClick?: (nodeId: string, entityType: string, entityId: string) => void;
+  onNodeNavigate?: (entityType: string, entityId: string) => void;
   className?: string;
 }
 
-export function MindmapCanvas({
+function MindmapCanvasInner({
   plan,
   objectives,
   tasks,
   checkIns,
-  onNodeClick,
+  onNodeNavigate,
   className,
-}: MindmapCanvasProps) {
+}: MindmapCanvasInnerProps) {
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  
   // Layout configuration
   const [layoutConfig, setLayoutConfig] = useState<LayoutConfig>(DEFAULT_LAYOUT_CONFIG);
   const [showMinimap, setShowMinimap] = useState(true);
+  const [selectedNode, setSelectedNode] = useState<MindmapNodeData | null>(null);
 
   // Transform data to nodes and edges
-  const { initialNodes, initialEdges } = useMemo(() => {
+  const { allNodes, allEdges } = useMemo(() => {
     const { nodes, edges } = transformOkrDataToMindmap({
       plan,
       objectives,
@@ -100,27 +106,65 @@ export function MindmapCanvas({
       checkIns,
       config: layoutConfig,
     });
-    return { initialNodes: nodes, initialEdges: edges };
+    return { allNodes: nodes, allEdges: edges };
   }, [plan, objectives, tasks, checkIns, layoutConfig]);
 
+  // Collapse/expand management
+  const {
+    toggleCollapse,
+    collapseAll,
+    expandAll,
+    visibleNodes,
+    visibleEdges,
+    collapsedNodeIds,
+  } = useCollapse({ nodes: allNodes, edges: allEdges });
+
   // React Flow state
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(visibleNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(visibleEdges);
 
-  // Update nodes when data changes
-  useMemo(() => {
-    setNodes(initialNodes);
-    setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+  // Update nodes when visibility changes
+  useEffect(() => {
+    setNodes(visibleNodes);
+    setEdges(visibleEdges);
+  }, [visibleNodes, visibleEdges, setNodes, setEdges]);
 
-  // Handle node click
+  // Handle node click - double click to toggle collapse, single click to select
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: MindmapNode) => {
-      if (onNodeClick && node.data) {
-        onNodeClick(node.id, node.data.type, node.data.entityId);
+      // Check if node has children (can be collapsed)
+      const hasChildren = allEdges.some((e) => e.source === node.id);
+      
+      if (hasChildren && node.data) {
+        // If clicking the expand button area (bottom of node), toggle collapse
+        const rect = (event.target as HTMLElement).getBoundingClientRect();
+        const clickY = event.clientY - rect.top;
+        const nodeHeight = rect.height;
+        
+        // If click is in bottom 20% of node, toggle collapse
+        if (clickY > nodeHeight * 0.8) {
+          toggleCollapse(node.id);
+          return;
+        }
+      }
+      
+      // Otherwise, select the node
+      if (node.data) {
+        setSelectedNode(node.data);
       }
     },
-    [onNodeClick]
+    [allEdges, toggleCollapse]
+  );
+
+  // Handle node double-click for collapse/expand
+  const handleNodeDoubleClick = useCallback(
+    (event: React.MouseEvent, node: MindmapNode) => {
+      const hasChildren = allEdges.some((e) => e.source === node.id);
+      if (hasChildren) {
+        toggleCollapse(node.id);
+      }
+    },
+    [allEdges, toggleCollapse]
   );
 
   // Toggle quarters visibility
@@ -151,6 +195,29 @@ export function MindmapCanvas({
     return colors[node.type as keyof typeof colors] || "#94a3b8";
   }, []);
 
+  // Close detail panel
+  const handleCloseDetailPanel = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
+  // Handle navigation from detail panel
+  const handleNavigate = useCallback(
+    (entityType: string, entityId: string) => {
+      if (onNodeNavigate) {
+        onNodeNavigate(entityType, entityId);
+      }
+    },
+    [onNodeNavigate]
+  );
+
+  // Refit view on layout change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fitView({ padding: 0.2, duration: 300 });
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [visibleNodes.length, fitView]);
+
   return (
     <div className={cn("w-full h-full relative", className)}>
       <ReactFlow
@@ -159,6 +226,7 @@ export function MindmapCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}
+        onNodeDoubleClick={handleNodeDoubleClick}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
@@ -167,6 +235,10 @@ export function MindmapCanvas({
         maxZoom={2}
         attributionPosition="bottom-left"
         proOptions={{ hideAttribution: true }}
+        nodesConnectable={false}
+        nodesDraggable={true}
+        panOnScroll
+        selectionOnDrag={false}
       >
         {/* Background */}
         <Background
@@ -187,6 +259,59 @@ export function MindmapCanvas({
         {/* Custom Control Panel */}
         <Panel position="top-right" className="flex items-center gap-2">
           <TooltipProvider>
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 mr-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon-sm" onClick={() => zoomOut()}>
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Zoom Out</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon-sm" onClick={() => zoomIn()}>
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Zoom In</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="secondary" 
+                    size="icon-sm" 
+                    onClick={() => fitView({ padding: 0.2, duration: 300 })}
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Fit View</TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Collapse/Expand */}
+            <div className="flex items-center gap-1 mr-2 border-l border-border-soft pl-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon-sm" onClick={collapseAll}>
+                    <Shrink className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Collapse All</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="secondary" size="icon-sm" onClick={expandAll}>
+                    <Expand className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Expand All</TooltipContent>
+              </Tooltip>
+            </div>
+
+            {/* Visibility Toggles */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -273,9 +398,74 @@ export function MindmapCanvas({
                 <span className="text-text-muted">Off Track</span>
               </div>
             </div>
+            <div className="border-t border-border-soft mt-2 pt-2 text-[10px] text-text-subtle">
+              Double-click to collapse/expand
+            </div>
           </div>
         </Panel>
+
+        {/* Collapsed count indicator */}
+        {collapsedNodeIds.size > 0 && (
+          <Panel position="bottom-left" className="!mb-12">
+            <div className="bg-bg-0 border border-border-soft rounded-card px-3 py-2 shadow-card text-xs">
+              <span className="text-text-muted">
+                {collapsedNodeIds.size} branch{collapsedNodeIds.size > 1 ? "es" : ""} collapsed
+              </span>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
+
+      {/* Node Detail Panel */}
+      <NodeDetailPanel
+        nodeData={selectedNode}
+        onClose={handleCloseDetailPanel}
+        onNavigate={handleNavigate}
+      />
     </div>
+  );
+}
+
+// ============================================================================
+// MINDMAP CANVAS (with Provider)
+// ============================================================================
+
+interface MindmapCanvasProps {
+  plan: Plan;
+  objectives: ObjectiveWithKrs[];
+  tasks: Task[];
+  checkIns: CheckIn[];
+  onNodeClick?: (nodeId: string, entityType: string, entityId: string) => void;
+  className?: string;
+}
+
+export function MindmapCanvas({
+  plan,
+  objectives,
+  tasks,
+  checkIns,
+  onNodeClick,
+  className,
+}: MindmapCanvasProps) {
+  const handleNodeNavigate = useCallback(
+    (entityType: string, entityId: string) => {
+      if (onNodeClick) {
+        onNodeClick(`${entityType}-${entityId}`, entityType, entityId);
+      }
+    },
+    [onNodeClick]
+  );
+
+  return (
+    <ReactFlowProvider>
+      <MindmapCanvasInner
+        plan={plan}
+        objectives={objectives}
+        tasks={tasks}
+        checkIns={checkIns}
+        onNodeNavigate={handleNodeNavigate}
+        className={className}
+      />
+    </ReactFlowProvider>
   );
 }

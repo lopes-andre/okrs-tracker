@@ -13,6 +13,7 @@ export interface BaseNodeData {
   progress: number; // 0-1
   paceStatus: PaceStatus;
   isCollapsed?: boolean;
+  childCount?: number; // Number of direct children
   entityId: string;
 }
 
