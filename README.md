@@ -383,37 +383,25 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
-### 🚧 Mindmap Visualization (All 5 Phases Implemented - Needs Debugging)
-- [x] React Flow integration with custom node types
-- [x] Plan, Objective, KR, Quarter, Task nodes
-- [x] Progress bars and pace badges on nodes
-- [x] Zoom, pan, and minimap controls
-- [x] Toggle visibility for quarters and tasks
-- [x] Collapse/expand branches with visual indicators
-- [x] Double-click to collapse/expand (or focus in Focus mode)
-- [x] Collapse All / Expand All buttons
-- [x] Node detail panel on click
-- [x] Drag-to-reposition nodes
-- [x] Persist node positions to database (auto-save after drag)
-- [x] Restore saved positions on load
-- [x] Manual save layout button
-- [x] Reset to auto-layout button
-- [x] **View Mode Switcher** with three modes:
-  - **Tree**: Hierarchical top-to-bottom layout (default)
-  - **Radial**: Circular layout with proportional angle distribution
-  - **Focus**: Centers on selected node with ancestors above
-- [x] **Filter Panel** with:
-  - Pace status filter (Ahead, On Track, At Risk, Off Track)
-  - Progress range filter (min/max percentage)
-  - Show/hide completed items toggle
-- [x] **Export** to PNG and SVG formats
-- [x] 44 unit tests for layout, collapse, persistence, view modes, and filters
+### ⏸️ Mindmap Visualization (Low Priority - Incomplete)
 
-#### Known Issues (Jan 9, 2026)
-The Mindmap page loads without errors, but some features need debugging:
-- Features may not work as expected (needs investigation)
-- View mode switching, filtering, and export should be tested
-- The infinite loop errors were fixed, but integration behavior needs review
+> **Status**: Basic structure implemented but incomplete. This is a "nice-to-have" visualization feature with limited practical value for daily OKR tracking. The OKRs page already provides the same hierarchy with full interactivity. Revisit only after core features are polished.
+
+**Implemented:**
+- [x] React Flow integration with custom node types
+- [x] Plan, Objective, KR, Quarter, Task nodes with progress indicators
+- [x] Basic tree layout
+- [x] Zoom, pan, minimap controls
+
+**Incomplete/Needs Work:**
+- [ ] View mode switching (radial, focus) - implemented but untested
+- [ ] Collapse/expand - may have bugs
+- [ ] Filter panel - implemented but untested
+- [ ] Export to PNG/SVG - implemented but untested
+- [ ] Position persistence - implemented but untested
+- [ ] Overall integration testing needed
+
+**Decision (Jan 11, 2026)**: Keeping the feature but deprioritizing. Focus development effort on more actionable features like Weekly Review flow, task reminders, and export/share functionality.
 
 ## License
 
