@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { BarChart3, TrendingUp, Calendar, Download, Loader2, Target } from "lucide-react";
+import { BarChart3, TrendingUp, Calendar, Download, Loader2, Target, CalendarCheck } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import {
   SavedViews,
   useSavedViews,
   QuarterlyComparison,
+  WeeklyReviewMetrics,
   type ViewConfig,
 } from "@/components/analytics";
 
@@ -120,6 +121,7 @@ export default function AnalyticsPage({
           <TabsTrigger value="performance">KR Performance</TabsTrigger>
           <TabsTrigger value="pace">Pace Analysis</TabsTrigger>
           <TabsTrigger value="heatmap">Activity Heatmap</TabsTrigger>
+          <TabsTrigger value="reviews">Weekly Reviews</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -231,6 +233,11 @@ export default function AnalyticsPage({
               {productivityStats && <ProductivityPanel stats={productivityStats} />}
             </div>
           </div>
+        </TabsContent>
+
+        {/* Weekly Reviews Tab */}
+        <TabsContent value="reviews">
+          <WeeklyReviewMetrics planId={planId} />
         </TabsContent>
       </Tabs>
     </>

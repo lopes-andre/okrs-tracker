@@ -18,9 +18,11 @@ import {
   Link as LinkIcon,
   FileText,
   Calendar,
+  CalendarCheck,
   Clock,
   Hash,
   Flag,
+  Star,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +56,7 @@ const entityTypeIcons: Record<EventEntityType, React.ElementType> = {
   annual_kr: TrendingUp,
   quarter_target: Calendar,
   plan: Flag,
+  weekly_review: CalendarCheck,
 };
 
 // Badge variants for event types
@@ -82,6 +85,7 @@ const formatEntityType = (type: EventEntityType): string => {
     annual_kr: "Key Result",
     quarter_target: "Quarter Target",
     plan: "Plan",
+    weekly_review: "Weekly Review",
   };
   return labels[type] || type;
 };
@@ -160,6 +164,12 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
     }
     
     if (event.event_type === "completed") {
+      if (event.entity_type === "weekly_review") {
+        const year = newData?.year as number | undefined;
+        const weekNumber = newData?.week_number as number | undefined;
+        const rating = newData?.week_rating as number | undefined;
+        return `Weekly Review completed${year && weekNumber ? ` for W${weekNumber} ${year}` : ""}${rating ? ` (${rating}/5 stars)` : ""}`;
+      }
       return `${entity} completed${entityName ? `: ${entityName}` : ""}`;
     }
     
@@ -167,6 +177,12 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
       const value = newData?.value as number | undefined;
       const unit = newData?.unit as string | undefined;
       return `Check-in recorded${value !== undefined ? `: ${value.toLocaleString()}${unit ? ` ${unit}` : ""}` : ""}`;
+    }
+    
+    if (event.entity_type === "weekly_review") {
+      const year = newData?.year as number | undefined;
+      const weekNumber = newData?.week_number as number | undefined;
+      return `Weekly Review ${action}${year && weekNumber ? ` for W${weekNumber} ${year}` : ""}`;
     }
     
     return `${entity} ${action}${entityName ? `: ${entityName}` : ""}`;
@@ -311,6 +327,50 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
                     >
                       {String(newData.evidence_url)}
                     </a>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Weekly Review Details */}
+            {event.entity_type === "weekly_review" && newData && (
+              <div className="space-y-1.5">
+                {newData.year !== undefined && newData.week_number !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <CalendarCheck className="w-3 h-3 text-text-muted" />
+                    <span className="text-text-muted">Week:</span>
+                    <span className="font-medium text-text-strong">
+                      W{newData.week_number} {newData.year}
+                    </span>
+                  </div>
+                )}
+                {newData.week_rating !== undefined && newData.week_rating !== null && (
+                  <div className="flex items-center gap-2">
+                    <Star className="w-3 h-3 text-status-warning" />
+                    <span className="text-text-muted">Rating:</span>
+                    <span className="font-medium text-text-strong">
+                      {newData.week_rating}/5 stars
+                    </span>
+                  </div>
+                )}
+                {newData.stats_tasks_completed !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-status-success" />
+                    <span className="text-text-muted">Tasks completed:</span>
+                    <span className="font-medium text-text-strong">
+                      {newData.stats_tasks_completed}
+                    </span>
+                  </div>
+                )}
+                {(newData.stats_objectives_on_track !== undefined || 
+                  newData.stats_objectives_at_risk !== undefined) && (
+                  <div className="flex items-center gap-2">
+                    <Target className="w-3 h-3 text-text-muted" />
+                    <span className="text-text-muted">KRs:</span>
+                    <span className="font-medium text-text-strong">
+                      {newData.stats_objectives_on_track || 0} on track, {" "}
+                      {newData.stats_objectives_at_risk || 0} at risk
+                    </span>
                   </div>
                 )}
               </div>
