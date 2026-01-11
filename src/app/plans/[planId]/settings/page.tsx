@@ -12,6 +12,7 @@ import {
   X,
   History,
   Zap,
+  CalendarCheck,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -48,6 +49,7 @@ import {
 } from "@/features";
 import { useTimeline, useTimelinePaginated } from "@/features/timeline/hooks";
 import { ActivityEventCard, WeeklyReviewPanel, ActivityFilters, type ActivityFiltersState } from "@/components/activity";
+import { ReviewSettings } from "@/components/weekly-review";
 import type { OkrRole, TimelineFilters } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
 import { startOfWeek, endOfWeek } from "date-fns";
@@ -203,6 +205,10 @@ export default function SettingsPage({
             <Settings className="w-4 h-4" />
             General
           </TabsTrigger>
+          <TabsTrigger value="weekly-reviews" className="gap-2">
+            <CalendarCheck className="w-4 h-4" />
+            Weekly Reviews
+          </TabsTrigger>
           <TabsTrigger value="members" className="gap-2">
             <Users className="w-4 h-4" />
             Members
@@ -327,6 +333,11 @@ export default function SettingsPage({
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        {/* Weekly Reviews */}
+        <TabsContent value="weekly-reviews">
+          <ReviewSettings planId={planId} isOwner={isOwner} />
         </TabsContent>
 
         {/* Members */}
