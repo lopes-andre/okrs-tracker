@@ -9,13 +9,14 @@ import {
   useReactFlow,
   ReactFlowProvider,
   type NodeTypes,
-  type NodeDragHandler,
   type OnNodesChange,
   type OnEdgesChange,
   BackgroundVariant,
   Panel,
   applyNodeChanges,
   applyEdgeChanges,
+  type Node,
+  type NodeMouseHandler,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -51,12 +52,14 @@ import {
 // NODE TYPES REGISTRATION
 // ============================================================================
 
+// Use 'any' to bypass React Flow's strict generic node type requirements
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const nodeTypes: NodeTypes = {
-  plan: PlanNode,
-  objective: ObjectiveNode,
-  kr: KrNode,
-  quarter: QuarterNode,
-  task: TaskNode,
+  plan: PlanNode as any,
+  objective: ObjectiveNode as any,
+  kr: KrNode as any,
+  quarter: QuarterNode as any,
+  task: TaskNode as any,
 };
 
 const defaultEdgeOptions = {
@@ -169,7 +172,7 @@ function MindmapCanvasInner({
 
   // Handle node changes (dragging)
   const onNodesChange: OnNodesChange = useCallback((changes) => {
-    setNodes((nds) => applyNodeChanges(changes, nds) as MindmapNode[]);
+    setNodes((nds) => applyNodeChanges(changes, nds as unknown as Node[]) as unknown as MindmapNode[]);
   }, []);
 
   const onEdgesChange: OnEdgesChange = useCallback((changes) => {
@@ -177,16 +180,17 @@ function MindmapCanvasInner({
   }, []);
 
   // Handle node drag end - save positions
-  const handleNodeDragStop: NodeDragHandler = useCallback(() => {
+  const handleNodeDragStop = useCallback(() => {
     // Debounced save could be added here
   }, []);
 
   // Handle node click
-  const handleNodeClick = useCallback(
-    (event: React.MouseEvent, node: MindmapNode) => {
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (event, node) => {
       const hasChildren = baseData.edges.some((e) => e.source === node.id);
+      const nodeData = node.data as unknown as MindmapNodeData;
       
-      if (hasChildren && node.data) {
+      if (hasChildren && nodeData) {
         const rect = (event.target as HTMLElement).getBoundingClientRect();
         const clickY = event.clientY - rect.top;
         if (clickY > rect.height * 0.8) {
@@ -195,16 +199,16 @@ function MindmapCanvasInner({
         }
       }
       
-      if (node.data) {
-        setSelectedNode(node.data);
+      if (nodeData) {
+        setSelectedNode(nodeData);
       }
     },
     [baseData.edges, toggleCollapse]
   );
 
   // Handle node double-click
-  const handleNodeDoubleClick = useCallback(
-    (event: React.MouseEvent, node: MindmapNode) => {
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback(
+    (event, node) => {
       if (viewMode === "focus") {
         setFocusNodeId(node.id);
         return;
@@ -230,7 +234,7 @@ function MindmapCanvasInner({
   }, [nodes.length, fitView]);
 
   // Minimap color
-  const minimapNodeColor = useCallback((node: MindmapNode) => {
+  const minimapNodeColor = useCallback((node: Node) => {
     const colors: Record<string, string> = {
       plan: "#3b82f6",
       objective: "#6366f1",
@@ -249,7 +253,7 @@ function MindmapCanvasInner({
   return (
     <div ref={flowRef} className={cn("w-full h-full relative", className)}>
       <ReactFlow
-        nodes={nodes}
+        nodes={nodes as unknown as Node[]}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
