@@ -42,5 +42,8 @@ export * from "./dashboards/hooks";
 export * from "./mindmap/api";
 export * from "./mindmap/hooks";
 
+// Weekly Reviews
+export * from "./weekly-reviews";
+
 // Progress Engine
 export * from "./progress";
