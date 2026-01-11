@@ -12,8 +12,9 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEffort = 'light' | 'moderate' | 'heavy';
 export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
 export type MindmapEntityType = 'plan' | 'objective' | 'annual_kr' | 'quarter_target';
-export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan';
-export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed';
+export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review';
+export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed' | 'started';
+export type WeeklyReviewStatus = 'open' | 'pending' | 'late' | 'complete';
 
 // ============================================================================
 // TABLE TYPES
@@ -246,6 +247,70 @@ export interface ActivityEvent {
 }
 
 // ============================================================================
+// WEEKLY REVIEW TYPES
+// ============================================================================
+
+export interface WeeklyReview {
+  id: string;
+  plan_id: string;
+  year: number;
+  week_number: number;
+  week_start: string;
+  week_end: string;
+  status: WeeklyReviewStatus;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  reflection_what_went_well: string | null;
+  reflection_what_to_improve: string | null;
+  reflection_lessons_learned: string | null;
+  reflection_notes: string | null;
+  stats_krs_updated: number;
+  stats_tasks_completed: number;
+  stats_tasks_created: number;
+  stats_check_ins_made: number;
+  stats_objectives_on_track: number;
+  stats_objectives_at_risk: number;
+  stats_objectives_off_track: number;
+  week_rating: number | null;
+  updated_at: string;
+}
+
+export interface WeeklyReviewSettings {
+  id: string;
+  plan_id: string;
+  reminder_enabled: boolean;
+  reminder_day: number; // 0-6 (Sun-Sat)
+  reminder_time: string; // HH:MM format
+  auto_create_reviews: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WeeklyReviewKrUpdate {
+  id: string;
+  weekly_review_id: string;
+  annual_kr_id: string;
+  value_before: number | null;
+  value_after: number | null;
+  progress_before: number | null;
+  progress_after: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface WeeklyReviewTask {
+  id: string;
+  weekly_review_id: string;
+  task_id: string;
+  status_at_review: string;
+  was_completed_this_week: boolean;
+  was_created_this_week: boolean;
+  was_overdue: boolean;
+  created_at: string;
+}
+
+// ============================================================================
 // INSERT/UPDATE TYPES (without auto-generated fields)
 // ============================================================================
 
@@ -280,6 +345,23 @@ export type DashboardWidgetInsert = Omit<DashboardWidget, 'id' | 'created_at' | 
 export type DashboardWidgetUpdate = Partial<Omit<DashboardWidget, 'id' | 'dashboard_id' | 'created_at' | 'updated_at'>>;
 
 export type PlanInviteInsert = Omit<PlanInvite, 'id' | 'expires_at' | 'accepted_at' | 'created_at'>;
+
+// Weekly Review Insert/Update Types
+export type WeeklyReviewInsert = Omit<WeeklyReview, 'id' | 'created_at' | 'updated_at' | 'started_at' | 'completed_at' | 
+  'stats_krs_updated' | 'stats_tasks_completed' | 'stats_tasks_created' | 'stats_check_ins_made' | 
+  'stats_objectives_on_track' | 'stats_objectives_at_risk' | 'stats_objectives_off_track'>;
+export type WeeklyReviewUpdate = Partial<Pick<WeeklyReview, 
+  'status' | 'started_at' | 'completed_at' | 
+  'reflection_what_went_well' | 'reflection_what_to_improve' | 'reflection_lessons_learned' | 'reflection_notes' |
+  'stats_krs_updated' | 'stats_tasks_completed' | 'stats_tasks_created' | 'stats_check_ins_made' |
+  'stats_objectives_on_track' | 'stats_objectives_at_risk' | 'stats_objectives_off_track' | 'week_rating'>>;
+
+export type WeeklyReviewSettingsInsert = Omit<WeeklyReviewSettings, 'id' | 'created_at' | 'updated_at'>;
+export type WeeklyReviewSettingsUpdate = Partial<Pick<WeeklyReviewSettings, 
+  'reminder_enabled' | 'reminder_day' | 'reminder_time' | 'auto_create_reviews'>>;
+
+export type WeeklyReviewKrUpdateInsert = Omit<WeeklyReviewKrUpdate, 'id' | 'created_at'>;
+export type WeeklyReviewTaskInsert = Omit<WeeklyReviewTask, 'id' | 'created_at'>;
 
 // ============================================================================
 // EXTENDED TYPES (with joined data)
@@ -322,6 +404,30 @@ export interface CheckInWithDetails extends CheckIn {
 
 export interface ActivityEventWithUser extends ActivityEvent {
   user?: Profile;
+}
+
+// Weekly Review Extended Types
+export interface WeeklyReviewSummary extends WeeklyReview {
+  days_overdue: number;
+  has_reflections: boolean;
+}
+
+export interface WeeklyReviewWithKrUpdates extends WeeklyReview {
+  kr_updates: (WeeklyReviewKrUpdate & { annual_kr?: AnnualKr })[];
+}
+
+export interface WeeklyReviewWithTasks extends WeeklyReview {
+  task_snapshots: (WeeklyReviewTask & { task?: Task })[];
+}
+
+export interface PlanReviewStats {
+  plan_id: string;
+  total_reviews: number;
+  completed_on_time: number;
+  completed_late: number;
+  pending: number;
+  avg_rating: number | null;
+  current_streak: number;
 }
 
 // ============================================================================
@@ -477,6 +583,26 @@ export interface Database {
         Insert: never; // Created by triggers only
         Update: never;
       };
+      weekly_reviews: {
+        Row: WeeklyReview;
+        Insert: WeeklyReviewInsert;
+        Update: WeeklyReviewUpdate;
+      };
+      weekly_review_settings: {
+        Row: WeeklyReviewSettings;
+        Insert: WeeklyReviewSettingsInsert;
+        Update: WeeklyReviewSettingsUpdate;
+      };
+      weekly_review_kr_updates: {
+        Row: WeeklyReviewKrUpdate;
+        Insert: WeeklyReviewKrUpdateInsert;
+        Update: never;
+      };
+      weekly_review_tasks: {
+        Row: WeeklyReviewTask;
+        Insert: WeeklyReviewTaskInsert;
+        Update: never;
+      };
     };
     Views: {
       v_plan_timeline: {
@@ -521,6 +647,12 @@ export interface Database {
           avg_progress: number;
         };
       };
+      v_weekly_review_summary: {
+        Row: WeeklyReviewSummary;
+      };
+      v_plan_review_stats: {
+        Row: PlanReviewStats;
+      };
     };
     Enums: {
       okr_role: OkrRole;
@@ -533,6 +665,7 @@ export interface Database {
       mindmap_entity_type: MindmapEntityType;
       event_entity_type: EventEntityType;
       event_type: EventType;
+      weekly_review_status: WeeklyReviewStatus;
     };
   };
 }
