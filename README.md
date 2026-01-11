@@ -377,9 +377,25 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Quarterly comparison view
   - [x] Saved views (presets + custom)
 
+### 🚧 Weekly Review Feature (In Progress)
+A structured weekly ritual for reflecting on progress, celebrating wins, and planning improvements.
+
+**Completed (Phases 1-3):**
+- [x] Database schema (4 tables with RLS, triggers, views)
+- [x] Weekly review engine with 46 unit tests
+- [x] API layer and React Query hooks
+- [x] Status tracking: Open → Pending → Late/Complete
+- [x] Streak calculations and stats
+
+**Remaining (Phases 4-8):**
+- [ ] Markdown editor with formatting toolbar
+- [ ] Settings UI for reminder configuration  
+- [ ] Reviews list page with calendar view
+- [ ] 8-step review wizard (Overview → Progress → Tasks → Reflections → Summary)
+- [ ] Analytics and Timeline integration
+
 ### 🔜 Coming Next
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
-- [ ] Weekly review flow
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
