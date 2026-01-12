@@ -2,67 +2,87 @@
  * Weekly Review Engine
  * 
  * Core logic for weekly review calculations including:
- * - ISO week number calculations
- * - Week bounds (Monday-Sunday)
+ * - Week number calculations (Sunday-Saturday weeks)
+ * - Week bounds
  * - Review status determination
  * - Missing review detection
  * - Streak calculations
+ * 
+ * NOTE: Weeks start on SUNDAY and end on SATURDAY.
+ * Week numbering follows the year (Week 1 contains Jan 1).
  */
 
 import type { WeeklyReview, WeeklyReviewStatus } from "./supabase/types";
 
 // ============================================================================
-// DATE & WEEK UTILITIES
+// DATE & WEEK UTILITIES (SUNDAY-START WEEKS)
 // ============================================================================
 
 /**
- * Get ISO week number for a given date
- * ISO weeks start on Monday and the first week contains January 4th
+ * Get week number for a given date (Sunday-start weeks)
+ * Week 1 is the week containing January 1st
  */
+export function getWeekNumber(date: Date): number {
+  // Get the first day of the year
+  const year = date.getFullYear();
+  const jan1 = new Date(year, 0, 1);
+  
+  // Find the Sunday of week 1 (on or before Jan 1)
+  const jan1DayOfWeek = jan1.getDay(); // 0 = Sunday
+  const week1Sunday = new Date(jan1);
+  week1Sunday.setDate(jan1.getDate() - jan1DayOfWeek);
+  
+  // Calculate days since week 1 Sunday
+  const daysSinceWeek1 = Math.floor((date.getTime() - week1Sunday.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Week number (1-indexed)
+  return Math.floor(daysSinceWeek1 / 7) + 1;
+}
+
+/**
+ * Get the year for week calculations
+ * Uses the calendar year of the date
+ */
+export function getWeekYear(date: Date): number {
+  return date.getFullYear();
+}
+
+// Keep ISO functions for backward compatibility with database
 export function getISOWeekNumber(date: Date): number {
-  // Use UTC methods to avoid timezone issues
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return getWeekNumber(date);
 }
 
-/**
- * Get ISO week year (can differ from calendar year at year boundaries)
- */
 export function getISOWeekYear(date: Date): number {
-  // Use UTC methods to avoid timezone issues
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  return d.getUTCFullYear();
+  return getWeekYear(date);
 }
 
 /**
- * Get the Monday (start) of a given ISO week
+ * Get the Sunday (start) of a given week
  */
 export function getWeekStart(year: number, weekNumber: number): Date {
-  // Find January 4th of the year (always in week 1)
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  // Find the Monday of week 1
-  const dayOfWeek = jan4.getUTCDay() || 7;
-  const week1Monday = new Date(jan4);
-  week1Monday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1));
-  // Add weeks to get to the target week
-  const targetMonday = new Date(week1Monday);
-  targetMonday.setUTCDate(week1Monday.getUTCDate() + (weekNumber - 1) * 7);
-  return targetMonday;
+  // Get Jan 1 of the year
+  const jan1 = new Date(year, 0, 1);
+  
+  // Find the Sunday of week 1 (on or before Jan 1)
+  const jan1DayOfWeek = jan1.getDay(); // 0 = Sunday
+  const week1Sunday = new Date(jan1);
+  week1Sunday.setDate(jan1.getDate() - jan1DayOfWeek);
+  
+  // Add weeks to get to the target week's Sunday
+  const targetSunday = new Date(week1Sunday);
+  targetSunday.setDate(week1Sunday.getDate() + (weekNumber - 1) * 7);
+  
+  return targetSunday;
 }
 
 /**
- * Get the Sunday (end) of a given ISO week
+ * Get the Saturday (end) of a given week
  */
 export function getWeekEnd(year: number, weekNumber: number): Date {
-  const monday = getWeekStart(year, weekNumber);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  return sunday;
+  const sunday = getWeekStart(year, weekNumber);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+  return saturday;
 }
 
 /**
@@ -99,8 +119,8 @@ export function getCurrentWeekInfo(now: Date = new Date()): {
   weekStart: Date;
   weekEnd: Date;
 } {
-  const year = getISOWeekYear(now);
-  const weekNumber = getISOWeekNumber(now);
+  const year = getWeekYear(now);
+  const weekNumber = getWeekNumber(now);
   const { start, end } = getWeekBounds(year, weekNumber);
   return { year, weekNumber, weekStart: start, weekEnd: end };
 }
@@ -109,8 +129,8 @@ export function getCurrentWeekInfo(now: Date = new Date()): {
  * Check if a date is within a specific week
  */
 export function isDateInWeek(date: Date, year: number, weekNumber: number): boolean {
-  const dateYear = getISOWeekYear(date);
-  const dateWeek = getISOWeekNumber(date);
+  const dateYear = getWeekYear(date);
+  const dateWeek = getWeekNumber(date);
   return dateYear === year && dateWeek === weekNumber;
 }
 
@@ -130,36 +150,46 @@ export function getDayName(dayNumber: number): string {
  * Calculate the status of a weekly review based on completion time
  * 
  * Status rules:
- * - 'complete': Completed within the week or by end of Monday
- * - 'late': Completed after Monday of the next week
- * - 'open': Current week, not yet completed
- * - 'pending': Past week, not completed
+ * - 'complete': Completed within the week or by end of Monday 11:59pm
+ * - 'late': Completed after Monday 11:59pm of the next week
+ * - 'open': Current week (or within grace period), not yet completed
+ * - 'pending': Past week (after grace period), not completed
+ * 
+ * Grace period: Until Monday 11:59pm after the week ends (Saturday)
  */
 export function calculateReviewStatus(
   review: Pick<WeeklyReview, "week_end" | "completed_at">,
   now: Date = new Date()
 ): WeeklyReviewStatus {
-  const weekEnd = parseDateString(review.week_end);
-  const mondayAfter = new Date(weekEnd);
-  mondayAfter.setUTCDate(weekEnd.getUTCDate() + 1);
-  mondayAfter.setUTCHours(23, 59, 59, 999); // End of Monday
+  // Parse week_end as local date (Saturday)
+  const [year, month, day] = review.week_end.split("-").map(Number);
+  const weekEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+  
+  // Grace period ends Monday 11:59pm (2 days after Saturday)
+  const gracePeriodEnd = new Date(year, month - 1, day + 2, 23, 59, 59, 999);
 
   if (review.completed_at) {
     const completedAt = new Date(review.completed_at);
-    // Completed by end of Monday after the week = on time
-    if (completedAt <= mondayAfter) {
+    // Completed by end of Monday grace period = on time
+    if (completedAt <= gracePeriodEnd) {
       return "complete";
     }
-    // Completed after Monday = late
+    // Completed after grace period = late
     return "late";
   }
 
-  // Not completed - check if current or past week
-  const nowDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  if (nowDate <= weekEnd) {
+  // Not completed - check if within week or grace period
+  // If we're still within the week (up to Saturday 11:59pm) = open
+  if (now <= weekEnd) {
+    return "open";
+  }
+  
+  // If we're within the grace period (Sunday through Monday 11:59pm) = still open
+  if (now <= gracePeriodEnd) {
     return "open";
   }
 
+  // Past grace period and not completed = pending
   return "pending";
 }
 
@@ -210,8 +240,8 @@ export function getWeeksBetween(
   
   const current = new Date(startDate);
   while (current <= endDate) {
-    const year = getISOWeekYear(current);
-    const weekNumber = getISOWeekNumber(current);
+    const year = getWeekYear(current);
+    const weekNumber = getWeekNumber(current);
     
     // Avoid duplicates
     const exists = weeks.some(w => w.year === year && w.weekNumber === weekNumber);
@@ -220,7 +250,7 @@ export function getWeeksBetween(
     }
     
     // Move to next week
-    current.setUTCDate(current.getUTCDate() + 7);
+    current.setDate(current.getDate() + 7);
   }
   
   return weeks;
@@ -442,17 +472,29 @@ export function formatWeekLabelShort(year: number, weekNumber: number): string {
  * Check if a week is the current week
  */
 export function isCurrentWeek(year: number, weekNumber: number, now: Date = new Date()): boolean {
-  return getISOWeekYear(now) === year && getISOWeekNumber(now) === weekNumber;
+  return getWeekYear(now) === year && getWeekNumber(now) === weekNumber;
 }
 
 /**
- * Check if a week is in the past
+ * Check if a week is in the past (before current week)
  */
 export function isPastWeek(year: number, weekNumber: number, now: Date = new Date()): boolean {
-  const currentYear = getISOWeekYear(now);
-  const currentWeek = getISOWeekNumber(now);
+  const currentYear = getWeekYear(now);
+  const currentWeek = getWeekNumber(now);
   
   if (year < currentYear) return true;
   if (year === currentYear && weekNumber < currentWeek) return true;
+  return false;
+}
+
+/**
+ * Check if a week is in the future (after current week)
+ */
+export function isFutureWeek(year: number, weekNumber: number, now: Date = new Date()): boolean {
+  const currentYear = getWeekYear(now);
+  const currentWeek = getWeekNumber(now);
+  
+  if (year > currentYear) return true;
+  if (year === currentYear && weekNumber > currentWeek) return true;
   return false;
 }

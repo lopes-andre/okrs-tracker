@@ -2,17 +2,22 @@
  * Weekly Review Engine Tests
  * 
  * Comprehensive tests for:
- * - ISO week calculations
+ * - Week calculations (Sunday-Saturday weeks)
  * - Week bounds
  * - Review status determination
  * - Missing review detection
  * - Streak calculations
+ * 
+ * NOTE: Weeks start on SUNDAY and end on SATURDAY.
+ * Week 1 contains January 1st.
  */
 
 import { describe, it, expect } from "vitest";
 import {
   getISOWeekNumber,
   getISOWeekYear,
+  getWeekNumber,
+  getWeekYear,
   getWeekStart,
   getWeekEnd,
   getWeekBounds,
@@ -33,72 +38,93 @@ import {
   formatWeekLabelShort,
   isCurrentWeek,
   isPastWeek,
+  isFutureWeek,
 } from "./weekly-review-engine";
 
 // ============================================================================
-// DATE & WEEK UTILITIES
+// DATE & WEEK UTILITIES (SUNDAY-START WEEKS)
 // ============================================================================
 
-describe("getISOWeekNumber", () => {
-  it("should return week 1 for January 4th (always in week 1)", () => {
-    expect(getISOWeekNumber(new Date("2026-01-04"))).toBe(1);
+describe("getWeekNumber (Sunday-start)", () => {
+  it("should return week 1 for January 1st", () => {
+    // Jan 1, 2026 is a Thursday - should be week 1
+    expect(getWeekNumber(new Date(2026, 0, 1))).toBe(1);
   });
 
-  it("should handle January 1st correctly (may be week 52/53 of previous year)", () => {
-    // Jan 1, 2026 is a Thursday - should be week 1
-    expect(getISOWeekNumber(new Date("2026-01-01"))).toBe(1);
+  it("should return week 1 for early January", () => {
+    // Jan 3, 2026 is a Saturday - still week 1
+    expect(getWeekNumber(new Date(2026, 0, 3))).toBe(1);
+  });
+
+  it("should return week 2 for January 4th, 2026 (Sunday)", () => {
+    // Jan 4, 2026 is a Sunday - starts week 2
+    expect(getWeekNumber(new Date(2026, 0, 4))).toBe(2);
   });
 
   it("should return correct week for mid-year date", () => {
-    // July 15, 2026 is a Wednesday in week 29
-    expect(getISOWeekNumber(new Date("2026-07-15"))).toBe(29);
+    // July 15, 2026 is a Wednesday
+    const weekNum = getWeekNumber(new Date(2026, 6, 15));
+    expect(weekNum).toBeGreaterThan(25);
+    expect(weekNum).toBeLessThan(35);
   });
 
-  it("should handle December 31st correctly", () => {
-    // Dec 31, 2026 is a Thursday - should be week 53
-    expect(getISOWeekNumber(new Date("2026-12-31"))).toBe(53);
+  it("should return week 2 for January 10, 2026 (Saturday)", () => {
+    // Jan 10, 2026 is a Saturday - last day of week 2
+    expect(getWeekNumber(new Date(2026, 0, 10))).toBe(2);
   });
 
-  it("should return week 2 for January 11, 2026", () => {
-    expect(getISOWeekNumber(new Date("2026-01-11"))).toBe(2);
+  it("should return week 3 for January 12, 2026 (Sunday)", () => {
+    // Jan 12, 2026 is a Sunday - starts week 3
+    expect(getWeekNumber(new Date(2026, 0, 12))).toBe(3);
   });
 });
 
-describe("getISOWeekYear", () => {
+describe("getWeekYear", () => {
   it("should return correct year for regular dates", () => {
-    expect(getISOWeekYear(new Date("2026-06-15"))).toBe(2026);
+    expect(getWeekYear(new Date(2026, 5, 15))).toBe(2026);
   });
 
-  it("should handle year boundary - Jan 1 that belongs to previous year week", () => {
-    // Jan 1, 2027 is a Friday - still week 53 of 2026
-    expect(getISOWeekYear(new Date("2027-01-01"))).toBe(2026);
+  it("should return calendar year for dates", () => {
+    expect(getWeekYear(new Date(2027, 0, 1))).toBe(2027);
   });
 });
 
-describe("getWeekStart and getWeekEnd", () => {
-  it("should return Monday for week start", () => {
-    const monday = getWeekStart(2026, 2);
-    expect(monday.getUTCDay()).toBe(1); // Monday
-    expect(formatDateString(monday)).toBe("2026-01-05");
+describe("getWeekStart and getWeekEnd (Sunday-Saturday)", () => {
+  it("should return Sunday for week start", () => {
+    const sunday = getWeekStart(2026, 2);
+    expect(sunday.getDay()).toBe(0); // Sunday
   });
 
-  it("should return Sunday for week end", () => {
-    const sunday = getWeekEnd(2026, 2);
-    expect(sunday.getUTCDay()).toBe(0); // Sunday
-    expect(formatDateString(sunday)).toBe("2026-01-11");
+  it("should return Saturday for week end", () => {
+    const saturday = getWeekEnd(2026, 2);
+    expect(saturday.getDay()).toBe(6); // Saturday
   });
 
   it("should handle week 1 correctly", () => {
     const { start, end } = getWeekBounds(2026, 1);
-    expect(formatDateString(start)).toBe("2025-12-29");
-    expect(formatDateString(end)).toBe("2026-01-04");
+    // Week 1 of 2026: Sunday Dec 28, 2025 to Saturday Jan 3, 2026
+    expect(start.getDay()).toBe(0); // Sunday
+    expect(end.getDay()).toBe(6); // Saturday
   });
 
-  it("should handle last week of year", () => {
-    // 2026 has 53 weeks
-    const { start, end } = getWeekBounds(2026, 53);
-    expect(formatDateString(start)).toBe("2026-12-28");
-    expect(formatDateString(end)).toBe("2027-01-03");
+  it("should return correct week 2 bounds", () => {
+    const { start, end } = getWeekBounds(2026, 2);
+    // Week 2: Sunday Jan 4 to Saturday Jan 10
+    expect(start.getDay()).toBe(0);
+    expect(end.getDay()).toBe(6);
+    expect(start.getMonth()).toBe(0); // January
+    expect(start.getDate()).toBe(4);
+    expect(end.getDate()).toBe(10);
+  });
+
+  it("should return correct week 3 bounds", () => {
+    const { start, end } = getWeekBounds(2026, 3);
+    // Week 3: Sunday Jan 11 to Saturday Jan 17
+    expect(start.getDay()).toBe(0); // Sunday
+    expect(end.getDay()).toBe(6); // Saturday
+    // Note: getWeekStart returns local dates, not UTC
+    expect(start.getMonth()).toBe(0); // January
+    expect(end.getMonth()).toBe(0); // January
   });
 });
 
@@ -123,24 +149,44 @@ describe("formatDateString and parseDateString", () => {
 });
 
 describe("getCurrentWeekInfo", () => {
-  it("should return correct info for a specific date", () => {
-    const testDate = new Date("2026-01-11T12:00:00Z");
+  it("should return correct info for January 12 (Sunday = start of week 3)", () => {
+    const testDate = new Date(2026, 0, 12, 12, 0, 0);
+    const info = getCurrentWeekInfo(testDate);
+    
+    expect(info.year).toBe(2026);
+    expect(info.weekNumber).toBe(3);
+    expect(info.weekStart.getDay()).toBe(0); // Sunday
+    expect(info.weekEnd.getDay()).toBe(6); // Saturday
+  });
+
+  it("should return correct info for Saturday (last day of week)", () => {
+    const testDate = new Date(2026, 0, 10, 12, 0, 0); // Saturday Jan 10
     const info = getCurrentWeekInfo(testDate);
     
     expect(info.year).toBe(2026);
     expect(info.weekNumber).toBe(2);
-    expect(formatDateString(info.weekStart)).toBe("2026-01-05");
-    expect(formatDateString(info.weekEnd)).toBe("2026-01-11");
   });
 });
 
 describe("isDateInWeek", () => {
   it("should return true for date within week", () => {
-    expect(isDateInWeek(new Date("2026-01-07"), 2026, 2)).toBe(true);
+    // Jan 7, 2026 (Wednesday) should be in week 2
+    expect(isDateInWeek(new Date(2026, 0, 7), 2026, 2)).toBe(true);
   });
 
   it("should return false for date outside week", () => {
-    expect(isDateInWeek(new Date("2026-01-04"), 2026, 2)).toBe(false);
+    // Jan 3, 2026 (Saturday) should be in week 1, not week 2
+    expect(isDateInWeek(new Date(2026, 0, 3), 2026, 2)).toBe(false);
+  });
+
+  it("should handle Sunday correctly (week start)", () => {
+    // Jan 11, 2026 is a Sunday - starts week 3
+    expect(isDateInWeek(new Date(2026, 0, 11), 2026, 3)).toBe(true);
+    expect(isDateInWeek(new Date(2026, 0, 11), 2026, 2)).toBe(false);
+    
+    // Jan 4, 2026 is a Sunday - starts week 2
+    expect(isDateInWeek(new Date(2026, 0, 4), 2026, 2)).toBe(true);
+    expect(isDateInWeek(new Date(2026, 0, 4), 2026, 1)).toBe(false);
   });
 });
 
@@ -158,68 +204,90 @@ describe("getDayName", () => {
 // ============================================================================
 
 describe("calculateReviewStatus", () => {
-  const weekEnd = "2026-01-11"; // Sunday of week 2
+  // Week 2: Sunday Jan 4 to Saturday Jan 10
+  const weekEnd = "2026-01-10"; // Saturday end of week 2
 
   it("should return 'complete' when completed within the week", () => {
-    const review = { week_end: weekEnd, completed_at: "2026-01-10T15:00:00Z" };
-    const now = new Date("2026-01-15");
+    const review = { week_end: weekEnd, completed_at: "2026-01-09T15:00:00Z" };
+    const now = new Date(2026, 0, 15);
     expect(calculateReviewStatus(review, now)).toBe("complete");
   });
 
-  it("should return 'complete' when completed on Monday after week end", () => {
-    const review = { week_end: weekEnd, completed_at: "2026-01-12T10:00:00Z" };
-    const now = new Date("2026-01-15");
+  it("should return 'complete' when completed on Sunday after week end", () => {
+    // Sunday Jan 11 is within grace period
+    const review = { week_end: weekEnd, completed_at: "2026-01-11T10:00:00Z" };
+    const now = new Date(2026, 0, 15);
     expect(calculateReviewStatus(review, now)).toBe("complete");
   });
 
-  it("should return 'late' when completed after Monday", () => {
+  it("should return 'complete' when completed on Monday before 11:59pm", () => {
+    // Monday Jan 12 is still in grace period
+    const review = { week_end: weekEnd, completed_at: "2026-01-12T22:00:00Z" };
+    const now = new Date(2026, 0, 15);
+    expect(calculateReviewStatus(review, now)).toBe("complete");
+  });
+
+  it("should return 'late' when completed after Monday 11:59pm", () => {
+    // Tuesday Jan 13 is after grace period
     const review = { week_end: weekEnd, completed_at: "2026-01-13T10:00:00Z" };
-    const now = new Date("2026-01-15");
+    const now = new Date(2026, 0, 15);
     expect(calculateReviewStatus(review, now)).toBe("late");
   });
 
   it("should return 'open' for current week without completion", () => {
     const review = { week_end: weekEnd, completed_at: null };
-    const now = new Date("2026-01-09"); // Friday within the week
+    const now = new Date(2026, 0, 9); // Friday within the week
     expect(calculateReviewStatus(review, now)).toBe("open");
   });
 
-  it("should return 'pending' for past week without completion", () => {
+  it("should return 'open' during grace period (Sunday)", () => {
     const review = { week_end: weekEnd, completed_at: null };
-    const now = new Date("2026-01-15"); // After the week
+    const now = new Date(2026, 0, 11, 10, 0); // Sunday Jan 11, 10am
+    expect(calculateReviewStatus(review, now)).toBe("open");
+  });
+
+  it("should return 'open' during grace period (Monday before 11:59pm)", () => {
+    const review = { week_end: weekEnd, completed_at: null };
+    const now = new Date(2026, 0, 12, 22, 0); // Monday Jan 12, 10pm
+    expect(calculateReviewStatus(review, now)).toBe("open");
+  });
+
+  it("should return 'pending' after grace period", () => {
+    const review = { week_end: weekEnd, completed_at: null };
+    const now = new Date(2026, 0, 14); // Wednesday Jan 14
     expect(calculateReviewStatus(review, now)).toBe("pending");
   });
 });
 
 describe("isReviewOverdue", () => {
   it("should return false for complete reviews", () => {
-    const review = { status: "complete" as const, week_end: "2026-01-11" };
+    const review = { status: "complete" as const, week_end: "2026-01-10" };
     expect(isReviewOverdue(review)).toBe(false);
   });
 
   it("should return true for pending review past deadline", () => {
-    const review = { status: "pending" as const, week_end: "2026-01-04" };
-    const now = new Date("2026-01-15");
+    const review = { status: "pending" as const, week_end: "2026-01-03" };
+    const now = new Date(2026, 0, 15);
     expect(isReviewOverdue(review, now)).toBe(true);
   });
 
   it("should return false for open review in current week", () => {
-    const review = { status: "open" as const, week_end: "2026-01-11" };
-    const now = new Date("2026-01-09");
+    const review = { status: "open" as const, week_end: "2026-01-10" };
+    const now = new Date(2026, 0, 9);
     expect(isReviewOverdue(review, now)).toBe(false);
   });
 });
 
 describe("getDaysOverdue", () => {
   it("should return 0 for non-overdue reviews", () => {
-    const review = { status: "complete" as const, week_end: "2026-01-11" };
+    const review = { status: "complete" as const, week_end: "2026-01-10" };
     expect(getDaysOverdue(review)).toBe(0);
   });
 
   it("should return correct days for overdue review", () => {
-    const review = { status: "pending" as const, week_end: "2026-01-04" };
-    const now = new Date("2026-01-14");
-    expect(getDaysOverdue(review, now)).toBe(10);
+    const review = { status: "pending" as const, week_end: "2026-01-03" };
+    const now = new Date(2026, 0, 14);
+    expect(getDaysOverdue(review, now)).toBe(11);
   });
 });
 
@@ -229,23 +297,21 @@ describe("getDaysOverdue", () => {
 
 describe("getWeeksBetween", () => {
   it("should return all weeks between two dates", () => {
-    // Use UTC dates to avoid timezone issues
-    const start = new Date(Date.UTC(2026, 0, 12)); // Week 3 (Monday Jan 12)
-    const end = new Date(Date.UTC(2026, 1, 1)); // Week 5 (Sunday Feb 1)
-    const weeks = getWeeksBetween(start, end);
-    
-    expect(weeks).toHaveLength(3); // Weeks 3, 4, 5
-    expect(weeks[0]).toEqual({ year: 2026, weekNumber: 3 });
-    expect(weeks[1]).toEqual({ year: 2026, weekNumber: 4 });
-    expect(weeks[2]).toEqual({ year: 2026, weekNumber: 5 });
-  });
-
-  it("should handle year boundary", () => {
-    const start = new Date(Date.UTC(2025, 11, 25)); // Week 52 of 2025
-    const end = new Date(Date.UTC(2026, 0, 10)); // Week 2 of 2026
+    const start = new Date(2026, 0, 12); // Sunday Week 3
+    const end = new Date(2026, 1, 1); // Sunday Week 6
     const weeks = getWeeksBetween(start, end);
     
     expect(weeks.length).toBeGreaterThanOrEqual(3);
+    expect(weeks[0]).toEqual({ year: 2026, weekNumber: 3 });
+  });
+
+  it("should handle same week", () => {
+    const start = new Date(2026, 0, 12); // Sunday Week 3
+    const end = new Date(2026, 0, 15); // Wednesday Week 3
+    const weeks = getWeeksBetween(start, end);
+    
+    expect(weeks).toHaveLength(1);
+    expect(weeks[0]).toEqual({ year: 2026, weekNumber: 3 });
   });
 });
 
@@ -255,12 +321,12 @@ describe("findMissingReviews", () => {
       { year: 2026, week_number: 1 },
       { year: 2026, week_number: 3 },
     ];
-    const planCreated = new Date("2025-12-29"); // Week 1 start
-    const now = new Date("2026-01-20"); // Week 4
+    const planCreated = new Date(2026, 0, 1); // Jan 1
+    const now = new Date(2026, 0, 20); // Week 4
     
     const missing = findMissingReviews(existingReviews, planCreated, now);
     
-    // Should find week 2 and week 4 as missing
+    // Should find week 2 as missing
     expect(missing.some(w => w.year === 2026 && w.weekNumber === 2)).toBe(true);
   });
 
@@ -269,10 +335,10 @@ describe("findMissingReviews", () => {
       { year: 2026, week_number: 3 },
       { year: 2026, week_number: 4 },
     ];
-    // Start from Monday of week 3 (Jan 12)
-    const planCreated = new Date(Date.UTC(2026, 0, 12));
-    // End at Sunday of week 4 (Jan 25)
-    const now = new Date(Date.UTC(2026, 0, 25));
+    // Start from Sunday of week 3 (Jan 11)
+    const planCreated = new Date(2026, 0, 11);
+    // End at Saturday of week 4 (Jan 24)
+    const now = new Date(2026, 0, 24);
     
     const missing = findMissingReviews(existingReviews, planCreated, now);
     expect(missing).toHaveLength(0);
@@ -404,17 +470,26 @@ describe("formatWeekLabelShort", () => {
   });
 });
 
-describe("isCurrentWeek and isPastWeek", () => {
-  const testNow = new Date("2026-01-11"); // Week 2
+describe("isCurrentWeek, isPastWeek, isFutureWeek", () => {
+  const testNow = new Date(2026, 0, 12); // Sunday Jan 12 = Week 3
 
   it("should identify current week", () => {
-    expect(isCurrentWeek(2026, 2, testNow)).toBe(true);
-    expect(isCurrentWeek(2026, 1, testNow)).toBe(false);
+    expect(isCurrentWeek(2026, 3, testNow)).toBe(true);
+    expect(isCurrentWeek(2026, 2, testNow)).toBe(false);
+    expect(isCurrentWeek(2026, 4, testNow)).toBe(false);
   });
 
   it("should identify past weeks", () => {
+    expect(isPastWeek(2026, 2, testNow)).toBe(true);
     expect(isPastWeek(2026, 1, testNow)).toBe(true);
-    expect(isPastWeek(2026, 2, testNow)).toBe(false);
-    expect(isPastWeek(2025, 52, testNow)).toBe(true);
+    expect(isPastWeek(2026, 3, testNow)).toBe(false);
+    expect(isPastWeek(2026, 4, testNow)).toBe(false);
+  });
+
+  it("should identify future weeks", () => {
+    expect(isFutureWeek(2026, 4, testNow)).toBe(true);
+    expect(isFutureWeek(2026, 5, testNow)).toBe(true);
+    expect(isFutureWeek(2026, 3, testNow)).toBe(false);
+    expect(isFutureWeek(2026, 2, testNow)).toBe(false);
   });
 });

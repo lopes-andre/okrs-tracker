@@ -41,6 +41,8 @@ import {
   formatDateString,
   isCurrentWeek,
   isPastWeek,
+  isFutureWeek,
+  getWeekNumber,
 } from "@/lib/weekly-review-engine";
 import type { WeeklyReviewStatus } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -114,8 +116,9 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
   const currentWeek = getCurrentWeekInfo();
   const reviewMap = new Map(reviews.map((r) => [r.week_number, r]));
   
-  // Get all weeks in the year (ISO weeks can be 52 or 53)
-  const totalWeeks = year === 2026 ? 53 : 52; // 2026 has 53 weeks
+  // Get total weeks in the year (can be 52 or 53 depending on year)
+  const lastDayOfYear = new Date(year, 11, 31);
+  const totalWeeks = getWeekNumber(lastDayOfYear);
   const weeks = Array.from({ length: totalWeeks }, (_, i) => i + 1);
   
   // Split into quarters for better display
@@ -126,11 +129,14 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
     { name: "Q4", weeks: weeks.filter((w) => w > 39) },
   ];
 
-  // Determine if a week is before plan creation
+  // Plan creation date (local time)
   const planCreated = new Date(planCreatedAt);
+
+  // Determine if a week is before plan creation
   const isBeforePlan = (weekNum: number) => {
-    const { start } = getWeekBounds(year, weekNum);
-    return start < planCreated;
+    const { end } = getWeekBounds(year, weekNum);
+    // Week is before plan if the entire week ended before plan was created
+    return end < planCreated;
   };
 
   return (
@@ -143,24 +149,37 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
               const review = reviewMap.get(weekNum);
               const isCurrent = isCurrentWeek(year, weekNum);
               const isPast = isPastWeek(year, weekNum);
+              const isFuture = isFutureWeek(year, weekNum);
               const beforePlan = isBeforePlan(weekNum);
+              
+              // Determine if this week should be disabled (not clickable)
+              const isDisabled = beforePlan || isFuture;
               
               let bgColor = "bg-bg-1";
               let textColor = "text-text-muted";
               let borderColor = "border-border-soft";
               
               if (beforePlan) {
+                // Before plan creation - greyed out
                 bgColor = "bg-bg-0";
-                textColor = "text-text-muted/50";
+                textColor = "text-text-muted/30";
                 borderColor = "border-transparent";
+              } else if (isFuture) {
+                // Future week - not available yet
+                bgColor = "bg-bg-1";
+                textColor = "text-text-muted/50";
+                borderColor = "border-border-soft";
               } else if (review) {
+                // Has a review - show status color
                 bgColor = statusConfig[review.status].bgColor;
                 textColor = statusConfig[review.status].color;
               } else if (isCurrent) {
+                // Current week without review - highlight
                 bgColor = "bg-accent/20";
                 textColor = "text-accent";
                 borderColor = "border-accent";
               } else if (isPast) {
+                // Past week without review - pending/missing
                 bgColor = "bg-status-danger/10";
                 textColor = "text-status-danger/70";
               }
@@ -168,18 +187,24 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
               return (
                 <button
                   key={weekNum}
-                  onClick={() => !beforePlan && onWeekClick(year, weekNum)}
-                  disabled={beforePlan}
+                  onClick={() => !isDisabled && onWeekClick(year, weekNum)}
+                  disabled={isDisabled}
                   className={cn(
                     "w-9 h-9 rounded-md border text-xs font-medium transition-all",
                     bgColor,
                     textColor,
                     borderColor,
-                    !beforePlan && "hover:scale-105 hover:shadow-sm cursor-pointer",
-                    beforePlan && "cursor-not-allowed opacity-50",
+                    !isDisabled && "hover:scale-105 hover:shadow-sm cursor-pointer",
+                    isDisabled && "cursor-not-allowed",
                     isCurrent && "ring-2 ring-accent ring-offset-1"
                   )}
-                  title={formatWeekLabel(year, weekNum)}
+                  title={
+                    isFuture 
+                      ? `${formatWeekLabel(year, weekNum)} (Future - not available)`
+                      : beforePlan 
+                        ? `${formatWeekLabel(year, weekNum)} (Before plan creation)`
+                        : formatWeekLabel(year, weekNum)
+                  }
                 >
                   {weekNum}
                 </button>
