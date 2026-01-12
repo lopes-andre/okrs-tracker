@@ -272,6 +272,8 @@ export interface WeeklyReview {
   stats_objectives_on_track: number;
   stats_objectives_at_risk: number;
   stats_objectives_off_track: number;
+  stats_overall_progress: number; // 0-100 percentage at completion
+  stats_total_krs: number;
   week_rating: number | null;
   updated_at: string;
 }

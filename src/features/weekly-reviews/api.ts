@@ -206,6 +206,8 @@ export async function completeWeeklyReview(
     stats_objectives_on_track?: number;
     stats_objectives_at_risk?: number;
     stats_objectives_off_track?: number;
+    stats_overall_progress?: number; // 0-100 percentage
+    stats_total_krs?: number;
   }
 ): Promise<WeeklyReview> {
   const supabase = createClient();

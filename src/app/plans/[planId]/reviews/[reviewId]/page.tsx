@@ -301,6 +301,8 @@ export default function ReviewWizardPage({
           stats_objectives_on_track: progressStats.onTrack,
           stats_objectives_at_risk: progressStats.atRisk,
           stats_objectives_off_track: progressStats.offTrack,
+          stats_overall_progress: Math.round(progressStats.avgProgress * 100), // Store as 0-100
+          stats_total_krs: progressStats.totalKrs,
         },
       });
       router.push(`/plans/${planId}/reviews`);
@@ -367,15 +369,15 @@ export default function ReviewWizardPage({
             <CardContent>
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-bg-1/50 rounded-card">
-                  <p className="text-3xl font-bold text-accent">{Math.round(progressStats.avgProgress * 100)}%</p>
+                  <p className="text-3xl font-bold text-accent">{review.stats_overall_progress || 0}%</p>
                   <p className="text-sm text-text-muted">Overall Progress (YTD)</p>
                 </div>
                 <div className="text-center p-4 bg-bg-1/50 rounded-card">
-                  <p className="text-3xl font-bold text-status-success">{review.stats_tasks_completed || weekTasks.completed.length}</p>
+                  <p className="text-3xl font-bold text-status-success">{review.stats_tasks_completed || 0}</p>
                   <p className="text-sm text-text-muted">Tasks Completed</p>
                 </div>
                 <div className="text-center p-4 bg-bg-1/50 rounded-card">
-                  <p className="text-3xl font-bold text-text-strong">{progressStats.totalKrs}</p>
+                  <p className="text-3xl font-bold text-text-strong">{review.stats_total_krs || 0}</p>
                   <p className="text-sm text-text-muted">Active KRs</p>
                 </div>
                 <div className="text-center p-4 bg-bg-1/50 rounded-card">
@@ -411,61 +413,25 @@ export default function ReviewWizardPage({
                 <div className="flex items-center gap-3 p-3 bg-status-success/10 rounded-card">
                   <TrendingUp className="w-8 h-8 text-status-success" />
                   <div>
-                    <p className="text-2xl font-bold text-status-success">{review.stats_objectives_on_track || progressStats.onTrack}</p>
+                    <p className="text-2xl font-bold text-status-success">{review.stats_objectives_on_track || 0}</p>
                     <p className="text-sm text-text-muted">On Track</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-status-warning/10 rounded-card">
                   <AlertTriangle className="w-8 h-8 text-status-warning" />
                   <div>
-                    <p className="text-2xl font-bold text-status-warning">{review.stats_objectives_at_risk || progressStats.atRisk}</p>
+                    <p className="text-2xl font-bold text-status-warning">{review.stats_objectives_at_risk || 0}</p>
                     <p className="text-sm text-text-muted">At Risk</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-status-danger/10 rounded-card">
                   <TrendingDown className="w-8 h-8 text-status-danger" />
                   <div>
-                    <p className="text-2xl font-bold text-status-danger">{review.stats_objectives_off_track || progressStats.offTrack}</p>
+                    <p className="text-2xl font-bold text-status-danger">{review.stats_objectives_off_track || 0}</p>
                     <p className="text-sm text-text-muted">Off Track</p>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Objectives Progress */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-accent" />
-                Objectives Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {objectives.map((obj) => {
-                const planYear = plan?.year || new Date().getFullYear();
-                const objKrs = obj.annual_krs || [];
-                let objTotalProgress = 0;
-                objKrs.forEach((kr) => {
-                  const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
-                  const krProg = computeKrProgress(kr, krCheckIns, [], planYear);
-                  objTotalProgress += krProg.progress;
-                });
-                const objProgress = objKrs.length > 0 ? objTotalProgress / objKrs.length : 0;
-
-                return (
-                  <div key={obj.id} className="p-3 bg-bg-1/30 rounded-card">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{obj.code}</Badge>
-                        <span className="font-medium text-text-strong">{obj.name}</span>
-                      </div>
-                      <span className="text-lg font-bold text-accent">{Math.round(objProgress * 100)}%</span>
-                    </div>
-                    <Progress value={objProgress * 100} className="h-2" />
-                  </div>
-                );
-              })}
             </CardContent>
           </Card>
 
@@ -474,52 +440,24 @@ export default function ReviewWizardPage({
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <ListTodo className="w-5 h-5 text-accent" />
-                Tasks Summary
+                Tasks at Review Time
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-status-success flex items-center gap-2 mb-3">
-                    <CheckSquare className="w-4 h-4" />
-                    Completed ({weekTasks.completed.length})
-                  </h4>
-                  {weekTasks.completed.length === 0 ? (
-                    <p className="text-text-muted text-sm">No tasks completed</p>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {weekTasks.completed.slice(0, 8).map((task) => (
-                        <li key={task.id} className="flex items-center gap-2 text-text-muted">
-                          <CheckCircle2 className="w-3 h-3 text-status-success shrink-0" />
-                          <span className="line-through truncate">{task.title}</span>
-                        </li>
-                      ))}
-                      {weekTasks.completed.length > 8 && (
-                        <li className="text-xs text-text-muted">+{weekTasks.completed.length - 8} more</li>
-                      )}
-                    </ul>
-                  )}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-3 p-4 bg-status-success/10 rounded-card">
+                  <CheckSquare className="w-8 h-8 text-status-success" />
+                  <div>
+                    <p className="text-2xl font-bold text-status-success">{review.stats_tasks_completed || 0}</p>
+                    <p className="text-sm text-text-muted">Tasks Completed This Week</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-medium text-status-danger flex items-center gap-2 mb-3">
-                    <AlertTriangle className="w-4 h-4" />
-                    Overdue at Review ({weekTasks.overdue.length})
-                  </h4>
-                  {weekTasks.overdue.length === 0 ? (
-                    <p className="text-text-muted text-sm">No overdue tasks 🎉</p>
-                  ) : (
-                    <ul className="space-y-1 text-sm">
-                      {weekTasks.overdue.slice(0, 8).map((task) => (
-                        <li key={task.id} className="flex items-center gap-2 text-status-danger">
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{task.title}</span>
-                        </li>
-                      ))}
-                      {weekTasks.overdue.length > 8 && (
-                        <li className="text-xs text-text-muted">+{weekTasks.overdue.length - 8} more</li>
-                      )}
-                    </ul>
-                  )}
+                <div className="flex items-center gap-3 p-4 bg-accent/10 rounded-card">
+                  <Square className="w-8 h-8 text-accent" />
+                  <div>
+                    <p className="text-2xl font-bold text-accent">{review.stats_tasks_created || 0}</p>
+                    <p className="text-sm text-text-muted">Tasks Created This Week</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -563,28 +501,33 @@ export default function ReviewWizardPage({
                 </div>
               </div>
 
-              {review.reflection_lessons_learned && (
+              <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-medium flex items-center gap-2 mb-2">
                     <BookOpen className="w-4 h-4 text-accent" />
                     Lessons Learned
                   </h4>
-                  <div className="p-3 bg-accent/5 rounded-card border border-accent/20">
-                    <MarkdownPreview content={review.reflection_lessons_learned} className="text-sm" />
-                  </div>
+                  {review.reflection_lessons_learned ? (
+                    <div className="p-3 bg-accent/5 rounded-card border border-accent/20">
+                      <MarkdownPreview content={review.reflection_lessons_learned} className="text-sm" />
+                    </div>
+                  ) : (
+                    <p className="text-text-muted text-sm italic p-3 bg-bg-1/30 rounded-card">Not filled in</p>
+                  )}
                 </div>
-              )}
-
-              {review.reflection_notes && (
                 <div>
                   <h4 className="font-medium flex items-center gap-2 mb-2 text-text-muted">
                     Additional Notes
                   </h4>
-                  <div className="p-3 bg-bg-1/30 rounded-card">
-                    <MarkdownPreview content={review.reflection_notes} className="text-sm" />
-                  </div>
+                  {review.reflection_notes ? (
+                    <div className="p-3 bg-bg-1/30 rounded-card border border-border-soft">
+                      <MarkdownPreview content={review.reflection_notes} className="text-sm" />
+                    </div>
+                  ) : (
+                    <p className="text-text-muted text-sm italic p-3 bg-bg-1/30 rounded-card">Not filled in</p>
+                  )}
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
 
