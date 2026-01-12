@@ -180,24 +180,26 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- When a review is started
   IF TG_OP = 'UPDATE' AND OLD.started_at IS NULL AND NEW.started_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, entity_type, entity_id, action, metadata)
+    INSERT INTO activity_events (plan_id, entity_type, entity_id, event_type, new_data, metadata)
     VALUES (
       NEW.plan_id,
       'weekly_review',
       NEW.id,
-      'started',
+      'updated',
       jsonb_build_object(
         'year', NEW.year,
         'week_number', NEW.week_number,
         'week_start', NEW.week_start,
-        'week_end', NEW.week_end
-      )
+        'week_end', NEW.week_end,
+        'status', NEW.status
+      ),
+      jsonb_build_object('action', 'started')
     );
   END IF;
   
   -- When a review is completed
   IF TG_OP = 'UPDATE' AND OLD.completed_at IS NULL AND NEW.completed_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, entity_type, entity_id, action, metadata)
+    INSERT INTO activity_events (plan_id, entity_type, entity_id, event_type, new_data)
     VALUES (
       NEW.plan_id,
       'weekly_review',
