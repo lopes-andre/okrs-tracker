@@ -9,3 +9,4 @@ export { TaskMetricsPanel } from "./task-metrics-panel";
 export { ProductivityPanel } from "./productivity-panel";
 export { SavedViews, useSavedViews, type ViewConfig, type SavedView } from "./saved-views";
 export { QuarterlyComparison } from "./quarterly-comparison";
+export { WeeklyReviewMetrics } from "./weekly-review-metrics";
