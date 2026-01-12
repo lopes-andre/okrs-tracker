@@ -330,7 +330,279 @@ export default function ReviewWizardPage({
 
   const currentStepData = STEPS[currentStep];
   const isCurrent = isCurrentWeek(review.year, review.week_number);
+  const isCompleted = review.status === "complete" || review.status === "late";
 
+  // ============================================================================
+  // COMPLETED REVIEW - READ-ONLY SUMMARY VIEW
+  // ============================================================================
+  if (isCompleted) {
+    return (
+      <>
+        <PageHeader
+          title={formatWeekLabel(review.year, review.week_number)}
+          description={review.completed_at 
+            ? `Completed ${new Date(review.completed_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+            : "Completed review"
+          }
+          backHref={`/plans/${planId}/reviews`}
+          actions={
+            <Badge variant={review.status === "complete" ? "default" : "outline"} className={review.status === "late" ? "bg-status-warning text-white" : ""}>
+              {review.status === "complete" ? "Completed" : "Late"}
+            </Badge>
+          }
+        />
+
+        <div className="space-y-6">
+          {/* Overview Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-accent" />
+                Week Overview
+              </CardTitle>
+              <CardDescription>
+                {formatWeekLabel(review.year, review.week_number)} • {review.week_start} to {review.week_end}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-bg-1/50 rounded-card">
+                  <p className="text-3xl font-bold text-accent">{Math.round(progressStats.avgProgress * 100)}%</p>
+                  <p className="text-sm text-text-muted">Overall Progress (YTD)</p>
+                </div>
+                <div className="text-center p-4 bg-bg-1/50 rounded-card">
+                  <p className="text-3xl font-bold text-status-success">{review.stats_tasks_completed || weekTasks.completed.length}</p>
+                  <p className="text-sm text-text-muted">Tasks Completed</p>
+                </div>
+                <div className="text-center p-4 bg-bg-1/50 rounded-card">
+                  <p className="text-3xl font-bold text-text-strong">{progressStats.totalKrs}</p>
+                  <p className="text-sm text-text-muted">Active KRs</p>
+                </div>
+                <div className="text-center p-4 bg-bg-1/50 rounded-card">
+                  <div className="flex justify-center">
+                    {[1, 2, 3, 4, 5].map((v) => (
+                      <Star
+                        key={v}
+                        className={cn(
+                          "w-6 h-6",
+                          review.week_rating && v <= review.week_rating
+                            ? "text-status-warning fill-status-warning"
+                            : "text-text-muted"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-text-muted mt-1">Week Rating</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KR Status */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-accent" />
+                KR Status at Review Time
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="flex items-center gap-3 p-3 bg-status-success/10 rounded-card">
+                  <TrendingUp className="w-8 h-8 text-status-success" />
+                  <div>
+                    <p className="text-2xl font-bold text-status-success">{review.stats_objectives_on_track || progressStats.onTrack}</p>
+                    <p className="text-sm text-text-muted">On Track</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-status-warning/10 rounded-card">
+                  <AlertTriangle className="w-8 h-8 text-status-warning" />
+                  <div>
+                    <p className="text-2xl font-bold text-status-warning">{review.stats_objectives_at_risk || progressStats.atRisk}</p>
+                    <p className="text-sm text-text-muted">At Risk</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-status-danger/10 rounded-card">
+                  <TrendingDown className="w-8 h-8 text-status-danger" />
+                  <div>
+                    <p className="text-2xl font-bold text-status-danger">{review.stats_objectives_off_track || progressStats.offTrack}</p>
+                    <p className="text-sm text-text-muted">Off Track</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Objectives Progress */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-accent" />
+                Objectives Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {objectives.map((obj) => {
+                const planYear = plan?.year || new Date().getFullYear();
+                const objKrs = obj.annual_krs || [];
+                let objTotalProgress = 0;
+                objKrs.forEach((kr) => {
+                  const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
+                  const krProg = computeKrProgress(kr, krCheckIns, [], planYear);
+                  objTotalProgress += krProg.progress;
+                });
+                const objProgress = objKrs.length > 0 ? objTotalProgress / objKrs.length : 0;
+
+                return (
+                  <div key={obj.id} className="p-3 bg-bg-1/30 rounded-card">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{obj.code}</Badge>
+                        <span className="font-medium text-text-strong">{obj.name}</span>
+                      </div>
+                      <span className="text-lg font-bold text-accent">{Math.round(objProgress * 100)}%</span>
+                    </div>
+                    <Progress value={objProgress * 100} className="h-2" />
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Tasks Summary */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="w-5 h-5 text-accent" />
+                Tasks Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-status-success flex items-center gap-2 mb-3">
+                    <CheckSquare className="w-4 h-4" />
+                    Completed ({weekTasks.completed.length})
+                  </h4>
+                  {weekTasks.completed.length === 0 ? (
+                    <p className="text-text-muted text-sm">No tasks completed</p>
+                  ) : (
+                    <ul className="space-y-1 text-sm">
+                      {weekTasks.completed.slice(0, 8).map((task) => (
+                        <li key={task.id} className="flex items-center gap-2 text-text-muted">
+                          <CheckCircle2 className="w-3 h-3 text-status-success shrink-0" />
+                          <span className="line-through truncate">{task.title}</span>
+                        </li>
+                      ))}
+                      {weekTasks.completed.length > 8 && (
+                        <li className="text-xs text-text-muted">+{weekTasks.completed.length - 8} more</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-medium text-status-danger flex items-center gap-2 mb-3">
+                    <AlertTriangle className="w-4 h-4" />
+                    Overdue at Review ({weekTasks.overdue.length})
+                  </h4>
+                  {weekTasks.overdue.length === 0 ? (
+                    <p className="text-text-muted text-sm">No overdue tasks 🎉</p>
+                  ) : (
+                    <ul className="space-y-1 text-sm">
+                      {weekTasks.overdue.slice(0, 8).map((task) => (
+                        <li key={task.id} className="flex items-center gap-2 text-status-danger">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{task.title}</span>
+                        </li>
+                      ))}
+                      {weekTasks.overdue.length > 8 && (
+                        <li className="text-xs text-text-muted">+{weekTasks.overdue.length - 8} more</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reflections */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-accent" />
+                Reflections
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-status-success flex items-center gap-2 mb-2">
+                    <Trophy className="w-4 h-4" />
+                    What Went Well
+                  </h4>
+                  {review.reflection_what_went_well ? (
+                    <div className="p-3 bg-status-success/5 rounded-card border border-status-success/20">
+                      <MarkdownPreview content={review.reflection_what_went_well} className="text-sm" />
+                    </div>
+                  ) : (
+                    <p className="text-text-muted text-sm italic p-3 bg-bg-1/30 rounded-card">Not filled in</p>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-medium text-status-warning flex items-center gap-2 mb-2">
+                    <Lightbulb className="w-4 h-4" />
+                    To Improve
+                  </h4>
+                  {review.reflection_what_to_improve ? (
+                    <div className="p-3 bg-status-warning/5 rounded-card border border-status-warning/20">
+                      <MarkdownPreview content={review.reflection_what_to_improve} className="text-sm" />
+                    </div>
+                  ) : (
+                    <p className="text-text-muted text-sm italic p-3 bg-bg-1/30 rounded-card">Not filled in</p>
+                  )}
+                </div>
+              </div>
+
+              {review.reflection_lessons_learned && (
+                <div>
+                  <h4 className="font-medium flex items-center gap-2 mb-2">
+                    <BookOpen className="w-4 h-4 text-accent" />
+                    Lessons Learned
+                  </h4>
+                  <div className="p-3 bg-accent/5 rounded-card border border-accent/20">
+                    <MarkdownPreview content={review.reflection_lessons_learned} className="text-sm" />
+                  </div>
+                </div>
+              )}
+
+              {review.reflection_notes && (
+                <div>
+                  <h4 className="font-medium flex items-center gap-2 mb-2 text-text-muted">
+                    Additional Notes
+                  </h4>
+                  <div className="p-3 bg-bg-1/30 rounded-card">
+                    <MarkdownPreview content={review.reflection_notes} className="text-sm" />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Back Button */}
+          <div className="flex justify-start pt-2">
+            <Button variant="outline" onClick={() => router.push(`/plans/${planId}/reviews`)}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Reviews
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ============================================================================
+  // IN-PROGRESS REVIEW - WIZARD VIEW
+  // ============================================================================
   return (
     <>
       <PageHeader
@@ -338,12 +610,8 @@ export default function ReviewWizardPage({
         description={isCurrent ? "Current week review" : "Past week review"}
         backHref={`/plans/${planId}/reviews`}
         actions={
-          <Badge variant={review.status === "complete" ? "default" : "outline"}>
-            {review.status === "complete"
-              ? "Completed"
-              : review.status === "late"
-              ? "Late"
-              : "In Progress"}
+          <Badge variant="outline">
+            In Progress
           </Badge>
         }
       />
