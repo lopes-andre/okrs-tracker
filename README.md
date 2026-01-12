@@ -84,10 +84,12 @@ npm install
    | 10 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
    | 11 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
    | 12 | `20260111000001_remove_weight_columns.sql` | Remove weight from objectives/KRs |
+   | 13 | `20260111000002_weekly_reviews.sql` | Weekly reviews schema + RLS |
+   | 14 | `20260111000003_weekly_review_activity.sql` | Weekly review activity events |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    
-   > **Fresh Deployment Note**: All 12 migrations are designed to run sequentially on a new database. Some later migrations modify columns/views created in earlier ones (e.g., migration 12 removes `weight` columns added in migration 3). This is the standard incremental migration approach.
+   > **Fresh Deployment Note**: All 14 migrations are designed to run sequentially on a new database. Some later migrations modify columns/views created in earlier ones (e.g., migration 12 removes `weight` columns added in migration 3). This is the standard incremental migration approach.
 
 5. **Configure Auth** (optional but recommended):
    - Go to Authentication → URL Configuration
@@ -124,6 +126,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │       ├── tasks/           # Tasks management
 │   │       │   └── logbook/     # Completed tasks history
 │   │       ├── timeline/        # Activity feed
+│   │       ├── reviews/         # Weekly reviews
+│   │       │   └── [reviewId]/  # Review wizard
 │   │       ├── analytics/       # Charts & insights
 │   │       ├── mindmap/         # Visual hierarchy
 │   │       └── settings/        # Plan configuration
@@ -141,19 +145,22 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   ├── check-ins/           # Check-ins API & hooks
 │   │   ├── tags/                # Tags & groups API & hooks
 │   │   ├── timeline/            # Timeline API & hooks
+│   │   ├── weekly-reviews/      # Weekly reviews API & hooks
 │   │   ├── dashboards/          # Dashboards API & hooks
 │   │   └── mindmap/             # Mindmap API & hooks
 │   └── lib/
 │       ├── supabase/            # Supabase clients & types
 │       ├── progress-engine.ts   # Progress computation engine
-│       ├── progress-engine.test.ts # Progress engine unit tests
+│       ├── progress-engine.test.ts # Progress engine unit tests (67 tests)
+│       ├── weekly-review-engine.ts # Weekly review logic
+│       ├── weekly-review-engine.test.ts # Review engine unit tests (46 tests)
 │       ├── design-tokens.ts     # Design system values
 │       ├── query-client.tsx     # TanStack Query setup
 │       ├── api-utils.ts         # API helper functions
 │       ├── toast-utils.ts       # Toast notifications
 │       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations (12 files)
+│   ├── migrations/              # Database migrations (15 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -377,22 +384,21 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Quarterly comparison view
   - [x] Saved views (presets + custom)
 
-### 🚧 Weekly Review Feature (In Progress)
+### ✅ Weekly Review Feature (Complete)
 A structured weekly ritual for reflecting on progress, celebrating wins, and planning improvements.
 
-**Completed (Phases 1-3):**
+**All 8 Phases Completed:**
 - [x] Database schema (4 tables with RLS, triggers, views)
 - [x] Weekly review engine with 46 unit tests
 - [x] API layer and React Query hooks
 - [x] Status tracking: Open → Pending → Late/Complete
 - [x] Streak calculations and stats
-
-**Remaining (Phases 4-8):**
-- [ ] Markdown editor with formatting toolbar
-- [ ] Settings UI for reminder configuration  
-- [ ] Reviews list page with calendar view
-- [ ] 8-step review wizard (Overview → Progress → Tasks → Reflections → Summary)
-- [ ] Analytics and Timeline integration
+- [x] Markdown editor with formatting toolbar (bold, italic, headers, lists, code, links)
+- [x] Settings UI for reminder configuration (day, time, auto-create)
+- [x] Reviews list page with year calendar view
+- [x] 8-step review wizard (Overview → Progress → Tasks → What Went Well → To Improve → Lessons → Rating → Summary)
+- [x] Analytics tab with review metrics (completion rate, timeliness, streaks)
+- [x] Timeline integration with activity events for reviews
 
 ### 🔜 Coming Next
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
