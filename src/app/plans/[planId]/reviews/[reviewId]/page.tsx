@@ -227,20 +227,44 @@ export default function ReviewWizardPage({
   }, [tasks, review]);
 
   const progressStats = useMemo(() => {
+    if (!review) return { onTrack: 0, atRisk: 0, offTrack: 0, totalKrs: 0, avgProgress: 0, avgProgressBeforeWeek: 0, weeklyGain: 0 };
+    
     let onTrack = 0;
     let atRisk = 0;
     let offTrack = 0;
     let totalKrs = 0;
     let totalProgress = 0;
+    let totalProgressBeforeWeek = 0;
     const planYear = plan?.year || new Date().getFullYear();
+    
+    // Parse week start date to filter check-ins
+    const parseLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    };
+    const weekStart = parseLocalDate(review.week_start);
+    weekStart.setHours(0, 0, 0, 0);
 
     objectives.forEach((obj) => {
       obj.annual_krs?.forEach((kr) => {
         totalKrs++;
-        // Filter check-ins for this specific KR
+        // All check-ins for this KR
         const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
+        
+        // Check-ins BEFORE this week (to calculate progress before the week started)
+        const checkInsBeforeWeek = krCheckIns.filter((ci) => {
+          const checkInDate = new Date(ci.recorded_at);
+          return checkInDate < weekStart;
+        });
+        
+        // Current progress (with all check-ins)
         const progress = computeKrProgress(kr, krCheckIns, [], planYear);
         totalProgress += progress.progress;
+        
+        // Progress before this week (without this week's check-ins)
+        const progressBefore = computeKrProgress(kr, checkInsBeforeWeek, [], planYear);
+        totalProgressBeforeWeek += progressBefore.progress;
+        
         if (progress.paceStatus === "ahead" || progress.paceStatus === "on-track") {
           onTrack++;
         } else if (progress.paceStatus === "at-risk") {
@@ -252,9 +276,11 @@ export default function ReviewWizardPage({
     });
 
     const avgProgress = totalKrs > 0 ? totalProgress / totalKrs : 0;
+    const avgProgressBeforeWeek = totalKrs > 0 ? totalProgressBeforeWeek / totalKrs : 0;
+    const weeklyGain = Math.max(0, avgProgress - avgProgressBeforeWeek);
 
-    return { onTrack, atRisk, offTrack, totalKrs, avgProgress };
-  }, [objectives, checkIns, plan?.year]);
+    return { onTrack, atRisk, offTrack, totalKrs, avgProgress, avgProgressBeforeWeek, weeklyGain };
+  }, [objectives, checkIns, plan?.year, review]);
 
   // Navigation
   const canGoNext = currentStep < STEPS.length - 1;
@@ -614,7 +640,7 @@ export default function ReviewWizardPage({
                 This guided process will help you reflect on your progress and plan for improvement.
               </p>
               
-              {/* Year-to-Date Progress */}
+              {/* Year-to-Date Progress with Weekly Gain */}
               <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between mb-3">
@@ -622,12 +648,55 @@ export default function ReviewWizardPage({
                       <TrendingUp className="w-5 h-5 text-accent" />
                       <span className="font-medium text-text-strong">Year-to-Date Progress</span>
                     </div>
-                    <span className="text-2xl font-bold text-accent">
-                      {Math.round(progressStats.avgProgress * 100)}%
-                    </span>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-accent">
+                        {Math.round(progressStats.avgProgress * 100)}%
+                      </span>
+                      {progressStats.weeklyGain > 0 && (
+                        <span className="ml-2 text-sm font-medium text-status-success">
+                          +{Math.round(progressStats.weeklyGain * 100)}% this week
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <Progress value={progressStats.avgProgress * 100} className="h-3" />
-                  <div className="flex items-center justify-between mt-2 text-xs text-text-muted">
+                  
+                  {/* Stacked Progress Bar */}
+                  <div className="relative h-4 bg-bg-1 rounded-full overflow-hidden">
+                    {/* Base progress (before this week) */}
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-accent/60 rounded-full transition-all"
+                      style={{ width: `${Math.round(progressStats.avgProgressBeforeWeek * 100)}%` }}
+                    />
+                    {/* Weekly gain (highlighted) */}
+                    {progressStats.weeklyGain > 0 && (
+                      <div 
+                        className="absolute inset-y-0 bg-gradient-to-r from-status-success to-emerald-400 rounded-r-full transition-all animate-pulse"
+                        style={{ 
+                          left: `${Math.round(progressStats.avgProgressBeforeWeek * 100)}%`,
+                          width: `${Math.round(progressStats.weeklyGain * 100)}%` 
+                        }}
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex items-center justify-between mt-3 text-xs">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-accent/60" />
+                        <span className="text-text-muted">Before this week: {Math.round(progressStats.avgProgressBeforeWeek * 100)}%</span>
+                      </div>
+                      {progressStats.weeklyGain > 0 && (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-gradient-to-r from-status-success to-emerald-400" />
+                          <span className="text-status-success font-medium">This week: +{Math.round(progressStats.weeklyGain * 100)}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* KR Status Summary */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-soft text-xs text-text-muted">
                     <span>{progressStats.onTrack} on track</span>
                     <span>{progressStats.atRisk} at risk</span>
                     <span>{progressStats.offTrack} off track</span>
