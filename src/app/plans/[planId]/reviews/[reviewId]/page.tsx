@@ -21,6 +21,7 @@ import {
   CheckSquare,
   Square,
   Clock,
+  X,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -77,9 +78,10 @@ type StepId = (typeof STEPS)[number]["id"];
 interface StepIndicatorProps {
   currentStep: number;
   completedSteps: Set<StepId>;
+  onStepClick: (stepIndex: number) => void;
 }
 
-function StepIndicator({ currentStep, completedSteps }: StepIndicatorProps) {
+function StepIndicator({ currentStep, completedSteps, onStepClick }: StepIndicatorProps) {
   return (
     <div className="flex items-center justify-center gap-1 py-4">
       {STEPS.map((step, index) => {
@@ -89,12 +91,15 @@ function StepIndicator({ currentStep, completedSteps }: StepIndicatorProps) {
 
         return (
           <div key={step.id} className="flex items-center">
-            <div
+            <button
+              type="button"
+              onClick={() => onStepClick(index)}
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                "w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                "hover:ring-2 hover:ring-accent/20 focus:outline-none focus:ring-2 focus:ring-accent/30",
                 isActive && "bg-accent text-white ring-2 ring-accent/30",
-                isCompleted && !isActive && "bg-status-success/20 text-status-success",
-                !isActive && !isCompleted && "bg-bg-1 text-text-muted"
+                isCompleted && !isActive && "bg-status-success/20 text-status-success hover:bg-status-success/30",
+                !isActive && !isCompleted && "bg-bg-1 text-text-muted hover:bg-bg-1/80"
               )}
               title={step.label}
             >
@@ -103,7 +108,7 @@ function StepIndicator({ currentStep, completedSteps }: StepIndicatorProps) {
               ) : (
                 <Icon className="w-4 h-4" />
               )}
-            </div>
+            </button>
             {index < STEPS.length - 1 && (
               <div
                 className={cn(
@@ -546,21 +551,50 @@ export default function ReviewWizardPage({
   // ============================================================================
   // IN-PROGRESS REVIEW - WIZARD VIEW
   // ============================================================================
+  
+  // Handle step navigation from clicking indicators
+  const goToStep = (stepIndex: number) => {
+    // Mark all steps up to current as completed when going forward
+    if (stepIndex > currentStep) {
+      const newCompleted = new Set(completedSteps);
+      for (let i = currentStep; i < stepIndex; i++) {
+        newCompleted.add(STEPS[i].id);
+      }
+      setCompletedSteps(newCompleted);
+    }
+    setCurrentStep(stepIndex);
+  };
+  
   return (
     <>
-      <PageHeader
-        title={formatWeekLabel(review.year, review.week_number)}
-        description={isCurrent ? "Current week review" : "Past week review"}
-        backHref={`/plans/${planId}/reviews`}
-        actions={
-          <Badge variant="outline">
-            In Progress
-          </Badge>
-        }
-      />
+      {/* Header with Close Button */}
+      <div className="flex items-start justify-between mb-2">
+        <PageHeader
+          title={formatWeekLabel(review.year, review.week_number)}
+          description={isCurrent ? "Current week review" : "Past week review"}
+          actions={
+            <Badge variant="outline">
+              In Progress
+            </Badge>
+          }
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push(`/plans/${planId}/reviews`)}
+          className="shrink-0 mt-1"
+          title="Close and return to Reviews"
+        >
+          <X className="w-5 h-5" />
+        </Button>
+      </div>
 
-      {/* Step Indicator */}
-      <StepIndicator currentStep={currentStep} completedSteps={completedSteps} />
+      {/* Step Indicator - Clickable */}
+      <StepIndicator 
+        currentStep={currentStep} 
+        completedSteps={completedSteps}
+        onStepClick={goToStep}
+      />
 
       {/* Step Content */}
       <Card className="min-h-[400px]">
