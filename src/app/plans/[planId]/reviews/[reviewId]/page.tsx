@@ -662,21 +662,21 @@ export default function ReviewWizardPage({
                   
                   {/* Stacked Progress Bar */}
                   <div className="relative h-4 bg-bg-1 rounded-full overflow-hidden">
-                    {/* Base progress (before this week) */}
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-accent/60 rounded-full transition-all"
-                      style={{ width: `${Math.round(progressStats.avgProgressBeforeWeek * 100)}%` }}
-                    />
-                    {/* Weekly gain (highlighted) */}
+                    {/* Weekly gain (highlighted) - rendered FIRST so it's behind */}
                     {progressStats.weeklyGain > 0 && (
                       <div 
-                        className="absolute inset-y-0 bg-gradient-to-r from-status-success to-emerald-400 rounded-r-full transition-all animate-pulse"
+                        className="absolute inset-y-0 bg-gradient-to-r from-status-success to-emerald-400 rounded-full transition-all animate-pulse"
                         style={{ 
-                          left: `${Math.round(progressStats.avgProgressBeforeWeek * 100)}%`,
-                          width: `${Math.round(progressStats.weeklyGain * 100)}%` 
+                          left: 0,
+                          width: `${Math.round(progressStats.avgProgress * 100)}%` 
                         }}
                       />
                     )}
+                    {/* Base progress (before this week) - rendered SECOND so it's on top */}
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-accent rounded-full transition-all"
+                      style={{ width: `${Math.round(progressStats.avgProgressBeforeWeek * 100)}%` }}
+                    />
                   </div>
                   
                   {/* Legend */}
