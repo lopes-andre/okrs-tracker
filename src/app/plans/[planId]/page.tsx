@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Target,
@@ -23,7 +23,8 @@ import { CheckInDialog, CheckInList } from "@/components/okr";
 import { usePlan, usePlanRole } from "@/features/plans/hooks";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
-import { useRecentCheckIns, useCreateCheckIn } from "@/features/check-ins/hooks";
+import { useRecentCheckIns, useCreateCheckIn, useCheckIns } from "@/features/check-ins/hooks";
+import { computeKrProgress } from "@/lib/progress-engine";
 import type { AnnualKr, QuarterTarget, CheckInInsert } from "@/lib/supabase/types";
 
 export default function PlanOverviewPage({
@@ -38,6 +39,7 @@ export default function PlanOverviewPage({
   const { data: objectives = [], isLoading: objectivesLoading } = useObjectives(planId);
   const { data: annualKrs = [] } = useAnnualKrs(planId);
   const { data: recentCheckIns = [] } = useRecentCheckIns(planId, 5);
+  const { data: allCheckIns = [] } = useCheckIns(planId);
   const createCheckIn = useCreateCheckIn();
 
   // Dialog state
@@ -73,26 +75,31 @@ export default function PlanOverviewPage({
   // Calculate stats from real data
   const totalObjectives = objectives.length;
   const totalKrs = annualKrs.length;
+  const planYear = plan?.year || new Date().getFullYear();
   
-  // Calculate at-risk KRs (simplified - you can make this more sophisticated)
-  const atRiskKrs = annualKrs.filter((kr) => {
-    if (!kr.target_value) return false;
-    const progress = kr.current_value ? (kr.current_value / kr.target_value) * 100 : 0;
-    // Consider at-risk if less than expected based on time elapsed
-    const now = new Date();
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const yearEnd = new Date(now.getFullYear(), 11, 31);
-    const yearProgress = ((now.getTime() - yearStart.getTime()) / (yearEnd.getTime() - yearStart.getTime())) * 100;
-    return progress < yearProgress * 0.75; // Behind by more than 25%
-  });
+  // Calculate at-risk KRs using progress engine
+  const atRiskKrs = useMemo(() => {
+    return annualKrs.filter((kr) => {
+      if (!kr.target_value) return false;
+      const krCheckIns = allCheckIns.filter((ci) => ci.annual_kr_id === kr.id);
+      const result = computeKrProgress(kr, krCheckIns, [], planYear);
+      return result.paceStatus === "at_risk" || result.paceStatus === "off_track";
+    });
+  }, [annualKrs, allCheckIns, planYear]);
 
-  // Calculate overall progress
-  const overallProgress = annualKrs.length > 0
-    ? annualKrs.reduce((sum, kr) => {
-        if (!kr.target_value) return sum;
-        return sum + Math.min((kr.current_value || 0) / kr.target_value * 100, 100);
-      }, 0) / annualKrs.length
-    : 0;
+  // Calculate overall progress using progress engine (same as Weekly Review)
+  const overallProgress = useMemo(() => {
+    if (annualKrs.length === 0) return 0;
+    
+    let totalProgress = 0;
+    annualKrs.forEach((kr) => {
+      const krCheckIns = allCheckIns.filter((ci) => ci.annual_kr_id === kr.id);
+      const result = computeKrProgress(kr, krCheckIns, [], planYear);
+      totalProgress += result.progress;
+    });
+    
+    return (totalProgress / annualKrs.length) * 100;
+  }, [annualKrs, allCheckIns, planYear]);
 
   // Get current quarter
   const currentMonth = new Date().getMonth();
