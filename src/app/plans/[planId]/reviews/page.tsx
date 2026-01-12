@@ -15,6 +15,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Flame,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -32,7 +34,16 @@ import {
   useWeeklyReviewSummaries,
   usePlanReviewStats,
   useGetOrCreateWeeklyReview,
+  useDeleteWeeklyReview,
 } from "@/features";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   getCurrentWeekInfo,
   formatWeekLabel,
@@ -181,18 +192,12 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
                 bgColor = statusConfig[review.status].bgColor;
                 textColor = statusConfig[review.status].color;
                 statusLabel = statusConfig[review.status].label;
-              } else if (isCurrent) {
-                // Current week without review - Open (available to start)
+              } else if (isCurrent || inGracePeriod) {
+                // Current week or past week in grace period - Open (available to start/complete)
                 bgColor = "bg-accent/20";
                 textColor = "text-accent";
-                borderColor = "border-accent";
-                statusLabel = "Open";
-              } else if (inGracePeriod) {
-                // Past week but still in grace period - Open (still time to complete)
-                bgColor = "bg-status-warning/10";
-                textColor = "text-status-warning";
-                borderColor = "border-status-warning/30";
-                statusLabel = "Open (grace period)";
+                borderColor = inGracePeriod ? "border-accent/50" : "border-accent";
+                statusLabel = inGracePeriod ? "Open (ends Monday 11:59pm)" : "Open";
               } else if (isPast) {
                 // Past week, past grace period, no review - Pending/Missing
                 bgColor = "bg-status-danger/10";
@@ -239,10 +244,6 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
           <span className="text-text-muted">Open</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-status-warning/20 border border-status-warning/30" />
-          <span className="text-text-muted">Grace Period</span>
-        </div>
-        <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-status-danger/30" />
           <span className="text-text-muted">Pending</span>
         </div>
@@ -273,9 +274,10 @@ interface ReviewCardProps {
     completed_at: string | null;
   };
   onClick: () => void;
+  onDelete: () => void;
 }
 
-function ReviewCard({ review, onClick }: ReviewCardProps) {
+function ReviewCard({ review, onClick, onDelete }: ReviewCardProps) {
   const isCurrent = isCurrentWeek(review.year, review.week_number);
   const config = statusConfig[review.status];
   const Icon = config.icon;
@@ -308,7 +310,21 @@ function ReviewCard({ review, onClick }: ReviewCardProps) {
           </div>
           
           <div className="flex flex-col items-end gap-2">
-            <StatusBadge status={review.status} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={review.status} />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-text-muted hover:text-status-danger hover:bg-status-danger/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                title="Delete review"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
             {review.week_rating && (
               <div className="flex items-center gap-1 text-sm">
                 <Star className="w-4 h-4 text-status-warning fill-status-warning" />
@@ -343,10 +359,19 @@ export default function ReviewsPage({
   const { data: reviews = [], isLoading: isLoadingReviews } = useWeeklyReviewSummaries(planId);
   const { data: stats } = usePlanReviewStats(planId);
   const getOrCreate = useGetOrCreateWeeklyReview();
+  const deleteReview = useDeleteWeeklyReview();
 
   // Year navigation
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<{
+    id: string;
+    year: number;
+    week_number: number;
+  } | null>(null);
   
   // Filter reviews for selected year
   const yearReviews = useMemo(
@@ -366,6 +391,23 @@ export default function ReviewsPage({
   const handleStartCurrentWeek = async () => {
     const current = getCurrentWeekInfo();
     await handleWeekClick(current.year, current.weekNumber);
+  };
+
+  const handleDeleteClick = (review: { id: string; year: number; week_number: number }) => {
+    setReviewToDelete(review);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!reviewToDelete) return;
+    
+    try {
+      await deleteReview.mutateAsync({ reviewId: reviewToDelete.id, planId });
+      setDeleteDialogOpen(false);
+      setReviewToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete review:", error);
+    }
   };
 
   const isLoading = isLoadingPlan || isLoadingReviews;
@@ -553,6 +595,7 @@ export default function ReviewsPage({
                     key={review.id}
                     review={review}
                     onClick={() => router.push(`/plans/${planId}/reviews/${review.id}`)}
+                    onDelete={() => handleDeleteClick(review)}
                   />
                 ))}
                 {reviews.length > 10 && (
@@ -565,6 +608,67 @@ export default function ReviewsPage({
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-status-danger">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Weekly Review
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete the review for{" "}
+              <strong>
+                {reviewToDelete && formatWeekLabel(reviewToDelete.year, reviewToDelete.week_number)}
+              </strong>
+              ?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-status-danger/10 border border-status-danger/20 rounded-card p-4 my-4">
+            <p className="text-sm text-status-danger font-medium mb-2">
+              ⚠️ This action cannot be undone!
+            </p>
+            <p className="text-sm text-text-muted">
+              All data associated with this review will be permanently deleted, including:
+            </p>
+            <ul className="text-sm text-text-muted list-disc list-inside mt-2 space-y-1">
+              <li>Reflections and notes</li>
+              <li>Week rating</li>
+              <li>Progress snapshots</li>
+              <li>Activity history</li>
+            </ul>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteReview.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleteReview.isPending}
+            >
+              {deleteReview.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Review
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
