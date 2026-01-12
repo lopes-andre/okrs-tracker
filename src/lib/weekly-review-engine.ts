@@ -498,3 +498,29 @@ export function isFutureWeek(year: number, weekNumber: number, now: Date = new D
   if (year === currentYear && weekNumber > currentWeek) return true;
   return false;
 }
+
+/**
+ * Check if a past week is still within its grace period
+ * Grace period: Sunday and Monday after the week ends (Saturday)
+ * The grace period ends Monday 11:59pm
+ */
+export function isWithinGracePeriod(year: number, weekNumber: number, now: Date = new Date()): boolean {
+  // If it's not a past week, it's not in grace period (it's current or future)
+  if (!isPastWeek(year, weekNumber, now)) {
+    return false;
+  }
+  
+  // Get the week end (Saturday)
+  const weekEnd = getWeekEnd(year, weekNumber);
+  
+  // Grace period ends Monday 11:59pm (2 days after Saturday)
+  const gracePeriodEnd = new Date(
+    weekEnd.getFullYear(),
+    weekEnd.getMonth(),
+    weekEnd.getDate() + 2, // Saturday + 2 = Monday
+    23, 59, 59, 999
+  );
+  
+  // If now is before grace period end, we're still in grace period
+  return now <= gracePeriodEnd;
+}

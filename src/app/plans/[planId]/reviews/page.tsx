@@ -42,6 +42,7 @@ import {
   isCurrentWeek,
   isPastWeek,
   isFutureWeek,
+  isWithinGracePeriod,
   getWeekNumber,
 } from "@/lib/weekly-review-engine";
 import type { WeeklyReviewStatus } from "@/lib/supabase/types";
@@ -150,38 +151,53 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
               const isCurrent = isCurrentWeek(year, weekNum);
               const isPast = isPastWeek(year, weekNum);
               const isFuture = isFutureWeek(year, weekNum);
+              const inGracePeriod = isWithinGracePeriod(year, weekNum);
               const beforePlan = isBeforePlan(weekNum);
               
               // Determine if this week should be disabled (not clickable)
               const isDisabled = beforePlan || isFuture;
               
+              // Determine the visual status of the week
+              // Priority: beforePlan > future > has review > current > grace period > past (pending)
               let bgColor = "bg-bg-1";
               let textColor = "text-text-muted";
               let borderColor = "border-border-soft";
+              let statusLabel = "Open";
               
               if (beforePlan) {
                 // Before plan creation - greyed out
                 bgColor = "bg-bg-0";
                 textColor = "text-text-muted/30";
                 borderColor = "border-transparent";
+                statusLabel = "Before plan";
               } else if (isFuture) {
                 // Future week - not available yet
                 bgColor = "bg-bg-1";
                 textColor = "text-text-muted/50";
                 borderColor = "border-border-soft";
+                statusLabel = "Future";
               } else if (review) {
                 // Has a review - show status color
                 bgColor = statusConfig[review.status].bgColor;
                 textColor = statusConfig[review.status].color;
+                statusLabel = statusConfig[review.status].label;
               } else if (isCurrent) {
-                // Current week without review - highlight
+                // Current week without review - Open (available to start)
                 bgColor = "bg-accent/20";
                 textColor = "text-accent";
                 borderColor = "border-accent";
+                statusLabel = "Open";
+              } else if (inGracePeriod) {
+                // Past week but still in grace period - Open (still time to complete)
+                bgColor = "bg-status-warning/10";
+                textColor = "text-status-warning";
+                borderColor = "border-status-warning/30";
+                statusLabel = "Open (grace period)";
               } else if (isPast) {
-                // Past week without review - pending/missing
+                // Past week, past grace period, no review - Pending/Missing
                 bgColor = "bg-status-danger/10";
                 textColor = "text-status-danger/70";
+                statusLabel = "Pending";
               }
 
               return (
@@ -198,13 +214,7 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
                     isDisabled && "cursor-not-allowed",
                     isCurrent && "ring-2 ring-accent ring-offset-1"
                   )}
-                  title={
-                    isFuture 
-                      ? `${formatWeekLabel(year, weekNum)} (Future - not available)`
-                      : beforePlan 
-                        ? `${formatWeekLabel(year, weekNum)} (Before plan creation)`
-                        : formatWeekLabel(year, weekNum)
-                  }
+                  title={`${formatWeekLabel(year, weekNum)} - ${statusLabel}`}
                 >
                   {weekNum}
                 </button>
@@ -226,11 +236,15 @@ function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalenda
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-accent/30" />
-          <span className="text-text-muted">In Progress</span>
+          <span className="text-text-muted">Open</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-status-warning/20 border border-status-warning/30" />
+          <span className="text-text-muted">Grace Period</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-status-danger/30" />
-          <span className="text-text-muted">Pending/Missing</span>
+          <span className="text-text-muted">Pending</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-bg-1 border border-border-soft" />

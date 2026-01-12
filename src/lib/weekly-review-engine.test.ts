@@ -39,6 +39,7 @@ import {
   isCurrentWeek,
   isPastWeek,
   isFutureWeek,
+  isWithinGracePeriod,
 } from "./weekly-review-engine";
 
 // ============================================================================
@@ -491,5 +492,41 @@ describe("isCurrentWeek, isPastWeek, isFutureWeek", () => {
     expect(isFutureWeek(2026, 5, testNow)).toBe(true);
     expect(isFutureWeek(2026, 3, testNow)).toBe(false);
     expect(isFutureWeek(2026, 2, testNow)).toBe(false);
+  });
+});
+
+describe("isWithinGracePeriod", () => {
+  // Week 2: Sunday Jan 4 - Saturday Jan 10
+  // Grace period: Sunday Jan 11 - Monday Jan 12 11:59pm
+  
+  it("should return false for current week", () => {
+    const now = new Date(2026, 0, 12); // Sunday Jan 12 = Week 3
+    expect(isWithinGracePeriod(2026, 3, now)).toBe(false); // Current week
+  });
+
+  it("should return false for future week", () => {
+    const now = new Date(2026, 0, 12);
+    expect(isWithinGracePeriod(2026, 4, now)).toBe(false); // Future week
+  });
+
+  it("should return true for past week on Sunday (day after week ends)", () => {
+    // Week 2 ends Saturday Jan 10. Sunday Jan 11 is grace period.
+    const sundayAfter = new Date(2026, 0, 11, 10, 0); // Sunday Jan 11, 10am
+    expect(isWithinGracePeriod(2026, 2, sundayAfter)).toBe(true);
+  });
+
+  it("should return true for past week on Monday before 11:59pm", () => {
+    const mondayEvening = new Date(2026, 0, 12, 22, 0); // Monday Jan 12, 10pm
+    expect(isWithinGracePeriod(2026, 2, mondayEvening)).toBe(true);
+  });
+
+  it("should return false for past week after Monday 11:59pm", () => {
+    const tuesday = new Date(2026, 0, 13, 10, 0); // Tuesday Jan 13
+    expect(isWithinGracePeriod(2026, 2, tuesday)).toBe(false);
+  });
+
+  it("should return false for week that is long past", () => {
+    const now = new Date(2026, 0, 20); // Jan 20
+    expect(isWithinGracePeriod(2026, 1, now)).toBe(false);
   });
 });
