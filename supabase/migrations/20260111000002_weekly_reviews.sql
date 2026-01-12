@@ -64,6 +64,8 @@ CREATE TABLE weekly_reviews (
   stats_objectives_on_track INTEGER DEFAULT 0,
   stats_objectives_at_risk INTEGER DEFAULT 0,
   stats_objectives_off_track INTEGER DEFAULT 0,
+  stats_overall_progress INTEGER DEFAULT 0,  -- YTD progress percentage (0-100) at completion
+  stats_total_krs INTEGER DEFAULT 0,         -- Total active KRs at completion
   
   -- Week rating (1-5 stars, optional)
   week_rating INTEGER CHECK (week_rating IS NULL OR week_rating BETWEEN 1 AND 5),
@@ -170,63 +172,9 @@ CREATE TRIGGER weekly_review_settings_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- ----------------------------------------------------------------------------
--- ACTIVITY EVENT TRIGGERS
--- Log weekly review events to activity_events table
--- ----------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION log_weekly_review_activity()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- When a review is started
-  IF TG_OP = 'UPDATE' AND OLD.started_at IS NULL AND NEW.started_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, user_id, entity_type, entity_id, event_type, new_data, metadata)
-    VALUES (
-      NEW.plan_id,
-      auth.uid(),
-      'weekly_review',
-      NEW.id,
-      'updated',
-      jsonb_build_object(
-        'year', NEW.year,
-        'week_number', NEW.week_number,
-        'week_start', NEW.week_start,
-        'week_end', NEW.week_end,
-        'status', NEW.status
-      ),
-      jsonb_build_object('action', 'started')
-    );
-  END IF;
-  
-  -- When a review is completed
-  IF TG_OP = 'UPDATE' AND OLD.completed_at IS NULL AND NEW.completed_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, user_id, entity_type, entity_id, event_type, new_data)
-    VALUES (
-      NEW.plan_id,
-      auth.uid(),
-      'weekly_review',
-      NEW.id,
-      'completed',
-      jsonb_build_object(
-        'year', NEW.year,
-        'week_number', NEW.week_number,
-        'status', NEW.status,
-        'week_rating', NEW.week_rating,
-        'stats_krs_updated', NEW.stats_krs_updated,
-        'stats_tasks_completed', NEW.stats_tasks_completed,
-        'stats_check_ins_made', NEW.stats_check_ins_made
-      )
-    );
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-CREATE TRIGGER weekly_review_activity_trigger
-  AFTER UPDATE ON weekly_reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION log_weekly_review_activity();
+-- NOTE: Activity event triggers for weekly_reviews are defined in
+-- 20260111000003_weekly_review_activity.sql which uses the standard
+-- log_activity_event helper function for consistency.
 
 -- ----------------------------------------------------------------------------
 -- ROW LEVEL SECURITY
