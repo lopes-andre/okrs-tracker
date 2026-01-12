@@ -180,9 +180,10 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- When a review is started
   IF TG_OP = 'UPDATE' AND OLD.started_at IS NULL AND NEW.started_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, entity_type, entity_id, event_type, new_data, metadata)
+    INSERT INTO activity_events (plan_id, user_id, entity_type, entity_id, event_type, new_data, metadata)
     VALUES (
       NEW.plan_id,
+      auth.uid(),
       'weekly_review',
       NEW.id,
       'updated',
@@ -199,9 +200,10 @@ BEGIN
   
   -- When a review is completed
   IF TG_OP = 'UPDATE' AND OLD.completed_at IS NULL AND NEW.completed_at IS NOT NULL THEN
-    INSERT INTO activity_events (plan_id, entity_type, entity_id, event_type, new_data)
+    INSERT INTO activity_events (plan_id, user_id, entity_type, entity_id, event_type, new_data)
     VALUES (
       NEW.plan_id,
+      auth.uid(),
       'weekly_review',
       NEW.id,
       'completed',
@@ -219,7 +221,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER weekly_review_activity_trigger
   AFTER UPDATE ON weekly_reviews
