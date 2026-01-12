@@ -37,7 +37,8 @@ import type {
   WeeklyReviewKrUpdateInsert,
   WeeklyReviewTaskInsert,
 } from "@/lib/supabase/types";
-import { showSuccessToast, showErrorToast } from "@/lib/toast-utils";
+import { useToast } from "@/components/ui/use-toast";
+import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
 
 // ============================================================================
 // QUERY KEYS
@@ -245,6 +246,7 @@ export function useUpdateWeeklyReview() {
  */
 export function useCompleteWeeklyReview() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({
@@ -261,10 +263,10 @@ export function useCompleteWeeklyReview() {
       queryClient.invalidateQueries({ queryKey: weeklyReviewKeys.pending(data.plan_id) });
       queryClient.invalidateQueries({ queryKey: weeklyReviewKeys.current(data.plan_id) });
       queryClient.invalidateQueries({ queryKey: weeklyReviewKeys.stats(data.plan_id) });
-      showSuccessToast("Weekly review completed!");
+      toast({ title: "Weekly review completed! 🎉", variant: "success" });
     },
     onError: (error) => {
-      showErrorToast("Failed to complete review", error);
+      toast(formatErrorMessage(error));
     },
   });
 }
@@ -297,6 +299,7 @@ export function useDeleteWeeklyReview() {
  */
 export function useUpdateWeeklyReviewSettings() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({
@@ -308,10 +311,10 @@ export function useUpdateWeeklyReviewSettings() {
     }) => updateWeeklyReviewSettings(planId, updates),
     onSuccess: (data) => {
       queryClient.setQueryData(weeklyReviewKeys.settings(data.plan_id), data);
-      showSuccessToast("Review settings updated!");
+      toast({ title: "Review settings updated", variant: "success" });
     },
     onError: (error) => {
-      showErrorToast("Failed to update settings", error);
+      toast(formatErrorMessage(error));
     },
   });
 }

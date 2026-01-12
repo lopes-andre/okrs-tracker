@@ -43,6 +43,7 @@ import {
   useUpdateWeeklyReview,
   useCompleteWeeklyReview,
 } from "@/features";
+import { useCheckIns } from "@/features/check-ins/hooks";
 import {
   formatWeekLabel,
   getCurrentWeekInfo,
@@ -135,6 +136,7 @@ export default function ReviewWizardPage({
   const { data: review, isLoading: isLoadingReview } = useWeeklyReview(reviewId);
   const { data: objectives = [] } = useObjectives(planId);
   const { data: tasks = [] } = useTasks(planId);
+  const { data: checkIns = [] } = useCheckIns(planId);
 
   // Mutations
   const startReview = useStartWeeklyReview();
@@ -172,29 +174,46 @@ export default function ReviewWizardPage({
 
   // Computed data
   const weekTasks = useMemo(() => {
-    if (!review) return { completed: [], created: [], overdue: [] };
+    if (!review) return { completed: [], created: [], overdue: [], dueThisWeek: [] };
     
     const weekStart = new Date(review.week_start);
     const weekEnd = new Date(review.week_end);
     weekEnd.setHours(23, 59, 59, 999);
+    weekStart.setHours(0, 0, 0, 0);
     
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Tasks completed during this week
     const completed = tasks.filter((t) => {
       if (t.status !== "completed" || !t.completed_at) return false;
       const completedAt = new Date(t.completed_at);
       return completedAt >= weekStart && completedAt <= weekEnd;
     });
     
+    // Tasks created during this week
     const created = tasks.filter((t) => {
       const createdAt = new Date(t.created_at);
       return createdAt >= weekStart && createdAt <= weekEnd;
     });
     
+    // Truly overdue: due date is BEFORE today (not just before week end)
     const overdue = tasks.filter((t) => {
       if (t.status === "completed" || t.status === "cancelled" || !t.due_date) return false;
-      return new Date(t.due_date) < weekEnd;
+      const dueDate = new Date(t.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate < today;
     });
     
-    return { completed, created, overdue };
+    // Due this week: due date is within this week but not overdue
+    const dueThisWeek = tasks.filter((t) => {
+      if (t.status === "completed" || t.status === "cancelled" || !t.due_date) return false;
+      const dueDate = new Date(t.due_date);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate >= today && dueDate <= weekEnd;
+    });
+    
+    return { completed, created, overdue, dueThisWeek };
   }, [tasks, review]);
 
   const progressStats = useMemo(() => {
@@ -202,11 +221,16 @@ export default function ReviewWizardPage({
     let atRisk = 0;
     let offTrack = 0;
     let totalKrs = 0;
+    let totalProgress = 0;
+    const planYear = plan?.year || new Date().getFullYear();
 
     objectives.forEach((obj) => {
       obj.annual_krs?.forEach((kr) => {
         totalKrs++;
-        const progress = computeKrProgress(kr, kr.quarter_targets || [], []);
+        // Filter check-ins for this specific KR
+        const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
+        const progress = computeKrProgress(kr, krCheckIns, [], planYear);
+        totalProgress += progress.progress;
         if (progress.paceStatus === "ahead" || progress.paceStatus === "on-track") {
           onTrack++;
         } else if (progress.paceStatus === "at-risk") {
@@ -217,8 +241,10 @@ export default function ReviewWizardPage({
       });
     });
 
-    return { onTrack, atRisk, offTrack, totalKrs };
-  }, [objectives]);
+    const avgProgress = totalKrs > 0 ? totalProgress / totalKrs : 0;
+
+    return { onTrack, atRisk, offTrack, totalKrs, avgProgress };
+  }, [objectives, checkIns, plan?.year]);
 
   // Navigation
   const canGoNext = currentStep < STEPS.length - 1;
@@ -333,7 +359,29 @@ export default function ReviewWizardPage({
                 This guided process will help you reflect on your progress and plan for improvement.
               </p>
               
-              <div className="grid md:grid-cols-3 gap-4">
+              {/* Year-to-Date Progress */}
+              <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-accent" />
+                      <span className="font-medium text-text-strong">Year-to-Date Progress</span>
+                    </div>
+                    <span className="text-2xl font-bold text-accent">
+                      {Math.round(progressStats.avgProgress * 100)}%
+                    </span>
+                  </div>
+                  <Progress value={progressStats.avgProgress * 100} className="h-3" />
+                  <div className="flex items-center justify-between mt-2 text-xs text-text-muted">
+                    <span>{progressStats.onTrack} on track</span>
+                    <span>{progressStats.atRisk} at risk</span>
+                    <span>{progressStats.offTrack} off track</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* This Week Stats */}
+              <div className="grid md:grid-cols-4 gap-4">
                 <Card className="bg-bg-1/50">
                   <CardContent className="pt-4">
                     <div className="flex items-center gap-3">
@@ -352,7 +400,19 @@ export default function ReviewWizardPage({
                       <CheckSquare className="w-8 h-8 text-status-success" />
                       <div>
                         <p className="text-2xl font-bold">{weekTasks.completed.length}</p>
-                        <p className="text-sm text-text-muted">Tasks Completed</p>
+                        <p className="text-sm text-text-muted">Completed</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card className="bg-bg-1/50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-8 h-8 text-status-warning" />
+                      <div>
+                        <p className="text-2xl font-bold">{weekTasks.dueThisWeek.length}</p>
+                        <p className="text-sm text-text-muted">Due This Week</p>
                       </div>
                     </div>
                   </CardContent>
@@ -364,7 +424,7 @@ export default function ReviewWizardPage({
                       <Clock className="w-8 h-8 text-status-danger" />
                       <div>
                         <p className="text-2xl font-bold">{weekTasks.overdue.length}</p>
-                        <p className="text-sm text-text-muted">Overdue Tasks</p>
+                        <p className="text-sm text-text-muted">Overdue</p>
                       </div>
                     </div>
                   </CardContent>
@@ -380,56 +440,84 @@ export default function ReviewWizardPage({
                 Review the progress of your objectives and key results.
               </p>
               
-              {objectives.map((obj) => {
-                const objProgress = computeObjectiveProgress(obj.annual_krs || [], []);
-                return (
-                  <Card key={obj.id} className="bg-bg-1/30">
-                    <CardContent className="pt-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <Badge variant="outline" className="mb-1">{obj.code}</Badge>
-                          <h4 className="font-medium text-text-strong">{obj.name}</h4>
+              {objectives.length === 0 ? (
+                <p className="text-text-muted text-center py-8">No objectives found. Create objectives to track progress.</p>
+              ) : (
+                objectives.map((obj) => {
+                  const planYear = plan?.year || new Date().getFullYear();
+                  // Compute objective progress from KRs
+                  const objKrs = obj.annual_krs || [];
+                  let objTotalProgress = 0;
+                  objKrs.forEach((kr) => {
+                    const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
+                    const krProg = computeKrProgress(kr, krCheckIns, [], planYear);
+                    objTotalProgress += krProg.progress;
+                  });
+                  const objProgress = objKrs.length > 0 ? objTotalProgress / objKrs.length : 0;
+                  
+                  return (
+                    <Card key={obj.id} className="bg-bg-1/30">
+                      <CardContent className="pt-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <Badge variant="outline" className="mb-1">{obj.code}</Badge>
+                            <h4 className="font-medium text-text-strong">{obj.name}</h4>
+                          </div>
+                          <span className="text-lg font-bold text-accent">
+                            {Math.round(objProgress * 100)}%
+                          </span>
                         </div>
-                        <span className="text-lg font-bold">
-                          {Math.round(objProgress.progress * 100)}%
-                        </span>
-                      </div>
-                      <Progress value={objProgress.progress * 100} className="h-2" />
-                      
-                      <div className="mt-3 space-y-2">
-                        {obj.annual_krs?.map((kr) => {
-                          const krProgress = computeKrProgress(kr, kr.quarter_targets || [], []);
-                          return (
-                            <div key={kr.id} className="flex items-center justify-between text-sm">
-                              <span className="text-text-muted truncate flex-1 mr-4">{kr.name}</span>
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-xs",
-                                    krProgress.paceStatus === "ahead" && "text-status-success",
-                                    krProgress.paceStatus === "on-track" && "text-accent",
-                                    krProgress.paceStatus === "at-risk" && "text-status-warning",
-                                    krProgress.paceStatus === "off-track" && "text-status-danger"
-                                  )}
-                                >
-                                  {Math.round(krProgress.progress * 100)}%
-                                </Badge>
+                        <Progress value={objProgress * 100} className="h-3" />
+                        
+                        <div className="mt-3 space-y-2">
+                          {objKrs.map((kr) => {
+                            const krCheckIns = checkIns.filter((ci) => ci.annual_kr_id === kr.id);
+                            const krProgress = computeKrProgress(kr, krCheckIns, [], planYear);
+                            return (
+                              <div key={kr.id} className="flex items-center justify-between text-sm py-1">
+                                <span className="text-text-muted truncate flex-1 mr-4">{kr.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-20 h-2 bg-bg-1 rounded-full overflow-hidden">
+                                    <div 
+                                      className={cn(
+                                        "h-full rounded-full transition-all",
+                                        krProgress.paceStatus === "ahead" && "bg-status-success",
+                                        krProgress.paceStatus === "on-track" && "bg-accent",
+                                        krProgress.paceStatus === "at-risk" && "bg-status-warning",
+                                        krProgress.paceStatus === "off-track" && "bg-status-danger"
+                                      )}
+                                      style={{ width: `${Math.min(100, krProgress.progress * 100)}%` }}
+                                    />
+                                  </div>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-xs min-w-[48px] justify-center",
+                                      krProgress.paceStatus === "ahead" && "text-status-success border-status-success/30",
+                                      krProgress.paceStatus === "on-track" && "text-accent border-accent/30",
+                                      krProgress.paceStatus === "at-risk" && "text-status-warning border-status-warning/30",
+                                      krProgress.paceStatus === "off-track" && "text-status-danger border-status-danger/30"
+                                    )}
+                                  >
+                                    {Math.round(krProgress.progress * 100)}%
+                                  </Badge>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
             </div>
           )}
 
           {/* Step 3: Tasks */}
           {currentStep === 2 && (
             <div className="space-y-6">
+              {/* Completed This Week */}
               <div>
                 <h4 className="font-medium text-status-success flex items-center gap-2 mb-3">
                   <CheckSquare className="w-4 h-4" />
@@ -445,13 +533,42 @@ export default function ReviewWizardPage({
                         <span className="line-through text-text-muted">{task.title}</span>
                       </div>
                     ))}
+                    {weekTasks.completed.length > 10 && (
+                      <p className="text-xs text-text-muted">+{weekTasks.completed.length - 10} more</p>
+                    )}
                   </div>
                 )}
               </div>
               
+              {/* Due This Week */}
+              <div>
+                <h4 className="font-medium text-status-warning flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4" />
+                  Due This Week ({weekTasks.dueThisWeek.length})
+                </h4>
+                {weekTasks.dueThisWeek.length === 0 ? (
+                  <p className="text-text-muted text-sm">No tasks due this week</p>
+                ) : (
+                  <div className="space-y-2">
+                    {weekTasks.dueThisWeek.map((task) => (
+                      <div key={task.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <Square className="w-4 h-4 text-status-warning" />
+                          <span className="text-text-strong">{task.title}</span>
+                        </div>
+                        <span className="text-xs text-text-muted">
+                          {task.due_date && new Date(task.due_date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Overdue */}
               <div>
                 <h4 className="font-medium text-status-danger flex items-center gap-2 mb-3">
-                  <Clock className="w-4 h-4" />
+                  <AlertTriangle className="w-4 h-4" />
                   Overdue ({weekTasks.overdue.length})
                 </h4>
                 {weekTasks.overdue.length === 0 ? (
@@ -459,23 +576,41 @@ export default function ReviewWizardPage({
                 ) : (
                   <div className="space-y-2">
                     {weekTasks.overdue.map((task) => (
-                      <div key={task.id} className="flex items-center gap-2 text-sm">
-                        <AlertTriangle className="w-4 h-4 text-status-danger" />
-                        <span className="text-status-danger">{task.title}</span>
+                      <div key={task.id} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-status-danger" />
+                          <span className="text-status-danger">{task.title}</span>
+                        </div>
+                        <span className="text-xs text-status-danger">
+                          {task.due_date && `Due ${new Date(task.due_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
               
+              {/* Created This Week */}
               <div>
                 <h4 className="font-medium text-accent flex items-center gap-2 mb-3">
                   <Square className="w-4 h-4" />
                   Created This Week ({weekTasks.created.length})
                 </h4>
-                <p className="text-text-muted text-sm">
-                  {weekTasks.created.length} new tasks were created
-                </p>
+                {weekTasks.created.length === 0 ? (
+                  <p className="text-text-muted text-sm">No tasks created this week</p>
+                ) : (
+                  <div className="space-y-2">
+                    {weekTasks.created.slice(0, 5).map((task) => (
+                      <div key={task.id} className="flex items-center gap-2 text-sm">
+                        <Square className="w-4 h-4 text-accent" />
+                        <span className="text-text-muted">{task.title}</span>
+                      </div>
+                    ))}
+                    {weekTasks.created.length > 5 && (
+                      <p className="text-xs text-text-muted">+{weekTasks.created.length - 5} more</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -489,7 +624,9 @@ export default function ReviewWizardPage({
               <MarkdownEditor
                 value={wentWell}
                 onChange={setWentWell}
-                placeholder="- Completed the marketing campaign\n- Got positive feedback from stakeholders\n- Stayed focused on priorities..."
+                placeholder={`- Completed the marketing campaign
+- Got positive feedback from stakeholders
+- Stayed focused on priorities...`}
                 minHeight={200}
                 label="What went well?"
                 hint="Tip: Use bullet points to list your wins"
@@ -506,7 +643,9 @@ export default function ReviewWizardPage({
               <MarkdownEditor
                 value={toImprove}
                 onChange={setToImprove}
-                placeholder="- Got distracted by email too often\n- Didn't make progress on Project X\n- Need to better prioritize deep work..."
+                placeholder={`- Got distracted by email too often
+- Didn't make progress on Project X
+- Need to better prioritize deep work...`}
                 minHeight={200}
                 label="What could improve?"
                 hint="Be honest - this is for your growth"
@@ -523,7 +662,9 @@ export default function ReviewWizardPage({
               <MarkdownEditor
                 value={lessons}
                 onChange={setLessons}
-                placeholder="- Time-blocking works well for focused work\n- Need to say no to more meetings\n- Morning routine sets the tone for the day..."
+                placeholder={`- Time-blocking works well for focused work
+- Need to say no to more meetings
+- Morning routine sets the tone for the day...`}
                 minHeight={200}
                 label="Lessons & Insights"
               />
