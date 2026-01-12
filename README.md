@@ -80,16 +80,14 @@ npm install
    | 6 | `20260108000006_activity_events.sql` | Activity timeline + triggers |
    | 7 | `20260108000007_rls_policies.sql` | Row Level Security policies |
    | 8 | `20260108000008_views.sql` | Database views |
-   | 9 | `20260109000001_tasks_improvements.sql` | Task-KR linking, performance indexes |
-   | 10 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
-   | 11 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
-   | 12 | `20260111000001_remove_weight_columns.sql` | Remove weight from objectives/KRs |
-   | 13 | `20260111000002_weekly_reviews.sql` | Weekly reviews schema + RLS |
-   | 14 | `20260111000003_weekly_review_activity.sql` | Weekly review activity events |
+   | 9 | `20260110000001_add_due_time.sql` | Optional due time for tasks |
+   | 10 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
+   | 11 | `20260111000002_weekly_reviews.sql` | Weekly reviews schema + RLS |
+   | 12 | `20260111000003_weekly_review_activity.sql` | Weekly review activity events |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    
-   > **Fresh Deployment Note**: All 14 migrations are designed to run sequentially on a new database. Some later migrations modify columns/views created in earlier ones (e.g., migration 12 removes `weight` columns added in migration 3). This is the standard incremental migration approach.
+   > **Clean Migration Design**: All 12 migrations are designed for fresh deployment. The schema is consolidated - no temporary columns or fix migrations needed.
 
 5. **Configure Auth** (optional but recommended):
    - Go to Authentication → URL Configuration
@@ -160,7 +158,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │       ├── toast-utils.ts       # Toast notifications
 │       └── utils.ts             # Utility functions
 ├── supabase/
-│   ├── migrations/              # Database migrations (15 files)
+│   ├── migrations/              # Database migrations (12 files)
 │   ├── seed.sql                 # Demo data
 │   └── config.toml              # Local dev config
 └── tailwind.config.ts           # Tailwind + design system
@@ -279,7 +277,7 @@ All rollup calculations use **simple arithmetic mean** (no weights) ensuring equ
 ## Troubleshooting
 
 ### "Permission denied" when creating a plan
-- Make sure you ran **all 12 migration files** in order
+- Make sure you ran **all 12 migration files** in order (see migration table above)
 - Check that your `.env.local` has the correct Supabase keys
 - Verify you're logged in (check browser cookies)
 
@@ -319,7 +317,7 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
 - [x] Next.js + TypeScript + Tailwind setup
 - [x] Design system implementation
 - [x] shadcn/ui component library
-- [x] Supabase schema with migrations (12 files)
+- [x] Supabase schema with consolidated migrations (12 files)
 - [x] Row Level Security policies
 - [x] Activity timeline triggers
 - [x] Database views
@@ -385,20 +383,45 @@ The app follows a **Kympler-inspired design system**: premium, minimalist, and e
   - [x] Saved views (presets + custom)
 
 ### ✅ Weekly Review Feature (Complete)
-A structured weekly ritual for reflecting on progress, celebrating wins, and planning improvements.
+A structured weekly ritual for reflecting on progress, celebrating wins, and planning improvements. Follows an Agile retrospective-inspired flow.
 
-**All 8 Phases Completed:**
-- [x] Database schema (4 tables with RLS, triggers, views)
-- [x] Weekly review engine with 46 unit tests
-- [x] API layer and React Query hooks
-- [x] Status tracking: Open → Pending → Late/Complete
-- [x] Streak calculations and stats
-- [x] Markdown editor with formatting toolbar (bold, italic, headers, lists, code, links)
-- [x] Settings UI for reminder configuration (day, time, auto-create)
-- [x] Reviews list page with year calendar view
-- [x] 8-step review wizard (Overview → Progress → Tasks → What Went Well → To Improve → Lessons → Rating → Summary)
-- [x] Analytics tab with review metrics (completion rate, timeliness, streaks)
-- [x] Timeline integration with activity events for reviews
+**Database Schema:**
+- `weekly_reviews` - Core review data with reflection fields and stats snapshots
+- `weekly_review_settings` - Per-plan reminder configuration
+- `weekly_review_kr_updates` - KR progress snapshots during review
+- `weekly_review_tasks` - Task status snapshots during review
+- Views: `v_weekly_review_summary`, `v_plan_review_stats`, `v_weekly_review_stats_by_month`
+
+**Week Logic (Sunday-Saturday):**
+- Week 1 contains January 1st
+- Weeks start on Sunday, end on Saturday
+- Grace period: Until Monday 11:59pm after week ends
+- Status flow: `open` → `pending` (after grace period) → `complete`/`late`
+
+**8-Step Review Wizard:**
+1. **Overview** - Year-to-date progress, active KRs, tasks due/overdue
+2. **Progress** - Objective and KR progress breakdown
+3. **Tasks** - Completed, due this week, overdue, created this week
+4. **What Went Well** - Celebrate wins (Markdown editor)
+5. **To Improve** - Identify areas for growth (Markdown editor)
+6. **Lessons Learned** - Key insights + additional notes (Markdown editors)
+7. **Rating** - 1-5 star week rating
+8. **Summary** - Review and complete
+
+**Features:**
+- [x] Clickable step indicators for free navigation between steps
+- [x] Close button (X) to exit wizard anytime
+- [x] Auto-save reflections on step change
+- [x] Static snapshot stats stored at completion (won't change later)
+- [x] Completed reviews show read-only comprehensive summary
+- [x] Delete reviews with confirmation dialog
+- [x] Future weeks disabled (can't review future)
+- [x] Calendar view with status colors and legends
+- [x] Settings UI for reminder day/time configuration
+- [x] Analytics tab with completion rates, streaks, trends
+- [x] Activity timeline integration
+
+**Unit Tests:** 46 tests covering week calculations, status logic, and edge cases
 
 ### 🔜 Coming Next
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
