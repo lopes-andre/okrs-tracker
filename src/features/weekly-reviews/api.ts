@@ -215,12 +215,13 @@ export async function completeWeeklyReview(
   if (!review) throw new Error("Review not found");
   
   const now = new Date();
-  const weekEnd = new Date(review.week_end);
-  const mondayAfter = new Date(weekEnd);
-  mondayAfter.setDate(mondayAfter.getDate() + 1);
-  mondayAfter.setHours(23, 59, 59, 999);
   
-  const status = now <= mondayAfter ? "complete" : "late";
+  // Parse week_end as local date (it's stored as YYYY-MM-DD)
+  // week_end is Saturday, grace period ends Monday 11:59pm (2 days after)
+  const [year, month, day] = review.week_end.split("-").map(Number);
+  const gracePeriodEnd = new Date(year, month - 1, day + 2, 23, 59, 59, 999);
+  
+  const status = now <= gracePeriodEnd ? "complete" : "late";
   
   const { data: updated, error } = await supabase
     .from("weekly_reviews")

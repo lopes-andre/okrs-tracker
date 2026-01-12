@@ -287,22 +287,27 @@ export default function ReviewWizardPage({
 
   // Complete review
   const handleComplete = async () => {
-    await completeReview.mutateAsync({
-      reviewId,
-      data: {
-        reflection_what_went_well: wentWell || undefined,
-        reflection_what_to_improve: toImprove || undefined,
-        reflection_lessons_learned: lessons || undefined,
-        reflection_notes: notes || undefined,
-        week_rating: rating || undefined,
-        stats_tasks_completed: weekTasks.completed.length,
-        stats_tasks_created: weekTasks.created.length,
-        stats_objectives_on_track: progressStats.onTrack,
-        stats_objectives_at_risk: progressStats.atRisk,
-        stats_objectives_off_track: progressStats.offTrack,
-      },
-    });
-    router.push(`/plans/${planId}/reviews`);
+    try {
+      await completeReview.mutateAsync({
+        reviewId,
+        data: {
+          reflection_what_went_well: wentWell || undefined,
+          reflection_what_to_improve: toImprove || undefined,
+          reflection_lessons_learned: lessons || undefined,
+          reflection_notes: notes || undefined,
+          week_rating: rating || undefined,
+          stats_tasks_completed: weekTasks.completed.length,
+          stats_tasks_created: weekTasks.created.length,
+          stats_objectives_on_track: progressStats.onTrack,
+          stats_objectives_at_risk: progressStats.atRisk,
+          stats_objectives_off_track: progressStats.offTrack,
+        },
+      });
+      router.push(`/plans/${planId}/reviews`);
+    } catch (error) {
+      // Error is handled by the mutation's onError callback
+      console.error("Failed to complete review:", error);
+    }
   };
 
   const isLoading = isLoadingPlan || isLoadingReview || isLoadingObjectives || isLoadingCheckIns;
