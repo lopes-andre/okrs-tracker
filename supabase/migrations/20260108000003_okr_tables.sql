@@ -12,7 +12,6 @@ CREATE TABLE objectives (
   code TEXT NOT NULL, -- e.g., "O1", "O2"
   name TEXT NOT NULL,
   description TEXT,
-  weight NUMERIC(5,4) NOT NULL DEFAULT 1.0 CHECK (weight >= 0 AND weight <= 1),
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -81,7 +80,6 @@ CREATE TABLE annual_krs (
   start_value NUMERIC NOT NULL DEFAULT 0,
   target_value NUMERIC NOT NULL,
   current_value NUMERIC NOT NULL DEFAULT 0,
-  weight NUMERIC(5,4) NOT NULL DEFAULT 1.0 CHECK (weight >= 0 AND weight <= 1),
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -143,6 +141,7 @@ CREATE TABLE tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
   objective_id UUID REFERENCES objectives(id) ON DELETE CASCADE,
+  annual_kr_id UUID REFERENCES annual_krs(id) ON DELETE CASCADE,
   quarter_target_id UUID REFERENCES quarter_targets(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   description TEXT,
@@ -155,21 +154,29 @@ CREATE TABLE tasks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   
-  -- Task must belong to either objective or quarter_target (or neither for plan-level)
-  CHECK (
-    (objective_id IS NOT NULL AND quarter_target_id IS NULL) OR
-    (objective_id IS NULL AND quarter_target_id IS NOT NULL) OR
-    (objective_id IS NULL AND quarter_target_id IS NULL)
+  -- Task can link to at most one parent: objective, annual_kr, or quarter_target (or none for plan-level)
+  CONSTRAINT tasks_parent_check CHECK (
+    (
+      (objective_id IS NOT NULL)::int + 
+      (annual_kr_id IS NOT NULL)::int + 
+      (quarter_target_id IS NOT NULL)::int
+    ) <= 1
   )
 );
 
--- Indexes
+-- Basic indexes
 CREATE INDEX idx_tasks_plan_id ON tasks(plan_id);
 CREATE INDEX idx_tasks_objective_id ON tasks(objective_id);
+CREATE INDEX idx_tasks_annual_kr_id ON tasks(annual_kr_id);
 CREATE INDEX idx_tasks_quarter_target_id ON tasks(quarter_target_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+
+-- Performance indexes for common query patterns
+CREATE INDEX idx_tasks_plan_status_due ON tasks(plan_id, status, due_date);
+CREATE INDEX idx_tasks_plan_completed ON tasks(plan_id, completed_at DESC) WHERE status = 'completed';
+CREATE INDEX idx_tasks_plan_active_due ON tasks(plan_id, due_date, created_at) WHERE status NOT IN ('completed', 'cancelled');
 
 -- Trigger for updated_at
 CREATE TRIGGER tasks_updated_at

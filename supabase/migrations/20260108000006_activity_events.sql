@@ -79,7 +79,10 @@ BEGIN
       'title', NEW.title,
       'status', NEW.status,
       'priority', NEW.priority,
-      'due_date', NEW.due_date
+      'due_date', NEW.due_date,
+      'objective_id', NEW.objective_id,
+      'annual_kr_id', NEW.annual_kr_id,
+      'quarter_target_id', NEW.quarter_target_id
     );
     
     PERFORM log_activity_event(
@@ -92,13 +95,19 @@ BEGIN
       'title', OLD.title,
       'status', OLD.status,
       'priority', OLD.priority,
-      'due_date', OLD.due_date
+      'due_date', OLD.due_date,
+      'objective_id', OLD.objective_id,
+      'annual_kr_id', OLD.annual_kr_id,
+      'quarter_target_id', OLD.quarter_target_id
     );
     v_new_data := jsonb_build_object(
       'title', NEW.title,
       'status', NEW.status,
       'priority', NEW.priority,
-      'due_date', NEW.due_date
+      'due_date', NEW.due_date,
+      'objective_id', NEW.objective_id,
+      'annual_kr_id', NEW.annual_kr_id,
+      'quarter_target_id', NEW.quarter_target_id
     );
     
     -- Determine specific event type
@@ -120,7 +129,10 @@ BEGIN
   ELSIF TG_OP = 'DELETE' THEN
     v_old_data := jsonb_build_object(
       'title', OLD.title,
-      'status', OLD.status
+      'status', OLD.status,
+      'objective_id', OLD.objective_id,
+      'annual_kr_id', OLD.annual_kr_id,
+      'quarter_target_id', OLD.quarter_target_id
     );
     
     PERFORM log_activity_event(

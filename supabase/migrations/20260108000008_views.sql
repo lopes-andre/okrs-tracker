@@ -56,28 +56,27 @@ SELECT
   o.plan_id,
   o.code,
   o.name,
-  o.weight AS objective_weight,
   COUNT(ak.id) AS kr_count,
   COALESCE(
-    SUM(
+    AVG(
       CASE 
         WHEN ak.kr_type = 'milestone' THEN
-          CASE WHEN ak.current_value >= ak.target_value THEN 100 ELSE 0 END * ak.weight
+          CASE WHEN ak.current_value >= ak.target_value THEN 100 ELSE 0 END
         WHEN ak.target_value = ak.start_value THEN
-          100 * ak.weight
+          100
         ELSE
           LEAST(100, GREATEST(0, 
             (ak.current_value - ak.start_value) / NULLIF(ak.target_value - ak.start_value, 0) * 100
-          )) * ak.weight
+          ))
       END
-    ) / NULLIF(SUM(ak.weight), 0),
+    ),
     0
   ) AS progress_percent
 FROM objectives o
 LEFT JOIN annual_krs ak ON ak.objective_id = o.id
-GROUP BY o.id, o.plan_id, o.code, o.name, o.weight;
+GROUP BY o.id, o.plan_id, o.code, o.name;
 
-COMMENT ON VIEW v_objective_progress IS 'Calculated progress percentage for each objective';
+COMMENT ON VIEW v_objective_progress IS 'Calculated progress percentage for each objective (simple average of KRs)';
 
 -- ============================================================================
 -- VIEW: KR Progress Details
