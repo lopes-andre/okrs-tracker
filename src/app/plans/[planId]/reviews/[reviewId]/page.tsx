@@ -36,13 +36,13 @@ import { Progress } from "@/components/ui/progress";
 import { MarkdownEditor, MarkdownPreview } from "@/components/ui/markdown-editor";
 import {
   usePlan,
-  useObjectives,
   useTasks,
   useWeeklyReview,
   useStartWeeklyReview,
   useUpdateWeeklyReview,
   useCompleteWeeklyReview,
 } from "@/features";
+import { useObjectivesWithKrs } from "@/features/objectives/hooks";
 import { useCheckIns } from "@/features/check-ins/hooks";
 import {
   formatWeekLabel,
@@ -134,9 +134,9 @@ export default function ReviewWizardPage({
   // Data fetching
   const { data: plan, isLoading: isLoadingPlan } = usePlan(planId);
   const { data: review, isLoading: isLoadingReview } = useWeeklyReview(reviewId);
-  const { data: objectives = [] } = useObjectives(planId);
+  const { data: objectives = [], isLoading: isLoadingObjectives } = useObjectivesWithKrs(planId);
   const { data: tasks = [] } = useTasks(planId);
-  const { data: checkIns = [] } = useCheckIns(planId);
+  const { data: checkIns = [], isLoading: isLoadingCheckIns } = useCheckIns(planId);
 
   // Mutations
   const startReview = useStartWeeklyReview();
@@ -176,8 +176,14 @@ export default function ReviewWizardPage({
   const weekTasks = useMemo(() => {
     if (!review) return { completed: [], created: [], overdue: [], dueThisWeek: [] };
     
-    const weekStart = new Date(review.week_start);
-    const weekEnd = new Date(review.week_end);
+    // Parse dates as local time (avoid UTC interpretation issues)
+    const parseLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    };
+    
+    const weekStart = parseLocalDate(review.week_start);
+    const weekEnd = parseLocalDate(review.week_end);
     weekEnd.setHours(23, 59, 59, 999);
     weekStart.setHours(0, 0, 0, 0);
     
@@ -197,19 +203,18 @@ export default function ReviewWizardPage({
       return createdAt >= weekStart && createdAt <= weekEnd;
     });
     
-    // Truly overdue: due date is BEFORE today (not just before week end)
+    // Truly overdue: due date is BEFORE today (in the past, not today)
     const overdue = tasks.filter((t) => {
       if (t.status === "completed" || t.status === "cancelled" || !t.due_date) return false;
-      const dueDate = new Date(t.due_date);
-      dueDate.setHours(0, 0, 0, 0);
+      const dueDate = parseLocalDate(t.due_date);
       return dueDate < today;
     });
     
-    // Due this week: due date is within this week but not overdue
+    // Due this week: due date is today or within this week (but not past)
     const dueThisWeek = tasks.filter((t) => {
       if (t.status === "completed" || t.status === "cancelled" || !t.due_date) return false;
-      const dueDate = new Date(t.due_date);
-      dueDate.setHours(0, 0, 0, 0);
+      const dueDate = parseLocalDate(t.due_date);
+      // Due today or later this week (not overdue and within week bounds)
       return dueDate >= today && dueDate <= weekEnd;
     });
     
@@ -300,7 +305,7 @@ export default function ReviewWizardPage({
     router.push(`/plans/${planId}/reviews`);
   };
 
-  const isLoading = isLoadingPlan || isLoadingReview;
+  const isLoading = isLoadingPlan || isLoadingReview || isLoadingObjectives || isLoadingCheckIns;
 
   if (isLoading) {
     return (
@@ -400,7 +405,7 @@ export default function ReviewWizardPage({
                       <CheckSquare className="w-8 h-8 text-status-success" />
                       <div>
                         <p className="text-2xl font-bold">{weekTasks.completed.length}</p>
-                        <p className="text-sm text-text-muted">Completed</p>
+                        <p className="text-sm text-text-muted">Completed This Week</p>
                       </div>
                     </div>
                   </CardContent>
