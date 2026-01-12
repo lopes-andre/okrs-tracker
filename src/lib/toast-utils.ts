@@ -30,6 +30,25 @@ export function formatErrorMessage(error: unknown): ToastMessage {
     };
   }
 
+  // Handle Supabase/PostgrestError objects (plain objects with message property)
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const errObj = error as { message: string; code?: string; details?: string };
+    return {
+      title: "Error",
+      description: errObj.message || "An error occurred.",
+      variant: "destructive",
+    };
+  }
+
+  // Handle string errors
+  if (typeof error === "string") {
+    return {
+      title: "Error",
+      description: error,
+      variant: "destructive",
+    };
+  }
+
   return {
     title: "Error",
     description: "An unexpected error occurred. Please try again.",
