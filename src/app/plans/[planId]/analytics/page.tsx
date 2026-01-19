@@ -1,10 +1,9 @@
 "use client";
 
 import { use } from "react";
-import { BarChart3, TrendingUp, Calendar, Download, Loader2, Target, CalendarCheck } from "lucide-react";
+import { BarChart3, TrendingUp, Loader2, Target } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -71,9 +70,9 @@ export default function AnalyticsPage({
   const { data: summary, isLoading: isLoadingSummary } = useAnalyticsSummary(planId, planYear);
   const { data: krPerformanceData, isLoading: isLoadingPerformance } = useKrPerformanceData(planId, planYear);
   const { data: allCheckIns = [], isLoading: isLoadingCheckIns } = useCheckIns(planId);
-  const { data: checkInsByDay = [], isLoading: isLoadingHeatmap } = useCheckInsByDay(planId);
-  const { data: taskMetrics, isLoading: isLoadingTaskMetrics } = useTaskMetrics(planId);
-  const { data: productivityStats, isLoading: isLoadingProductivity } = useProductivityStats(planId);
+  const { data: checkInsByDay = [] } = useCheckInsByDay(planId);
+  const { data: taskMetrics } = useTaskMetrics(planId);
+  const { data: productivityStats } = useProductivityStats(planId);
 
   const isLoading = isLoadingPlan || isLoadingSummary || isLoadingPerformance || isLoadingCheckIns;
 

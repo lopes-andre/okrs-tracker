@@ -11,7 +11,6 @@ import {
   Loader2,
   Plus,
   Star,
-  TrendingUp,
   AlertCircle,
   CheckCircle2,
   Flame,
@@ -47,9 +46,7 @@ import {
 import {
   getCurrentWeekInfo,
   formatWeekLabel,
-  formatWeekLabelShort,
   getWeekBounds,
-  formatDateString,
   isCurrentWeek,
   isPastWeek,
   isFutureWeek,
@@ -581,12 +578,10 @@ export default function ReviewsPage({
                 icon={Calendar}
                 title="No reviews yet"
                 description="Start your first weekly review to track your progress and reflections."
-                action={
-                  <Button onClick={handleStartCurrentWeek}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Start First Review
-                  </Button>
-                }
+                action={{
+                  label: "Start First Review",
+                  onClick: handleStartCurrentWeek,
+                }}
               />
             ) : (
               <div className="space-y-3">
@@ -650,7 +645,7 @@ export default function ReviewsPage({
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={handleConfirmDelete}
               disabled={deleteReview.isPending}
             >

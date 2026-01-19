@@ -135,8 +135,7 @@ export function QuarterTargetPills({
             const progress = getProgress(q);
             const { status, label } = getQuarterStatus(q);
             const styles = getStatusStyles(q);
-            const Icon = styles.icon;
-            
+
             return (
               <Tooltip key={q}>
                 <TooltipTrigger asChild>
@@ -177,7 +176,6 @@ export function QuarterTargetPills({
   const currentTarget = targetMap.get(currentQuarter);
   const currentProgress = getProgress(currentQuarter);
   const currentStyles = getStatusStyles(currentQuarter);
-  const currentStatus = getQuarterStatus(currentQuarter);
 
   // Full view - cards with progress bars
   return (

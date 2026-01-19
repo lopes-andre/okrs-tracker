@@ -10,7 +10,6 @@ import {
   History,
   CalendarCheck,
   BarChart3,
-  Map,
   Settings,
 } from "lucide-react";
 
@@ -25,7 +24,6 @@ const navItems = [
   { label: "Timeline", href: "/timeline", icon: History },
   { label: "Reviews", href: "/reviews", icon: CalendarCheck },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Mindmap", href: "/mindmap", icon: Map },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

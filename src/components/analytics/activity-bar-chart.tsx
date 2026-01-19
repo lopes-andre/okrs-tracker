@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BarChart3, Calendar } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachWeekOfInterval, subWeeks, isWithinInterval } from "date-fns";
+import { format, endOfWeek, eachWeekOfInterval, subWeeks, isWithinInterval } from "date-fns";
 import type { CheckIn } from "@/lib/supabase/types";
 
 interface ActivityBarChartProps {
@@ -148,7 +148,8 @@ export function ActivityBarChart({ checkIns, year }: ActivityBarChartProps) {
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={(value: number) => [`${value} check-ins`, ""]}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((value: number) => [`${value} check-ins`, ""]) as any}
                 labelFormatter={(_, payload) => {
                   if (payload && payload[0]) {
                     return payload[0].payload.fullLabel;

@@ -129,14 +129,6 @@ export const queryKeys = {
     widgets: (dashboardId: string) => [...queryKeys.dashboards.all, "widgets", dashboardId] as const,
   },
 
-  // Mindmap
-  mindmap: {
-    all: ["mindmap"] as const,
-    view: (planId: string) => [...queryKeys.mindmap.all, "view", planId] as const,
-    nodes: (viewId: string) => [...queryKeys.mindmap.all, "nodes", viewId] as const,
-    edges: (viewId: string) => [...queryKeys.mindmap.all, "edges", viewId] as const,
-  },
-
   // Saved Views
   savedViews: {
     all: ["savedViews"] as const,

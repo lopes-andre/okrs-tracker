@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { useWeeklyReviewSettings, useUpdateWeeklyReviewSettings, usePlanReviewStats, usePendingReviews } from "@/features/weekly-reviews";
 import { getDayName, formatWeekLabel, getCurrentWeekInfo } from "@/lib/weekly-review-engine";
-import type { WeeklyReviewSettings } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 interface ReviewSettingsProps {
@@ -346,7 +345,7 @@ export function ReviewSettings({ planId, isOwner }: ReviewSettingsProps) {
           {reminderEnabled && (
             <div className="p-3 rounded-card bg-accent/5 border border-accent/20">
               <p className="text-sm text-accent">
-                📅 You'll be reminded every <strong>{getDayName(reminderDay)}</strong> at{" "}
+                📅 You&apos;ll be reminded every <strong>{getDayName(reminderDay)}</strong> at{" "}
                 <strong>{reminderTime}</strong> to complete your weekly review.
               </p>
             </div>

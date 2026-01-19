@@ -7,8 +7,6 @@ import {
   AlertTriangle,
   Zap,
   Target,
-  Link2Off,
-  TrendingUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";

@@ -9,12 +9,11 @@ import {
   Calendar,
   Zap,
   Edit3,
-  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format } from "date-fns";
 import type { ActivityEventWithUser } from "@/lib/supabase/types";
 
 interface WeeklyReviewPanelProps {

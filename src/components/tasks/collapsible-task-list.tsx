@@ -89,7 +89,7 @@ export function CollapsibleTaskList({
   currentPage = 1,
   onPageChange,
   isLoading = false,
-  role,
+  role: _role,
   onStatusChange,
   onEdit,
   onDelete,

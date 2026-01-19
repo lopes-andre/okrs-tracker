@@ -14,12 +14,10 @@ import {
   getWeeklyReview,
   getWeeklyReviewByWeek,
   getOrCreateWeeklyReview,
-  createWeeklyReview,
   updateWeeklyReview,
   startWeeklyReview,
   completeWeeklyReview,
   deleteWeeklyReview,
-  getWeeklyReviewSettings,
   getOrCreateWeeklyReviewSettings,
   updateWeeklyReviewSettings,
   getWeeklyReviewKrUpdates,
@@ -31,14 +29,13 @@ import {
   getCurrentWeekReview,
 } from "./api";
 import type {
-  WeeklyReview,
   WeeklyReviewUpdate,
   WeeklyReviewSettingsUpdate,
   WeeklyReviewKrUpdateInsert,
   WeeklyReviewTaskInsert,
 } from "@/lib/supabase/types";
 import { useToast } from "@/components/ui/use-toast";
-import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
+import { formatErrorMessage } from "@/lib/toast-utils";
 
 // ============================================================================
 // QUERY KEYS

@@ -38,10 +38,6 @@ export * from "./timeline/hooks";
 export * from "./dashboards/api";
 export * from "./dashboards/hooks";
 
-// Mindmap
-export * from "./mindmap/api";
-export * from "./mindmap/hooks";
-
 // Weekly Reviews
 export * from "./weekly-reviews";
 

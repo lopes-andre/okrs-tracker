@@ -13,7 +13,6 @@ src/components/
 ├── tags/            # Tag management components
 ├── activity/        # Activity feed components
 ├── analytics/       # Charts and data visualization
-├── mindmap/         # Mind map visualization
 └── weekly-review/   # Weekly review components
 ```
 
@@ -221,30 +220,6 @@ Summarized weekly activity view.
 - `QuarterlyComparison` - Quarter comparison
 - `WeeklyReviewMetrics` - Review statistics
 - `SavedViews` - View presets
-
-## Mindmap Components (`mindmap/`)
-
-Built on @xyflow/react (React Flow).
-
-### `MindmapCanvas`
-Main canvas component with pan/zoom.
-
-### Node Components (`nodes/`)
-- `PlanNode` - Root plan node
-- `ObjectiveNode` - Objective display
-- `KrNode` - Key Result display
-- `QuarterNode` - Quarter target
-
-### Supporting
-- `FilterPanel` - Node type filters
-- `NodeDetailPanel` - Selected node details
-- `ViewModeSwitcher` - View options
-- `ExportButton` - Export to image
-
-### Hooks (`hooks/`)
-- `useMindmapData` - Data fetching
-- `useMindmapLayout` - Auto-layout
-- `useMindmapPersistence` - Save positions
 
 ## Weekly Review Components (`weekly-review/`)
 

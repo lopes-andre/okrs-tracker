@@ -10,12 +10,10 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Calendar, TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   startOfQuarter, 
@@ -57,7 +55,8 @@ const QUARTER_COLORS = {
 export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparisonProps) {
   const quarterData = useMemo(() => {
     const now = new Date();
-    const currentQuarter = getQuarter(now);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _currentQuarter = getQuarter(now);
     const quarters: QuarterData[] = [];
 
     for (let q = 1; q <= 4; q++) {
@@ -119,7 +118,8 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
   }, [krs, checkIns, year]);
 
   // Calculate YoY equivalent (if we had previous year data, we'd compare)
-  const currentQ = quarterData.find((q) => q.isCurrent);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _currentQ = quarterData.find((q) => q.isCurrent);
   const completedQuarters = quarterData.filter((q) => q.isPast);
   
   return (
@@ -163,10 +163,11 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={(value: number, name: string) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((value: number, name: string) => {
                   const label = name === "targetProgress" ? "Target" : "Actual";
                   return [`${value.toFixed(1)}%`, label];
-                }}
+                }) as any}
               />
               
               {/* Target bars (background) */}

@@ -76,7 +76,7 @@ npm install
    | 2 | `20260108000002_core_tables.sql` | Profiles, plans, members, invites |
    | 3 | `20260108000003_okr_tables.sql` | Objectives, KRs, quarter targets, tasks |
    | 4 | `20260108000004_tracking_tables.sql` | Check-ins, tags, task_tags |
-   | 5 | `20260108000005_ui_tables.sql` | Mindmap, dashboards, saved views |
+   | 5 | `20260108000005_ui_tables.sql` | Dashboards, saved views |
    | 6 | `20260108000006_activity_events.sql` | Activity timeline + triggers |
    | 7 | `20260108000007_rls_policies.sql` | Row Level Security policies |
    | 8 | `20260108000008_views.sql` | Database views |
@@ -84,6 +84,7 @@ npm install
    | 10 | `20260110000002_add_task_effort.sql` | Effort estimation for tasks |
    | 11 | `20260111000002_weekly_reviews.sql` | Weekly reviews schema + RLS |
    | 12 | `20260111000003_weekly_review_activity.sql` | Weekly review activity events |
+   | 13 | `20260119180700_drop_mindmap_tables.sql` | Remove mindmap feature |
 
    **Important**: Run them in order! Each migration depends on the previous ones.
    
@@ -127,7 +128,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │       ├── reviews/         # Weekly reviews
 │   │       │   └── [reviewId]/  # Review wizard
 │   │       ├── analytics/       # Charts & insights
-│   │       ├── mindmap/         # Visual hierarchy
 │   │       └── settings/        # Plan configuration
 │   ├── components/
 │   │   ├── layout/              # Layout components
@@ -144,8 +144,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   ├── tags/                # Tags & groups API & hooks
 │   │   ├── timeline/            # Timeline API & hooks
 │   │   ├── weekly-reviews/      # Weekly reviews API & hooks
-│   │   ├── dashboards/          # Dashboards API & hooks
-│   │   └── mindmap/             # Mindmap API & hooks
+│   │   └── dashboards/          # Dashboards API & hooks
 │   └── lib/
 │       ├── supabase/            # Supabase clients & types
 │       ├── progress-engine.ts   # Progress computation engine
@@ -427,26 +426,6 @@ A structured weekly ritual for reflecting on progress, celebrating wins, and pla
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
 - [ ] Export/import functionality
 - [ ] Task reminders (using due time)
-
-### ⏸️ Mindmap Visualization (Low Priority - Incomplete)
-
-> **Status**: Basic structure implemented but incomplete. This is a "nice-to-have" visualization feature with limited practical value for daily OKR tracking. The OKRs page already provides the same hierarchy with full interactivity. Revisit only after core features are polished.
-
-**Implemented:**
-- [x] React Flow integration with custom node types
-- [x] Plan, Objective, KR, Quarter, Task nodes with progress indicators
-- [x] Basic tree layout
-- [x] Zoom, pan, minimap controls
-
-**Incomplete/Needs Work:**
-- [ ] View mode switching (radial, focus) - implemented but untested
-- [ ] Collapse/expand - may have bugs
-- [ ] Filter panel - implemented but untested
-- [ ] Export to PNG/SVG - implemented but untested
-- [ ] Position persistence - implemented but untested
-- [ ] Overall integration testing needed
-
-**Decision (Jan 11, 2026)**: Keeping the feature but deprioritizing. Focus development effort on more actionable features like Weekly Review flow, task reminders, and export/share functionality.
 
 ## License
 

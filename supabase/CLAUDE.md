@@ -20,7 +20,8 @@ supabase/
     ├── 20260110000001_add_due_time.sql
     ├── 20260110000002_add_task_effort.sql
     ├── 20260111000002_weekly_reviews.sql
-    └── 20260111000003_weekly_review_activity.sql
+    ├── 20260111000003_weekly_review_activity.sql
+    └── 20260119180700_drop_mindmap_tables.sql
 ```
 
 ## Database Schema

@@ -1,7 +1,6 @@
 import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
-import type { 
+import type {
   ObjectiveWithKrs,
-  AnnualKr,
   CheckIn,
   Task,
 } from "@/lib/supabase/types";
@@ -321,7 +320,7 @@ export async function getProductivityStats(planId: string): Promise<Productivity
       checkIns.map((c) => new Date(c.recorded_at).toISOString().split("T")[0])
     );
     
-    let currentDate = new Date(today);
+    const currentDate = new Date(today);
     while (true) {
       const dateStr = currentDate.toISOString().split("T")[0];
       if (checkInDates.has(dateStr)) {

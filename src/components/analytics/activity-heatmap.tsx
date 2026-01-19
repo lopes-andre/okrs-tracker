@@ -10,14 +10,13 @@ import {
 } from "@/components/ui/tooltip";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { 
-  format, 
-  eachDayOfInterval, 
-  startOfYear, 
-  endOfYear, 
+import {
+  format,
+  eachDayOfInterval,
+  startOfYear,
+  endOfYear,
   startOfWeek,
   getDay,
-  getWeek,
   isToday,
   isFuture,
 } from "date-fns";
@@ -45,7 +44,6 @@ export function ActivityHeatmap({ data, year }: ActivityHeatmapProps) {
     
     const yearStart = startOfYear(new Date(year, 0, 1));
     const yearEnd = endOfYear(new Date(year, 0, 1));
-    const today = new Date();
     
     // Generate all days of the year
     const allDays = eachDayOfInterval({ start: yearStart, end: yearEnd });

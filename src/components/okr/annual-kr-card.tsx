@@ -23,7 +23,6 @@ import {
   Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   DropdownMenu,
@@ -38,7 +37,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { QuarterTargetPills } from "./quarter-target-pills";
 import { PaceBadge } from "./pace-badge";
 import type { AnnualKr, OkrRole, QuarterTarget, CheckIn } from "@/lib/supabase/types";
 import type { ProgressResult } from "@/lib/progress-engine";
@@ -69,7 +67,9 @@ interface AnnualKrCardProps {
   lastCheckIn?: CheckIn;
 }
 
-const krTypeLabels: Record<string, string> = {
+// KR type labels (kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _krTypeLabels: Record<string, string> = {
   metric: "Metric",
   count: "Count",
   milestone: "Milestone",
@@ -230,8 +230,11 @@ export function AnnualKrCard({
     ? getQuarterProgressSummary(kr.quarter_targets!, kr, checkIns, planYear)
     : null;
   
-  const currentQuarter = getCurrentQuarter();
-  const currentQuarterData = quarterProgress.find(q => q.isCurrent);
+  // Current quarter data (kept for future use)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _currentQuarter = getCurrentQuarter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _currentQuarterData = quarterProgress.find(q => q.isCurrent);
 
   // Handle card click (expand/collapse)
   const handleCardClick = (e: React.MouseEvent) => {

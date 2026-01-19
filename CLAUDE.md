@@ -13,7 +13,6 @@ This document provides comprehensive context for AI assistants working on this c
 - **Check-ins**: Progress tracking through check-ins
 - **Analytics**: Charts, pace analysis, burnup charts, activity heatmaps
 - **Weekly Reviews**: Structured review system with reflection prompts
-- **Mind Map**: Visual OKR hierarchy using React Flow
 - **Activity Timeline**: Audit trail of all changes
 
 ## Tech Stack
@@ -39,7 +38,6 @@ This document provides comprehensive context for AI assistants working on this c
 - **class-variance-authority (CVA)** - Variant-based component styling
 - **Lucide React** - Icon library
 - **Recharts 3.6** - Charting library
-- **@xyflow/react 12.10** - Flow-based diagrams (Mind Map)
 
 ### Utilities
 - **date-fns 4.1** - Date manipulation
@@ -63,7 +61,6 @@ okrs-tracker/
 │   │   ├── plans/             # Main app routes (protected)
 │   │   │   ├── [planId]/      # Dynamic plan routes
 │   │   │   │   ├── analytics/ # Analytics dashboard
-│   │   │   │   ├── mindmap/   # Mind map visualization
 │   │   │   │   ├── okrs/      # OKRs management
 │   │   │   │   ├── reviews/   # Weekly reviews
 │   │   │   │   ├── settings/  # Plan settings
@@ -77,7 +74,6 @@ okrs-tracker/
 │   │   ├── activity/          # Activity feed components
 │   │   ├── analytics/         # Charts and analytics
 │   │   ├── layout/            # Layout components (Navbar, PageHeader, EmptyState)
-│   │   ├── mindmap/           # Mind map components
 │   │   ├── okr/               # OKR-specific components
 │   │   ├── tags/              # Tag management components
 │   │   ├── tasks/             # Task-related components
@@ -89,7 +85,6 @@ okrs-tracker/
 │   │   ├── annual-krs/
 │   │   ├── check-ins/
 │   │   ├── dashboards/
-│   │   ├── mindmap/
 │   │   ├── objectives/
 │   │   ├── plans/
 │   │   ├── progress/
@@ -340,7 +335,6 @@ supabase migration new <name>  # Create new migration
 - Tags management page in Settings
 - Weekly reviews system
 - Activity timeline with filtering
-- Mind map visualization
 
 ### Known Technical Debt
 - Some TypeScript errors in analytics components (Recharts types)
@@ -358,7 +352,6 @@ supabase migration new <name>  # Create new migration
 Tests are in `*.test.ts` files alongside source:
 - `src/lib/progress-engine.test.ts` - Progress calculations
 - `src/lib/weekly-review-engine.test.ts` - Weekly review logic
-- `src/components/mindmap/__tests__/` - Mindmap unit tests
 
 Run tests:
 ```bash

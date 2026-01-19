@@ -1,11 +1,10 @@
 "use client";
 
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Link as LinkIcon, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Link as LinkIcon,
   Calendar,
-  User,
   FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";

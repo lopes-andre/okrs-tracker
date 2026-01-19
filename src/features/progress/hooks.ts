@@ -11,7 +11,6 @@ import {
   buildDailySeries,
   buildWeeklySeries,
   getAnnualKrWindow,
-  getYearDates,
   type ProgressResult,
   type ObjectiveProgress,
   type PlanProgress,
@@ -23,7 +22,6 @@ import type {
   QuarterTarget,
   CheckIn,
   Task,
-  Objective,
   ObjectiveWithKrs,
 } from "@/lib/supabase/types";
 import { getCheckInsByKr } from "@/features/check-ins/api";

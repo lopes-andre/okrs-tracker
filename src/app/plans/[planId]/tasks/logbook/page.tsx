@@ -3,12 +3,10 @@
 import { use, useState } from "react";
 import Link from "next/link";
 import {
-  History,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
   Calendar,
-  Target,
   Filter,
   Loader2,
   ArrowLeft,
@@ -42,7 +40,7 @@ import type {
   TaskFilters,
   OkrRole,
 } from "@/lib/supabase/types";
-import { format, subDays, subMonths, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
 
 export default function TasksLogbookPage({
   params,
@@ -68,23 +66,25 @@ export default function TasksLogbookPage({
     filters.objective_id = objectiveFilter;
   }
 
-  // Calculate date range
-  let completedFrom: string | undefined;
-  let completedTo: string | undefined;
+  // Calculate date range (used for display, future backend filtering)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _completedFrom: string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _completedTo: string | undefined;
 
   if (dateRange === "7d") {
-    completedFrom = format(subDays(new Date(), 7), "yyyy-MM-dd");
+    _completedFrom = format(subDays(new Date(), 7), "yyyy-MM-dd");
   } else if (dateRange === "30d") {
-    completedFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
+    _completedFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
   } else if (dateRange === "month") {
-    completedFrom = format(startOfMonth(new Date()), "yyyy-MM-dd");
-    completedTo = format(endOfMonth(new Date()), "yyyy-MM-dd");
+    _completedFrom = format(startOfMonth(new Date()), "yyyy-MM-dd");
+    _completedTo = format(endOfMonth(new Date()), "yyyy-MM-dd");
   } else if (dateFrom) {
-    completedFrom = dateFrom;
+    _completedFrom = dateFrom;
   }
 
   if (dateTo) {
-    completedTo = dateTo;
+    _completedTo = dateTo;
   }
 
   // Add date filters (these filter by due_date, but we'll filter by completed_at in display)
@@ -101,7 +101,6 @@ export default function TasksLogbookPage({
   const { data: objectives = [] } = useObjectives(planId);
   const { data: role } = usePlanRole(planId);
   const userRole: OkrRole = role || "viewer";
-  const canEdit = userRole === "owner" || userRole === "editor";
 
   // Mutations
   const updateTask = useUpdateTask(planId);

@@ -266,7 +266,7 @@ const { data, isLoading } = useTasks(planId);
 - Use `useCallback` for functions passed as props
 - Avoid creating objects/arrays in render
 - Use React Query's `staleTime` appropriately
-- Lazy load heavy components (charts, mindmap)
+- Lazy load heavy components (charts)
 
 ## Accessibility
 

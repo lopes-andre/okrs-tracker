@@ -47,11 +47,9 @@ import { useObjectivesWithKrs } from "@/features/objectives/hooks";
 import { useCheckIns } from "@/features/check-ins/hooks";
 import {
   formatWeekLabel,
-  getCurrentWeekInfo,
   isCurrentWeek,
 } from "@/lib/weekly-review-engine";
-import { computeKrProgress, computeObjectiveProgress } from "@/lib/progress-engine";
-import type { WeeklyReviewStatus } from "@/lib/supabase/types";
+import { computeKrProgress } from "@/lib/progress-engine";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -265,9 +263,9 @@ export default function ReviewWizardPage({
         const progressBefore = computeKrProgress(kr, checkInsBeforeWeek, [], planYear);
         totalProgressBeforeWeek += progressBefore.progress;
         
-        if (progress.paceStatus === "ahead" || progress.paceStatus === "on-track") {
+        if (progress.paceStatus === "ahead" || progress.paceStatus === "on_track") {
           onTrack++;
-        } else if (progress.paceStatus === "at-risk") {
+        } else if (progress.paceStatus === "at_risk") {
           atRisk++;
         } else {
           offTrack++;
@@ -802,13 +800,13 @@ export default function ReviewWizardPage({
                                 <span className="text-text-muted truncate flex-1 mr-4">{kr.name}</span>
                                 <div className="flex items-center gap-2">
                                   <div className="w-20 h-2 bg-bg-1 rounded-full overflow-hidden">
-                                    <div 
+                                    <div
                                       className={cn(
                                         "h-full rounded-full transition-all",
                                         krProgress.paceStatus === "ahead" && "bg-status-success",
-                                        krProgress.paceStatus === "on-track" && "bg-accent",
-                                        krProgress.paceStatus === "at-risk" && "bg-status-warning",
-                                        krProgress.paceStatus === "off-track" && "bg-status-danger"
+                                        krProgress.paceStatus === "on_track" && "bg-accent",
+                                        krProgress.paceStatus === "at_risk" && "bg-status-warning",
+                                        krProgress.paceStatus === "off_track" && "bg-status-danger"
                                       )}
                                       style={{ width: `${Math.min(100, krProgress.progress * 100)}%` }}
                                     />
@@ -818,9 +816,9 @@ export default function ReviewWizardPage({
                                     className={cn(
                                       "text-xs min-w-[48px] justify-center",
                                       krProgress.paceStatus === "ahead" && "text-status-success border-status-success/30",
-                                      krProgress.paceStatus === "on-track" && "text-accent border-accent/30",
-                                      krProgress.paceStatus === "at-risk" && "text-status-warning border-status-warning/30",
-                                      krProgress.paceStatus === "off-track" && "text-status-danger border-status-danger/30"
+                                      krProgress.paceStatus === "on_track" && "text-accent border-accent/30",
+                                      krProgress.paceStatus === "at_risk" && "text-status-warning border-status-warning/30",
+                                      krProgress.paceStatus === "off_track" && "text-status-danger border-status-danger/30"
                                     )}
                                   >
                                     {Math.round(krProgress.progress * 100)}%
@@ -1048,7 +1046,7 @@ export default function ReviewWizardPage({
           {currentStep === 7 && (
             <div className="space-y-6">
               <p className="text-text-muted">
-                Here's a summary of your weekly review. Ready to complete it?
+                Here&apos;s a summary of your weekly review. Ready to complete it?
               </p>
               
               <div className="grid md:grid-cols-2 gap-6">

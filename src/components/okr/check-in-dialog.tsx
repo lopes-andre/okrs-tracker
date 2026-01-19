@@ -1,13 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Loader2, 
-  TrendingUp, 
-  Link as LinkIcon, 
-  FileText,
-  Calendar,
-  Target,
+import {
+  Loader2,
+  TrendingUp,
   CheckCircle2,
   ArrowRight,
   Flag,
@@ -16,7 +12,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,

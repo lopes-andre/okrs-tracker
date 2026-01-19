@@ -11,7 +11,6 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEffort = 'light' | 'moderate' | 'heavy';
 export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
-export type MindmapEntityType = 'plan' | 'objective' | 'annual_kr' | 'quarter_target';
 export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review';
 export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed' | 'started';
 export type WeeklyReviewStatus = 'open' | 'pending' | 'late' | 'complete';
@@ -160,37 +159,6 @@ export interface AnnualKrTag {
 export interface TaskTag {
   task_id: string;
   tag_id: string;
-}
-
-export interface MindmapView {
-  id: string;
-  plan_id: string;
-  user_id: string;
-  viewport_x: number;
-  viewport_y: number;
-  viewport_zoom: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MindmapNode {
-  id: string;
-  mindmap_view_id: string;
-  entity_type: MindmapEntityType;
-  entity_id: string;
-  position_x: number;
-  position_y: number;
-  is_collapsed: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MindmapEdge {
-  id: string;
-  mindmap_view_id: string;
-  source_node_id: string;
-  target_node_id: string;
-  created_at: string;
 }
 
 export interface Dashboard {
@@ -352,11 +320,12 @@ export type PlanInviteInsert = Omit<PlanInvite, 'id' | 'expires_at' | 'accepted_
 export type WeeklyReviewInsert = Omit<WeeklyReview, 'id' | 'created_at' | 'updated_at' | 'started_at' | 'completed_at' | 
   'stats_krs_updated' | 'stats_tasks_completed' | 'stats_tasks_created' | 'stats_check_ins_made' | 
   'stats_objectives_on_track' | 'stats_objectives_at_risk' | 'stats_objectives_off_track'>;
-export type WeeklyReviewUpdate = Partial<Pick<WeeklyReview, 
-  'status' | 'started_at' | 'completed_at' | 
+export type WeeklyReviewUpdate = Partial<Pick<WeeklyReview,
+  'status' | 'started_at' | 'completed_at' |
   'reflection_what_went_well' | 'reflection_what_to_improve' | 'reflection_lessons_learned' | 'reflection_notes' |
   'stats_krs_updated' | 'stats_tasks_completed' | 'stats_tasks_created' | 'stats_check_ins_made' |
-  'stats_objectives_on_track' | 'stats_objectives_at_risk' | 'stats_objectives_off_track' | 'week_rating'>>;
+  'stats_objectives_on_track' | 'stats_objectives_at_risk' | 'stats_objectives_off_track' |
+  'stats_overall_progress' | 'stats_total_krs' | 'week_rating'>>;
 
 export type WeeklyReviewSettingsInsert = Omit<WeeklyReviewSettings, 'id' | 'created_at' | 'updated_at'>;
 export type WeeklyReviewSettingsUpdate = Partial<Pick<WeeklyReviewSettings, 
@@ -550,21 +519,6 @@ export interface Database {
         Insert: TaskTag;
         Update: never;
       };
-      mindmap_views: {
-        Row: MindmapView;
-        Insert: Omit<MindmapView, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Pick<MindmapView, 'viewport_x' | 'viewport_y' | 'viewport_zoom'>>;
-      };
-      mindmap_nodes: {
-        Row: MindmapNode;
-        Insert: Omit<MindmapNode, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Pick<MindmapNode, 'position_x' | 'position_y' | 'is_collapsed'>>;
-      };
-      mindmap_edges: {
-        Row: MindmapEdge;
-        Insert: Omit<MindmapEdge, 'id' | 'created_at'>;
-        Update: never;
-      };
       dashboards: {
         Row: Dashboard;
         Insert: DashboardInsert;
@@ -664,7 +618,6 @@ export interface Database {
       task_status: TaskStatus;
       task_priority: TaskPriority;
       tag_kind: TagKind;
-      mindmap_entity_type: MindmapEntityType;
       event_entity_type: EventEntityType;
       event_type: EventType;
       weekly_review_status: WeeklyReviewStatus;

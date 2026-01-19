@@ -19,10 +19,10 @@ import {
   FileText,
   Calendar,
   CalendarCheck,
-  Clock,
   Hash,
   Flag,
   Star,
+  Play,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -35,8 +35,9 @@ interface ActivityEventCardProps {
   defaultExpanded?: boolean;
 }
 
-// Icons for different event types
-const eventTypeIcons: Record<EventType, React.ElementType> = {
+// Icons for different event types (kept for potential future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _eventTypeIcons: Record<EventType, React.ElementType> = {
   created: Edit3,
   updated: Edit3,
   deleted: Trash2,
@@ -45,6 +46,7 @@ const eventTypeIcons: Record<EventType, React.ElementType> = {
   joined: UserPlus,
   left: UserMinus,
   role_changed: Users,
+  started: Play,
 };
 
 // Icons for different entity types
@@ -101,6 +103,7 @@ const formatEventType = (type: EventType): string => {
     joined: "Joined",
     left: "Left",
     role_changed: "Role Changed",
+    started: "Started",
   };
   return labels[type] || type;
 };
@@ -122,8 +125,9 @@ const getEntityName = (event: ActivityEventWithUser): string => {
   );
 };
 
-// Format value changes for display
-const formatValueChange = (key: string, oldVal: unknown, newVal: unknown): string => {
+// Format value changes for display (kept for future use)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _formatValueChange = (key: string, oldVal: unknown, newVal: unknown): string => {
   if (key === "status") {
     return `${oldVal || "none"} → ${newVal}`;
   }
@@ -143,9 +147,8 @@ const formatValueChange = (key: string, oldVal: unknown, newVal: unknown): strin
 
 export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEventCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  
+
   const EventIcon = entityTypeIcons[event.entity_type] || Edit3;
-  const TypeIcon = eventTypeIcons[event.event_type] || Edit3;
   const entityName = getEntityName(event);
   
   const newData = event.new_data as Record<string, unknown> | null;
@@ -281,11 +284,11 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
       </div>
 
       {/* Expanded Details */}
-      {isExpanded && hasDetails && (
+      {isExpanded && !!hasDetails && (
         <div className="px-3 pb-3 pt-0">
           <div className="ml-12 p-3 rounded-button bg-bg-1/50 border border-border-soft text-small">
             {/* Status Change Details */}
-            {event.event_type === "status_changed" && oldData?.status && newData?.status && (
+            {event.event_type === "status_changed" && !!oldData?.status && !!newData?.status && (
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-text-muted">Status:</span>
                 <Badge variant="outline" className="text-[10px]">{String(oldData.status)}</Badge>
@@ -303,18 +306,18 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
                     <span className="text-text-muted">Value:</span>
                     <span className="font-medium text-text-strong">
                       {(newData.value as number).toLocaleString()}
-                      {newData.unit && ` ${newData.unit}`}
+                      {newData.unit ? ` ${String(newData.unit)}` : ""}
                     </span>
                   </div>
                 )}
-                {newData.note && (
+                {!!newData.note && (
                   <div className="flex items-start gap-2">
                     <FileText className="w-3 h-3 text-text-muted mt-0.5" />
                     <span className="text-text-muted">Note:</span>
                     <span className="text-text-strong">{String(newData.note)}</span>
                   </div>
                 )}
-                {newData.evidence_url && (
+                {!!newData.evidence_url && (
                   <div className="flex items-center gap-2">
                     <LinkIcon className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">Evidence:</span>
@@ -340,7 +343,7 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
                     <CalendarCheck className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">Week:</span>
                     <span className="font-medium text-text-strong">
-                      W{newData.week_number} {newData.year}
+                      W{String(newData.week_number)} {String(newData.year)}
                     </span>
                   </div>
                 )}
@@ -349,7 +352,7 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
                     <Star className="w-3 h-3 text-status-warning" />
                     <span className="text-text-muted">Rating:</span>
                     <span className="font-medium text-text-strong">
-                      {newData.week_rating}/5 stars
+                      {String(newData.week_rating)}/5 stars
                     </span>
                   </div>
                 )}
@@ -358,18 +361,18 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
                     <CheckCircle2 className="w-3 h-3 text-status-success" />
                     <span className="text-text-muted">Tasks completed:</span>
                     <span className="font-medium text-text-strong">
-                      {newData.stats_tasks_completed}
+                      {String(newData.stats_tasks_completed)}
                     </span>
                   </div>
                 )}
-                {(newData.stats_objectives_on_track !== undefined || 
+                {(newData.stats_objectives_on_track !== undefined ||
                   newData.stats_objectives_at_risk !== undefined) && (
                   <div className="flex items-center gap-2">
                     <Target className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">KRs:</span>
                     <span className="font-medium text-text-strong">
-                      {newData.stats_objectives_on_track || 0} on track, {" "}
-                      {newData.stats_objectives_at_risk || 0} at risk
+                      {String(newData.stats_objectives_on_track ?? 0)} on track,{" "}
+                      {String(newData.stats_objectives_at_risk ?? 0)} at risk
                     </span>
                   </div>
                 )}
@@ -379,21 +382,21 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
             {/* Task Details */}
             {event.entity_type === "task" && (
               <div className="space-y-1.5">
-                {newData?.title && (
+                {!!newData?.title && (
                   <div className="flex items-center gap-2">
                     <ListTodo className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">Title:</span>
                     <span className="text-text-strong">{String(newData.title)}</span>
                   </div>
                 )}
-                {newData?.priority && (
+                {!!newData?.priority && (
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">Priority:</span>
                     <Badge variant="outline" className="text-[10px]">{String(newData.priority)}</Badge>
                   </div>
                 )}
-                {newData?.due_date && (
+                {!!newData?.due_date && (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3 h-3 text-text-muted" />
                     <span className="text-text-muted">Due:</span>

@@ -6,7 +6,6 @@ import {
   Target,
   CheckCircle2,
   AlertTriangle,
-  XCircle,
   Zap,
   ListTodo,
 } from "lucide-react";

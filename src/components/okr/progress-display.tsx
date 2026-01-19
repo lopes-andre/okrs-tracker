@@ -39,7 +39,7 @@ interface ProgressDisplayProps {
 export function ProgressDisplay({
   progress,
   krType,
-  direction,
+  direction: _direction,
   unit,
   showForecast = true,
   showDelta = true,

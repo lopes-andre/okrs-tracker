@@ -104,9 +104,6 @@ Activity event timeline
 ### `dashboards/`
 Dashboard and widget management
 
-### `mindmap/`
-Mindmap view state persistence
-
 ### `weekly-reviews/`
 Weekly review system
 

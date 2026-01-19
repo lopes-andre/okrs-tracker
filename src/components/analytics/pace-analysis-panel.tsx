@@ -3,7 +3,6 @@
 import { useMemo } from "react";
 import {
   TrendingUp,
-  TrendingDown,
   AlertTriangle,
   CheckCircle2,
   Clock,
@@ -17,9 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { differenceInDays, format, endOfYear } from "date-fns";
+import { differenceInDays, endOfYear } from "date-fns";
 import type { KrPerformanceRow } from "@/features/analytics/api";
-import type { PaceStatus } from "@/lib/progress-engine";
 
 interface PaceAnalysisPanelProps {
   krs: KrPerformanceRow[];
@@ -257,7 +255,8 @@ function Recommendations({ krs, year }: { krs: KrPerformanceRow[]; year: number 
     
     // Count statuses
     const offTrackCount = krs.filter((kr) => kr.paceStatus === "off-track").length;
-    const atRiskCount = krs.filter((kr) => kr.paceStatus === "at-risk").length;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _atRiskCount = krs.filter((kr) => kr.paceStatus === "at-risk").length;
     const staleKrs = krs.filter((kr) => {
       if (!kr.lastCheckInDate) return true;
       return differenceInDays(now, new Date(kr.lastCheckInDate)) > 14;

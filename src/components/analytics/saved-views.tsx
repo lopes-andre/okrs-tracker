@@ -5,8 +5,6 @@ import {
   Save,
   FolderOpen,
   Trash2,
-  Check,
-  X,
   Star,
   Plus,
 } from "lucide-react";
@@ -26,7 +24,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 
 // Predefined views
 const PRESET_VIEWS: SavedView[] = [
@@ -105,7 +102,8 @@ export function SavedViews({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newViewName, setNewViewName] = useState("");
 
-  const allViews = [...PRESET_VIEWS, ...savedViews];
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _allViews = [...PRESET_VIEWS, ...savedViews];
 
   const handleSaveView = () => {
     if (newViewName.trim()) {

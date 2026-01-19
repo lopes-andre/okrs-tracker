@@ -78,7 +78,7 @@ export function ObjectiveCard({
   }, [objective.annual_krs, checkInsByKr, planYear]);
 
   // Compute real-time Objective progress and expected progress as simple averages
-  const { progress, expectedProgress, paceRatio, paceStatus } = useMemo(() => {
+  const { progress, expectedProgress, paceStatus } = useMemo(() => {
     const krs = objective.annual_krs || [];
     if (krs.length === 0) return { progress: 0, expectedProgress: 0, paceRatio: 1, paceStatus: "on_track" as const };
     

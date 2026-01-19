@@ -109,9 +109,6 @@ export const successMessages = {
   widgetAdded: { title: "Widget added", variant: "success" as const },
   widgetRemoved: { title: "Widget removed", variant: "success" as const },
 
-  // Mindmap
-  layoutSaved: { title: "Layout saved", description: "Your mindmap layout has been saved.", variant: "success" as const },
-
   // General
   saved: { title: "Saved", variant: "success" as const },
   deleted: { title: "Deleted", variant: "success" as const },

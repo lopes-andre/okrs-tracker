@@ -16,11 +16,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { usePlanReviewStats, useWeeklyReviewSummaries } from "@/features/weekly-reviews";
 import { cn } from "@/lib/utils";
-import { formatWeekLabelShort, isCurrentWeek } from "@/lib/weekly-review-engine";
+import { isCurrentWeek } from "@/lib/weekly-review-engine";
 import type { WeeklyReviewStatus } from "@/lib/supabase/types";
 
 interface WeeklyReviewMetricsProps {
@@ -230,12 +229,12 @@ export function WeeklyReviewMetrics({ planId }: WeeklyReviewMetricsProps) {
         </CardContent>
       </Card>
 
-      {/* Longest Streak */}
-      {stats.longest_streak > 0 && (
+      {/* Current Streak */}
+      {stats.current_streak > 0 && (
         <div className="flex items-center justify-center gap-2 p-4 rounded-card bg-gradient-to-r from-status-warning/10 to-accent/10 border border-status-warning/20">
           <Flame className="w-6 h-6 text-status-warning" />
           <span className="text-text-strong font-medium">
-            Longest streak: <strong>{stats.longest_streak} weeks</strong>
+            Current streak: <strong>{stats.current_streak} weeks</strong>
           </span>
         </div>
       )}

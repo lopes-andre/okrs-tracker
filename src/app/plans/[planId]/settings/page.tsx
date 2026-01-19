@@ -67,7 +67,7 @@ export default function SettingsPage({
   const { data: plan, isLoading: isLoadingPlan } = usePlan(planId);
   const { data: role } = usePlanRole(planId);
   const { data: members = [], isLoading: isLoadingMembers } = usePlanMembers(planId);
-  const { data: invites = [], isLoading: isLoadingInvites } = usePlanInvites(planId);
+  const { data: invites = [] } = usePlanInvites(planId);
 
   const updatePlan = useUpdatePlan();
   const deletePlan = useDeletePlan();

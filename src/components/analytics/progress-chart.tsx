@@ -9,11 +9,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
-  Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -24,9 +21,9 @@ import {
 } from "@/components/ui/select";
 import { TrendingUp, Calendar, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, parseISO, startOfYear, eachDayOfInterval, eachWeekOfInterval } from "date-fns";
-import type { KrPerformanceRow, ChartDataPoint } from "@/features/analytics/api";
-import type { CheckIn, AnnualKr } from "@/lib/supabase/types";
+import { format, eachDayOfInterval, eachWeekOfInterval } from "date-fns";
+import type { KrPerformanceRow } from "@/features/analytics/api";
+import type { CheckIn } from "@/lib/supabase/types";
 
 interface ProgressChartProps {
   krs: KrPerformanceRow[];
@@ -105,7 +102,7 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
       : eachWeekOfInterval({ start: dateRange.start, end: dateRange.end }, { weekStartsOn: 0 });
 
     // Build data points
-    const data: Record<string, Record<string, number | string>>[] = intervals.map((date) => {
+    const data: Record<string, number | string>[] = intervals.map((date) => {
       const dateStr = format(date, "yyyy-MM-dd");
       const point: Record<string, number | string> = {
         date: dateStr,
@@ -268,15 +265,16 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  formatter={(value: number, name: string) => {
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={((value: number, name: string) => {
                     const krId = name.replace("kr_", "").replace("expected_", "");
                     const kr = krs.find((k) => k.id === krId);
                     const isExpected = name.startsWith("expected_");
                     return [
                       `${value.toLocaleString()}${kr?.unit ? ` ${kr.unit}` : ""}`,
-                      isExpected ? `${kr?.name} (Expected)` : kr?.name
+                      isExpected ? `${kr?.name ?? "KR"} (Expected)` : kr?.name ?? "KR"
                     ];
-                  }}
+                  }) as any}
                 />
                 
                 {/* Actual value lines */}

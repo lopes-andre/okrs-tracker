@@ -10,7 +10,7 @@ export default function TimelinePage({
 }: {
   params: Promise<{ planId: string }>;
 }) {
-  const { planId: _planId } = use(params);
+  use(params); // Consume params to satisfy React
 
   return (
     <>

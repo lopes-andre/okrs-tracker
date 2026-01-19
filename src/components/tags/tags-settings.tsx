@@ -8,7 +8,6 @@ import {
   Trash2,
   Loader2,
   AlertTriangle,
-  X,
   Check,
 } from "lucide-react";
 import {
@@ -45,7 +44,7 @@ import {
   useDeleteTag,
   type TagWithUsage,
 } from "@/features";
-import type { TagKind, TagInsert, TagUpdate } from "@/lib/supabase/types";
+import type { TagKind } from "@/lib/supabase/types";
 
 interface TagsSettingsProps {
   planId: string;

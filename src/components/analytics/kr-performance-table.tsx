@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -39,7 +38,6 @@ import {
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { KrPerformanceRow } from "@/features/analytics/api";
-import type { PaceStatus } from "@/lib/progress-engine";
 
 interface KrPerformanceTableProps {
   data: KrPerformanceRow[];
@@ -80,7 +78,7 @@ const TrendIcon = ({ trend }: { trend: "up" | "down" | "stable" }) => {
   }
 };
 
-export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTableProps) {
+export function KrPerformanceTable({ data, onRecordCheckIn: _onRecordCheckIn }: KrPerformanceTableProps) {
   const [sortField, setSortField] = useState<SortField>("progress");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
@@ -110,7 +108,7 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
           comparison = a.targetValue - b.targetValue;
           break;
         case "forecast":
-          comparison = a.forecast - b.forecast;
+          comparison = (a.forecast ?? 0) - (b.forecast ?? 0);
           break;
         case "lastCheckInDate":
           const aDate = a.lastCheckInDate ? new Date(a.lastCheckInDate).getTime() : 0;
@@ -263,7 +261,7 @@ export function KrPerformanceTable({ data, onRecordCheckIn }: KrPerformanceTable
                         onClick={() => toggleGroup(group)}
                       >
                         <div className="flex items-center gap-2">
-                          {expandedGroups.has(group) || groupBy === "none" ? (
+                          {expandedGroups.has(group) ? (
                             <ChevronDown className="w-4 h-4" />
                           ) : (
                             <ChevronRight className="w-4 h-4" />
