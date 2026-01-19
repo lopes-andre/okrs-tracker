@@ -23,6 +23,12 @@ A premium personal OKR (Objectives and Key Results) tracking web application. De
 - **Team Sharing**: Invite collaborators to your OKR plans
 - **Evidence Attachments**: Link posts, screenshots, and external data
 
+### Data Portability
+- **JSON Export**: Full backup with all entities and cross-references
+- **Markdown Export**: Human-readable documentation of your OKRs
+- **Import with Validation**: Preview and validate before importing
+- **Cloud Backups**: Automatic backups stored in Supabase Storage
+
 ## Tech Stack
 
 - **Framework**: [Next.js 15](https://nextjs.org/) with App Router
@@ -31,6 +37,7 @@ A premium personal OKR (Objectives and Key Results) tracking web application. De
 - **Components**: [shadcn/ui](https://ui.shadcn.com/) (Radix-based)
 - **Database**: [Supabase](https://supabase.com/) (PostgreSQL + Auth + RLS)
 - **Data Fetching**: [TanStack Query](https://tanstack.com/query)
+- **Validation**: [Zod](https://zod.dev/) (runtime schema validation)
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Fonts**: Plus Jakarta Sans (headings) + Inter (body)
 
@@ -133,6 +140,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   ├── layout/              # Layout components
 │   │   ├── okr/                 # OKR-specific components
 │   │   ├── tasks/               # Task components
+│   │   ├── import-export/       # Import/Export & backup UI
 │   │   └── ui/                  # shadcn/ui components
 │   ├── features/                # Data access layer
 │   │   ├── plans/               # Plans API & hooks
@@ -144,6 +152,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │   │   ├── tags/                # Tags & groups API & hooks
 │   │   ├── timeline/            # Timeline API & hooks
 │   │   ├── weekly-reviews/      # Weekly reviews API & hooks
+│   │   ├── import-export/       # Import/Export & backup API & hooks
 │   │   └── dashboards/          # Dashboards API & hooks
 │   └── lib/
 │       ├── supabase/            # Supabase clients & types
@@ -422,9 +431,24 @@ A structured weekly ritual for reflecting on progress, celebrating wins, and pla
 
 **Unit Tests:** 46 tests covering week calculations, status logic, and edge cases
 
+### ✅ Import/Export & Backups (Complete)
+Full data portability with JSON export/import, Markdown export, and cloud backups.
+
+**Features:**
+- [x] Export plan to JSON (full backup with cross-references)
+- [x] Export plan to Markdown (human-readable documentation)
+- [x] Multi-step import wizard with validation and preview
+- [x] Import options (skip check-ins, skip reviews, reset progress)
+- [x] Cloud backups via Supabase Storage
+- [x] Backup management (create, list, delete)
+
+**Tech:**
+- Zod for runtime JSON schema validation
+- Export schema v1.0 with `_exportId` cross-references
+- Drag-drop file upload with preview
+
 ### 🔜 Coming Next
 - [ ] Real-time updates (WebSocket/Supabase Realtime)
-- [ ] Export/import functionality
 - [ ] Task reminders (using due time)
 
 ## License

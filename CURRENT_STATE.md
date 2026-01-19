@@ -2,7 +2,34 @@
 
 ## Recent Work (January 2026)
 
-### Just Completed: Tags Management
+### Just Completed: Import/Export & Cloud Backups
+Full data portability feature for plans:
+
+**Files Created:**
+- `src/features/import-export/types.ts` - Export schema types (version 1.0)
+- `src/features/import-export/schema.ts` - Zod validation schemas
+- `src/features/import-export/export-json.ts` - JSON export with cross-reference IDs
+- `src/features/import-export/export-markdown.ts` - Human-readable Markdown export
+- `src/features/import-export/import-json.ts` - Import with validation and ID mapping
+- `src/features/import-export/backup.ts` - Supabase Storage operations
+- `src/features/import-export/hooks.ts` - React Query hooks
+- `src/components/import-export/import-export-settings.tsx` - Settings tab UI
+- `src/components/import-export/import-dialog.tsx` - Multi-step import wizard
+
+**Features:**
+- Export plan to JSON (full backup with all entities)
+- Export plan to Markdown (human-readable documentation)
+- Import from JSON with validation and preview
+- Import options: skip check-ins, skip reviews, reset progress
+- Cloud backups to Supabase Storage
+- Backup management (create, list, delete)
+
+**Tech:**
+- Zod for runtime JSON schema validation
+- Export schema v1.0 with `_exportId` cross-references
+- Multi-step import wizard with drag-drop file upload
+
+### Tags Management
 Added a Tags settings page to allow CRUD operations on tags:
 
 **Files Changed:**
@@ -70,14 +97,14 @@ Some pre-existing TypeScript errors in analytics and activity components:
 - ✅ Check-in tracking
 - ✅ Tag management
 - ✅ Activity timeline
-- ✅ Mind map visualization
-- ✅ Basic analytics charts
+- ✅ Analytics charts
 - ✅ Weekly reviews
+- ✅ Import/Export (JSON + Markdown)
+- ✅ Cloud backups
 
 ### Areas for Enhancement
 - Dashboard customization
 - More advanced analytics
-- Export/reporting functionality
 - Mobile responsiveness improvements
 - Offline support
 - Collaboration features (real-time updates)
@@ -194,6 +221,7 @@ npm run lint         # ESLint check
 | Update progress calc | `progress-engine.ts` |
 | New toast message | `toast-utils.ts` |
 | Database change | `supabase/migrations/`, `types.ts` |
+| Export/Import feature | `src/features/import-export/`, `src/components/import-export/` |
 
 ### Import Shortcuts
 ```typescript

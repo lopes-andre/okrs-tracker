@@ -14,6 +14,8 @@ This document provides comprehensive context for AI assistants working on this c
 - **Analytics**: Charts, pace analysis, burnup charts, activity heatmaps
 - **Weekly Reviews**: Structured review system with reflection prompts
 - **Activity Timeline**: Audit trail of all changes
+- **Import/Export**: JSON and Markdown exports, import with validation
+- **Cloud Backups**: Backup plans to Supabase Storage
 
 ## Tech Stack
 
@@ -43,6 +45,7 @@ This document provides comprehensive context for AI assistants working on this c
 - **date-fns 4.1** - Date manipulation
 - **clsx + tailwind-merge** - Class name utilities
 - **html-to-image** - Export functionality
+- **Zod** - Runtime schema validation (for import/export)
 
 ### Testing
 - **Vitest 4.0** - Test runner
@@ -73,6 +76,7 @@ okrs-tracker/
 │   ├── components/            # React components
 │   │   ├── activity/          # Activity feed components
 │   │   ├── analytics/         # Charts and analytics
+│   │   ├── import-export/     # Import/Export settings & dialogs
 │   │   ├── layout/            # Layout components (Navbar, PageHeader, EmptyState)
 │   │   ├── okr/               # OKR-specific components
 │   │   ├── tags/              # Tag management components
@@ -85,6 +89,7 @@ okrs-tracker/
 │   │   ├── annual-krs/
 │   │   ├── check-ins/
 │   │   ├── dashboards/
+│   │   ├── import-export/     # Export JSON/MD, import, cloud backups
 │   │   ├── objectives/
 │   │   ├── plans/
 │   │   ├── progress/
@@ -332,6 +337,8 @@ supabase migration new <name>  # Create new migration
 ## Current State & Known Issues
 
 ### Recently Completed
+- Import/Export with JSON and Markdown formats
+- Cloud backups via Supabase Storage
 - Tags management page in Settings
 - Weekly reviews system
 - Activity timeline with filtering
@@ -344,7 +351,6 @@ supabase migration new <name>  # Create new migration
 ### Pending Improvements
 - Optimistic updates for better UX
 - Offline support consideration
-- Export functionality for reports
 - Dashboard customization
 
 ## Testing

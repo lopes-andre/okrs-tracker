@@ -333,6 +333,51 @@ Precomputed views for common queries:
 -- Triggers on major tables to log to activity_events
 ```
 
+## Supabase Storage
+
+### `plan-backups` Bucket
+
+Cloud backup storage for plan exports.
+
+**Configuration:**
+- Private bucket (not publicly accessible)
+- File size limit: 50MB
+- Path pattern: `{userId}/{planId}/{planName}_{timestamp}.json`
+
+**RLS Policy:**
+Users can only access files in their own folder:
+```sql
+CREATE POLICY "Users access own backups"
+ON storage.objects FOR ALL
+USING (
+  bucket_id = 'plan-backups'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+```
+
+**Usage (via `src/features/import-export/backup.ts`):**
+```typescript
+// Create backup
+const { data } = await supabase.storage
+  .from('plan-backups')
+  .upload(filePath, jsonBlob, { contentType: 'application/json' });
+
+// List backups
+const { data } = await supabase.storage
+  .from('plan-backups')
+  .list(`${userId}/${planId}`);
+
+// Download backup
+const { data } = await supabase.storage
+  .from('plan-backups')
+  .download(filePath);
+
+// Delete backup
+const { error } = await supabase.storage
+  .from('plan-backups')
+  .remove([filePath]);
+```
+
 ## Local Development
 
 ### Commands

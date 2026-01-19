@@ -198,7 +198,43 @@ export function useCreateTask(planId: string) {
 }
 ```
 
-### 3. Query Key Factory
+### 3. Import/Export System (`src/features/import-export/`)
+
+Data portability with schema validation:
+
+```typescript
+// Export schema v1.0 with cross-reference IDs
+interface PlanExport {
+  metadata: { version: "1.0", exportedAt, planId, planName, exportedBy };
+  plan: { name, year, description };
+  tags: ExportTag[];           // _exportId for references
+  krGroups: ExportKrGroup[];
+  objectives: ExportObjective[];  // Nested: annualKrs → quarterTargets
+  tasks: ExportTask[];            // References via _exportId
+  checkIns: ExportCheckIn[];
+  weeklyReviews: ExportWeeklyReview[];
+}
+
+// Key functions
+exportPlanToJson(planId) → PlanExport
+exportPlanToMarkdown(data) → string
+parseImportFile(content) → ImportPreview  // Zod validation
+importPlanFromJson(content, options) → ImportResult
+```
+
+**Import Flow:**
+1. Parse and validate JSON with Zod schemas
+2. Preview: show entity counts and validation warnings
+3. Options: skip check-ins, skip reviews, reset progress
+4. Import: create entities in dependency order
+5. ID Mapping: `Map<exportId, realDbId>` for references
+
+**Cloud Backups:**
+- Storage bucket: `plan-backups`
+- Path pattern: `{userId}/{planId}/{planName}_{timestamp}.json`
+- RLS: users can only access their own folder
+
+### 4. Query Key Factory
 
 Centralized cache key management:
 
@@ -323,7 +359,7 @@ CREATE TRIGGER tasks_activity
 
 ### External Services
 - **Supabase Auth**: OAuth (Google) and Magic Link authentication
-- **Supabase Storage**: (Future) File attachments for check-ins
+- **Supabase Storage**: Cloud backups for plan data (`plan-backups` bucket)
 - **Supabase Realtime**: (Potential) Live collaboration features
 
 ### Internal Integration
@@ -331,6 +367,7 @@ CREATE TRIGGER tasks_activity
 - **Tasks** ↔ **Check-ins**: Task completion can trigger check-ins
 - **Activity Events** ↔ **Timeline**: All changes logged for audit
 - **Weekly Reviews** ↔ **Progress**: Snapshots progress at review time
+- **Import/Export** ↔ **All Entities**: Full plan backup and restore
 
 ## Performance Considerations
 

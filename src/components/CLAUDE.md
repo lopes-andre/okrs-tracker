@@ -13,6 +13,7 @@ src/components/
 ├── tags/            # Tag management components
 ├── activity/        # Activity feed components
 ├── analytics/       # Charts and data visualization
+├── import-export/   # Import/export settings & dialogs
 └── weekly-review/   # Weekly review components
 ```
 
@@ -225,6 +226,46 @@ Summarized weekly activity view.
 
 ### `ReviewSettings`
 Configure review schedule and preferences.
+
+## Import/Export Components (`import-export/`)
+
+### `ImportExportSettings`
+Main settings tab with three sections:
+- **Export Data**: JSON and Markdown download buttons
+- **Import Data**: File upload area (owner only)
+- **Cloud Backups**: Backup list with create/delete (owner only)
+
+Props:
+```typescript
+interface ImportExportSettingsProps {
+  planId: string;
+  isOwner: boolean;
+}
+```
+
+### `ImportDialog`
+Multi-step import wizard:
+
+1. **Select**: Drag-drop file upload area
+2. **Preview**: Validation results, entity counts
+3. **Options**: Import settings (skip check-ins, reset progress)
+4. **Importing**: Progress spinner
+5. **Complete**: Success/error summary
+
+Props:
+```typescript
+interface ImportDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+```
+
+Features:
+- Zod schema validation with error display
+- Cross-reference validation warnings
+- Entity count preview (objectives, KRs, tasks, etc.)
+- Configurable import options
+- Automatic redirect to new plan on success
 
 ## Component Patterns
 

@@ -119,6 +119,45 @@ Analytics data queries
 ### `progress/`
 Progress computation hooks (uses progress-engine)
 
+### `import-export/`
+Data portability: export, import, and cloud backups.
+
+**Module Structure:**
+```
+src/features/import-export/
+├── types.ts           # Export schema types (v1.0)
+├── schema.ts          # Zod validation schemas
+├── export-json.ts     # JSON export logic
+├── export-markdown.ts # Markdown export logic
+├── import-json.ts     # Import with validation
+├── backup.ts          # Supabase Storage operations
+├── hooks.ts           # React Query hooks
+└── index.ts           # Re-exports
+```
+
+**Key exports:**
+- `useExportJson(planId)` - Export plan to JSON
+- `useExportMarkdown(planId)` - Export plan to Markdown
+- `useParseImportFile()` - Parse and validate import file
+- `useImportPlan()` - Import plan from JSON
+- `useBackups(planId)` - List cloud backups
+- `useCreateBackup(planId)` - Create cloud backup
+- `useDeleteBackup(planId)` - Delete cloud backup
+- `useRestoreBackup()` - Restore from backup
+
+**Export Schema v1.0:**
+Each entity has `_exportId` (temp ID) for cross-references without real DB IDs.
+
+**Import Options:**
+```typescript
+interface ImportOptions {
+  createNewPlan: boolean;      // Always true (creates new plan)
+  skipCheckIns?: boolean;      // Skip check-in history
+  skipWeeklyReviews?: boolean; // Skip review history
+  resetProgress?: boolean;     // Reset KR values to start
+}
+```
+
 ## API Pattern
 
 ```typescript
