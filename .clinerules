@@ -1,0 +1,277 @@
+# Coding Preferences & Guidelines
+
+## Code Style
+
+### TypeScript
+- Use strict TypeScript - no `any` unless absolutely necessary (use `unknown` instead)
+- Prefer `type` over `interface` for object types (except when extending)
+- Use `type` imports when only importing types: `import type { Task } from "@/lib/supabase/types"`
+- Destructure props directly in function signatures
+- Use explicit return types for exported functions
+
+### Naming Conventions
+- Components: `PascalCase` (e.g., `TaskDialog.tsx`)
+- Hooks: `use` prefix, camelCase (e.g., `useTasks`, `useCreateTask`)
+- API functions: camelCase, verb-first (e.g., `getTasks`, `createTask`, `updateTask`)
+- Constants: `SCREAMING_SNAKE_CASE` for true constants, `camelCase` for config objects
+- Query keys: nested object pattern in `queryKeys` factory
+
+### File Organization
+- One component per file (with small helper components allowed)
+- Co-locate styles with components (Tailwind classes inline)
+- Feature modules: `api.ts` + `hooks.ts` pattern
+- Export via `index.ts` barrel files
+
+## React Patterns
+
+### Components
+```typescript
+// Prefer this pattern
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import type { Task } from "@/lib/supabase/types";
+
+interface TaskCardProps {
+  task: Task;
+  onComplete: (id: string) => void;
+}
+
+export function TaskCard({ task, onComplete }: TaskCardProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  // ...
+}
+```
+
+### Hooks
+```typescript
+// Custom hooks should use React Query
+export function useTasks(planId: string) {
+  return useQuery({
+    queryKey: queryKeys.tasks.list(planId),
+    queryFn: () => api.getTasks(planId),
+    enabled: !!planId,  // Always guard with enabled
+  });
+}
+
+// Mutations with proper invalidation
+export function useCreateTask(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data) => api.createTask({ ...data, plan_id: planId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      toast(successMessages.taskCreated);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+```
+
+## Error Handling
+
+### API Layer
+```typescript
+// Use the handleSupabaseError wrapper
+export async function getTask(taskId: string): Promise<Task | null> {
+  const supabase = createClient();
+  return handleSupabaseQuery(
+    supabase.from("tasks").select("*").eq("id", taskId).single()
+  );
+}
+
+// For queries that must return data
+export async function getTasks(planId: string): Promise<Task[]> {
+  const supabase = createClient();
+  return handleSupabaseError(
+    supabase.from("tasks").select("*").eq("plan_id", planId)
+  );
+}
+```
+
+### Component Layer
+```typescript
+// Let React Query handle errors, show toast on mutation errors
+const { data, isLoading, error } = useTasks(planId);
+
+if (isLoading) return <Loader />;
+if (error) return <ErrorState error={error} />;
+```
+
+## Testing Approach
+
+### Unit Tests
+- Test pure functions (progress-engine, utilities)
+- Use descriptive test names: `it("should compute progress correctly for cumulative KRs")`
+- Group related tests with `describe`
+
+### Test File Location
+- `*.test.ts` alongside source files
+- `__tests__/` folder for component tests with multiple files
+
+## Import Organization
+
+Order imports as follows:
+1. React/Next.js
+2. Third-party libraries (alphabetical)
+3. `@/components/` (UI first, then domain)
+4. `@/features/`
+5. `@/lib/`
+6. Types (using `import type`)
+7. Relative imports (`./`)
+
+```typescript
+"use client";
+
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { Loader2, Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
+import { TaskCard } from "@/components/tasks/task-card";
+
+import { useTasks, useCreateTask } from "@/features";
+
+import { cn } from "@/lib/utils";
+
+import type { Task, TaskInsert } from "@/lib/supabase/types";
+```
+
+## Styling Guidelines
+
+### Tailwind Classes
+- Use design tokens from `tailwind.config.ts`
+- Prefer semantic classes: `text-text-muted` over `text-gray-500`
+- Use `cn()` utility for conditional classes
+- Order: layout → spacing → sizing → typography → colors → effects
+
+```typescript
+// Good
+<div className={cn(
+  "flex items-center gap-3",
+  "p-4",
+  "rounded-card",
+  "text-body-sm text-text-muted",
+  "bg-bg-1 border border-border-soft",
+  isActive && "border-accent"
+)}>
+```
+
+### Component Variants (CVA)
+```typescript
+const variants = cva("base classes", {
+  variants: {
+    variant: {
+      default: "variant classes",
+      secondary: "variant classes",
+    },
+    size: {
+      sm: "size classes",
+      md: "size classes",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+    size: "md",
+  },
+});
+```
+
+## Documentation
+
+### Code Comments
+- JSDoc for exported functions in API/utility files
+- Inline comments for complex logic only
+- TODO comments with context: `// TODO(username): description`
+
+```typescript
+/**
+ * Compute progress for a KR based on its type and direction
+ * @param kr - The annual KR to compute progress for
+ * @param checkIns - Check-ins within the time window
+ * @returns Progress result with pace status
+ */
+export function computeKrProgress(...): ProgressResult {
+  // ...
+}
+```
+
+### Component Documentation
+- Props interface serves as documentation
+- Add description for non-obvious props
+
+```typescript
+interface TaskDialogProps {
+  /** Whether the dialog is open */
+  open: boolean;
+  /** Callback when dialog open state changes */
+  onOpenChange: (open: boolean) => void;
+  /** Pre-populate with existing task for editing */
+  task?: Task | null;
+  /** Called with form data on submit */
+  onSubmit: (data: TaskCreateData, tagIds: string[]) => Promise<void>;
+}
+```
+
+## Patterns to Avoid
+
+### Don't Do This
+```typescript
+// ❌ Using any
+const data: any = response;
+
+// ❌ Inline anonymous functions in JSX that create objects
+onClick={() => handleClick({ id: item.id })}
+
+// ❌ Magic strings/numbers
+if (status === "completed")  // Use enums/constants
+
+// ❌ Deep prop drilling
+<Component a={a} b={b} c={c} d={d} e={e} />
+
+// ❌ Mixing concerns in components
+// (fetching + rendering + business logic)
+```
+
+### Do This Instead
+```typescript
+// ✅ Proper typing
+const data: TaskWithDetails = response;
+
+// ✅ Memoized handlers or stable references
+const handleItemClick = useCallback((id: string) => { ... }, []);
+
+// ✅ Use type constants
+if (status === TaskStatus.COMPLETED)
+
+// ✅ Use composition or context
+<TaskProvider task={task}>
+  <TaskCard />
+</TaskProvider>
+
+// ✅ Separate concerns
+// Hook handles data, component handles UI
+const { data, isLoading } = useTasks(planId);
+```
+
+## Performance Guidelines
+
+- Use `useMemo` for expensive computations
+- Use `useCallback` for functions passed as props
+- Avoid creating objects/arrays in render
+- Use React Query's `staleTime` appropriately
+- Lazy load heavy components (charts, mindmap)
+
+## Accessibility
+
+- All interactive elements need focus states
+- Use semantic HTML elements
+- Provide aria-labels for icon-only buttons
+- Ensure sufficient color contrast
+- Support keyboard navigation
