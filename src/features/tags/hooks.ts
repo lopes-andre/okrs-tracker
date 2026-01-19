@@ -49,6 +49,7 @@ export function useCreateTag(planId?: string) {
       api.createTag({ ...tag, plan_id: tag.plan_id || planId! }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(data.plan_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags.withUsage(data.plan_id) });
       toast(successMessages.tagCreated);
     },
     onError: (error) => {
@@ -58,16 +59,35 @@ export function useCreateTag(planId?: string) {
 }
 
 /**
+ * Get all tags with usage counts
+ */
+export function useTagsWithUsage(planId: string) {
+  return useQuery({
+    queryKey: queryKeys.tags.withUsage(planId),
+    queryFn: () => api.getTagsWithUsage(planId),
+    enabled: !!planId,
+  });
+}
+
+/**
  * Update a tag
  */
 export function useUpdateTag() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({ tagId, updates }: { tagId: string; updates: TagUpdate }) =>
       api.updateTag(tagId, updates),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(data.plan_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags.withUsage(data.plan_id) });
+      // Also invalidate tasks since they display tags
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      toast(successMessages.tagUpdated);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
     },
   });
 }
@@ -84,6 +104,9 @@ export function useDeleteTag() {
       api.deleteTag(tagId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags.withUsage(planId) });
+      // Also invalidate tasks since they display tags
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       toast(successMessages.tagDeleted);
     },
     onError: (error) => {

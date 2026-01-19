@@ -106,6 +106,50 @@ export async function deleteTag(tagId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Tag with usage count
+ */
+export interface TagWithUsage extends Tag {
+  task_count: number;
+}
+
+/**
+ * Get all tags for a plan with task usage counts
+ */
+export async function getTagsWithUsage(planId: string): Promise<TagWithUsage[]> {
+  const supabase = createClient();
+
+  // Get all tags for the plan
+  const tags = await handleSupabaseError(
+    supabase
+      .from("tags")
+      .select("*")
+      .eq("plan_id", planId)
+      .order("kind", { ascending: true })
+      .order("name", { ascending: true })
+  );
+
+  // Get task counts for each tag
+  const { data: taskCounts, error } = await supabase
+    .from("task_tags")
+    .select("tag_id")
+    .in("tag_id", tags.map(t => t.id));
+
+  if (error) throw error;
+
+  // Count occurrences per tag
+  const countMap = new Map<string, number>();
+  for (const tc of taskCounts || []) {
+    countMap.set(tc.tag_id, (countMap.get(tc.tag_id) || 0) + 1);
+  }
+
+  // Merge counts into tags
+  return tags.map(tag => ({
+    ...tag,
+    task_count: countMap.get(tag.id) || 0,
+  }));
+}
+
 // ============================================================================
 // KR GROUPS API
 // ============================================================================

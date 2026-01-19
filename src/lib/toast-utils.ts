@@ -96,7 +96,8 @@ export const successMessages = {
 
   // Tags & Groups
   tagCreated: { title: "Tag created", variant: "success" as const },
-  tagDeleted: { title: "Tag deleted", variant: "success" as const },
+  tagUpdated: { title: "Tag updated", description: "All tasks using this tag have been updated.", variant: "success" as const },
+  tagDeleted: { title: "Tag deleted", description: "Tag has been removed from all tasks.", variant: "success" as const },
   groupCreated: { title: "Group created", variant: "success" as const },
   groupUpdated: { title: "Group updated", variant: "success" as const },
   groupDeleted: { title: "Group deleted", variant: "success" as const },

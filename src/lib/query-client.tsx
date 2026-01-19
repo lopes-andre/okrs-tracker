@@ -104,6 +104,7 @@ export const queryKeys = {
     all: ["tags"] as const,
     list: (planId: string) => [...queryKeys.tags.all, "list", planId] as const,
     byKind: (planId: string, kind: string) => [...queryKeys.tags.all, "byKind", planId, kind] as const,
+    withUsage: (planId: string) => [...queryKeys.tags.all, "withUsage", planId] as const,
   },
 
   groups: {
