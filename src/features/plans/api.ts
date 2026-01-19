@@ -260,6 +260,76 @@ export async function deletePlanInvite(inviteId: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * Get pending invites for the current user's email
+ */
+export async function getMyPendingInvites(): Promise<(PlanInvite & { plan: Plan })[]> {
+  const supabase = createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("plan_invites")
+    .select(`
+      *,
+      plan:plans(*)
+    `)
+    .eq("email", user.email)
+    .is("accepted_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Accept a plan invite (creates membership, marks as accepted)
+ */
+export async function acceptPlanInvite(inviteId: string): Promise<void> {
+  const supabase = createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Get the invite
+  const { data: invite, error: inviteError } = await supabase
+    .from("plan_invites")
+    .select("*")
+    .eq("id", inviteId)
+    .single();
+
+  if (inviteError) throw inviteError;
+  if (!invite) throw new Error("Invite not found");
+
+  // Create membership
+  const { error: memberError } = await supabase
+    .from("plan_members")
+    .insert({
+      plan_id: invite.plan_id,
+      user_id: user.id,
+      role: invite.role,
+    });
+
+  if (memberError) throw memberError;
+
+  // Mark invite as accepted
+  const { error: updateError } = await supabase
+    .from("plan_invites")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", inviteId);
+
+  if (updateError) throw updateError;
+}
+
+/**
+ * Decline a plan invite (just deletes it)
+ */
+export async function declinePlanInvite(inviteId: string): Promise<void> {
+  await deletePlanInvite(inviteId);
+}
+
 // ============================================================================
 // PLAN STATS
 // ============================================================================

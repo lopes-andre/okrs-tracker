@@ -50,6 +50,7 @@ export const queryKeys = {
     members: (planId: string) => [...queryKeys.plans.all, "members", planId] as const,
     invites: (planId: string) => [...queryKeys.plans.all, "invites", planId] as const,
     stats: (planId: string) => [...queryKeys.plans.all, "stats", planId] as const,
+    myInvites: () => [...queryKeys.plans.all, "myInvites"] as const,
   },
 
   // Objectives

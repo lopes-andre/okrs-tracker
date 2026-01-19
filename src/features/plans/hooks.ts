@@ -235,3 +235,56 @@ export function useDeletePlanInvite() {
     },
   });
 }
+
+// ============================================================================
+// MY PENDING INVITES (FOR ACCEPTING INVITES)
+// ============================================================================
+
+/**
+ * Get pending invites for the current user
+ */
+export function useMyPendingInvites() {
+  return useQuery({
+    queryKey: queryKeys.plans.myInvites(),
+    queryFn: api.getMyPendingInvites,
+  });
+}
+
+/**
+ * Accept an invite
+ */
+export function useAcceptPlanInvite() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (inviteId: string) => api.acceptPlanInvite(inviteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.myInvites() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.list() });
+      toast(successMessages.inviteAccepted);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Decline an invite
+ */
+export function useDeclinePlanInvite() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (inviteId: string) => api.declinePlanInvite(inviteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.myInvites() });
+      toast(successMessages.inviteDeclined);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}

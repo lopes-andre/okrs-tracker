@@ -14,6 +14,7 @@ import {
   Zap,
   CalendarCheck,
   Tag,
+  HardDrive,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -47,11 +48,13 @@ import {
   useCreatePlanInvite,
   useRemovePlanMember,
   useDeletePlanInvite,
+  useUpdateMemberRole,
 } from "@/features";
 import { useTimeline, useTimelinePaginated } from "@/features/timeline/hooks";
 import { ActivityEventCard, WeeklyReviewPanel, ActivityFilters, type ActivityFiltersState } from "@/components/activity";
 import { ReviewSettings } from "@/components/weekly-review";
 import { TagsSettings } from "@/components/tags";
+import { ImportExportSettings } from "@/components/import-export";
 import type { OkrRole, TimelineFilters } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
 import { startOfWeek, endOfWeek } from "date-fns";
@@ -74,6 +77,7 @@ export default function SettingsPage({
   const createInvite = useCreatePlanInvite();
   const removeMember = useRemovePlanMember();
   const deleteInvite = useDeletePlanInvite();
+  const updateRole = useUpdateMemberRole();
 
   const isOwner = role === "owner";
 
@@ -215,6 +219,10 @@ export default function SettingsPage({
             <Tag className="w-4 h-4" />
             Tags
           </TabsTrigger>
+          <TabsTrigger value="import-export" className="gap-2">
+            <HardDrive className="w-4 h-4" />
+            Data
+          </TabsTrigger>
           <TabsTrigger value="members" className="gap-2">
             <Users className="w-4 h-4" />
             Members
@@ -351,6 +359,11 @@ export default function SettingsPage({
           <TagsSettings planId={planId} isOwner={isOwner} />
         </TabsContent>
 
+        {/* Import/Export & Backup */}
+        <TabsContent value="import-export">
+          <ImportExportSettings planId={planId} isOwner={isOwner} />
+        </TabsContent>
+
         {/* Members */}
         <TabsContent value="members">
           <Card>
@@ -477,11 +490,32 @@ export default function SettingsPage({
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge
-                          variant={member.role === "owner" ? "default" : "outline"}
-                        >
-                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                        </Badge>
+                        {member.role === "owner" || !isOwner ? (
+                          <Badge
+                            variant={member.role === "owner" ? "default" : "outline"}
+                          >
+                            {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={member.role}
+                            onValueChange={(newRole) =>
+                              updateRole.mutate({
+                                planId,
+                                userId: member.user_id,
+                                role: newRole as OkrRole,
+                              })
+                            }
+                          >
+                            <SelectTrigger className="w-24 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="viewer">Viewer</SelectItem>
+                              <SelectItem value="editor">Editor</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                         {isOwner && member.role !== "owner" && (
                           <Button
                             variant="ghost"

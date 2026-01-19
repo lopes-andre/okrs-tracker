@@ -5,6 +5,7 @@ import { Plus, Target, Calendar, Users, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
+import { PendingInvitesBanner } from "@/components/layout/pending-invites-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +86,8 @@ export default function PlansPage() {
             New Plan
           </Button>
         </PageHeader>
+
+        <PendingInvitesBanner />
 
         {plans && plans.length === 0 ? (
           <EmptyState

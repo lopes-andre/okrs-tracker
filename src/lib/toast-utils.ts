@@ -70,6 +70,8 @@ export const successMessages = {
   memberInvited: { title: "Invitation sent", description: "They'll receive an email invitation.", variant: "success" as const },
   memberRemoved: { title: "Member removed", description: "They no longer have access.", variant: "success" as const },
   roleUpdated: { title: "Role updated", description: "Member permissions have been changed.", variant: "success" as const },
+  inviteAccepted: { title: "Invite accepted", description: "You now have access to the plan.", variant: "success" as const },
+  inviteDeclined: { title: "Invite declined", variant: "success" as const },
 
   // Objectives
   objectiveCreated: { title: "Objective created", variant: "success" as const },
@@ -113,6 +115,12 @@ export const successMessages = {
   saved: { title: "Saved", variant: "success" as const },
   deleted: { title: "Deleted", variant: "success" as const },
   copied: { title: "Copied to clipboard", variant: "success" as const },
+
+  // Import/Export
+  exportComplete: { title: "Export complete", description: "File downloaded successfully", variant: "success" as const },
+  importComplete: { title: "Import complete", description: "Data imported successfully", variant: "success" as const },
+  backupCreated: { title: "Backup created", description: "Stored in cloud", variant: "success" as const },
+  backupDeleted: { title: "Backup deleted", variant: "success" as const },
 } as const;
 
 // ============================================================================
