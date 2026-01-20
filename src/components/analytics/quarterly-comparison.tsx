@@ -163,10 +163,10 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={((value: number, name: string) => {
                   const label = name === "targetProgress" ? "Target" : "Actual";
                   return [`${value.toFixed(1)}%`, label];
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 }) as any}
               />
               

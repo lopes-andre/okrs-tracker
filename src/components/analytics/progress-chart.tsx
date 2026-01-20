@@ -265,7 +265,6 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   formatter={((value: number, name: string) => {
                     const krId = name.replace("kr_", "").replace("expected_", "");
                     const kr = krs.find((k) => k.id === krId);
@@ -274,6 +273,7 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
                       `${value.toLocaleString()}${kr?.unit ? ` ${kr.unit}` : ""}`,
                       isExpected ? `${kr?.name ?? "KR"} (Expected)` : kr?.name ?? "KR"
                     ];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   }) as any}
                 />
                 

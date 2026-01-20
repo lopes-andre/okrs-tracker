@@ -8,6 +8,7 @@ React components organized by domain.
 src/components/
 ├── ui/              # Base UI primitives (Radix-based)
 ├── layout/          # App layout components
+├── dashboard/       # Widget-based dashboard system
 ├── okr/             # OKR-specific components
 ├── tasks/           # Task management components
 ├── tags/            # Tag management components
@@ -113,6 +114,125 @@ Empty state with icon, message, and optional action.
 
 ### `PlanNav`
 Plan-level navigation sidebar/tabs.
+
+## Dashboard Components (`dashboard/`)
+
+Widget-based dashboard system for customizable plan overview.
+
+### Architecture
+
+```
+src/components/dashboard/
+├── index.ts                    # Re-exports all dashboard components
+├── widget-registry.ts          # Widget type definitions & component mapping
+├── dashboard-grid.tsx          # CSS Grid layout container (4-col responsive)
+├── widget-wrapper.tsx          # Widget card with header/actions/fullscreen
+├── widget-fullscreen.tsx       # Fullscreen dialog for expanded view
+├── add-widget-dialog.tsx       # Widget picker dialog
+├── dashboard-header.tsx        # Dashboard title, edit toggle, add button
+├── dashboard-data-provider.tsx # Shared data context for widgets
+├── widget-renderer.tsx         # Maps widget types to components
+└── widgets/                    # Individual widget components
+    ├── objective-scorecards.tsx
+    ├── at-risk-krs.tsx
+    ├── tasks-due.tsx
+    ├── timeline-preview.tsx
+    ├── recent-checkins.tsx
+    ├── activity-heatmap-widget.tsx
+    ├── summary-cards-widget.tsx
+    ├── progress-chart-widget.tsx
+    └── quick-actions.tsx
+```
+
+### Widget Types
+
+| Widget Type | Description | Fullscreen |
+|-------------|-------------|------------|
+| `objective_scorecards` | Objectives with progress | Yes |
+| `at_risk_krs` | KRs behind pace | Yes |
+| `tasks_due` | Upcoming/overdue tasks | Yes |
+| `timeline_preview` | Recent activity events | Yes |
+| `recent_checkins` | Latest check-ins | Yes |
+| `activity_heatmap` | GitHub-style heatmap | Yes |
+| `summary_cards` | Key metrics at a glance | No |
+| `progress_chart` | KR progress over time | Yes |
+| `quick_actions` | Navigation shortcuts | No |
+
+### Usage
+
+```tsx
+import {
+  DashboardGrid,
+  DashboardHeader,
+  DashboardDataProvider,
+  AddWidgetDialog,
+} from "@/components/dashboard";
+
+// In page component
+<DashboardDataProvider planId={planId}>
+  <DashboardGrid
+    widgets={widgets}
+    isEditing={isEditing}
+    onRemoveWidget={handleRemoveWidget}
+  />
+</DashboardDataProvider>
+```
+
+### Data Provider
+
+All widgets access shared data through `useDashboardData()` hook:
+
+```typescript
+const {
+  planId,
+  plan,
+  year,
+  objectives,
+  annualKrs,
+  checkIns,
+  tasks,
+  isLoading,
+  atRiskKrs,      // Computed: KRs with at_risk/off_track pace
+  overallProgress // Computed: Average KR progress
+} = useDashboardData();
+```
+
+### Adding a New Widget
+
+1. Define widget type in `widget-registry.ts`:
+```typescript
+export const WIDGET_TYPES = {
+  // ...existing
+  MY_WIDGET: "my_widget",
+};
+
+WIDGET_DEFINITIONS[WIDGET_TYPES.MY_WIDGET] = {
+  type: WIDGET_TYPES.MY_WIDGET,
+  name: "My Widget",
+  description: "Description here",
+  icon: SomeIcon,
+  category: "overview", // or "analytics" | "activity"
+  defaultWidth: 2,      // 1-4 columns
+  defaultHeight: 1,     // rows
+  supportsFullscreen: true,
+};
+```
+
+2. Create widget component in `widgets/`:
+```tsx
+export function MyWidget({ config }: { config: Record<string, unknown> }) {
+  const { planId, objectives } = useDashboardData();
+  return <div>...</div>;
+}
+```
+
+3. Add to `widget-renderer.tsx`:
+```tsx
+case WIDGET_TYPES.MY_WIDGET:
+  return <MyWidget config={config} />;
+```
+
+4. Export from `index.ts`
 
 ## OKR Components (`okr/`)
 

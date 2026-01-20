@@ -7,6 +7,7 @@ This document provides comprehensive context for AI assistants working on this c
 **OKRs Tracker** is a premium personal OKR (Objectives and Key Results) tracking application built with Next.js 15 and Supabase. It helps individuals manage annual objectives, quarterly key results, tasks, and track progress with beautiful analytics.
 
 ### Key Features
+- **Customizable Dashboard**: Widget-based plan overview with fullscreen expansion
 - **Objectives & Key Results**: Annual objectives with multiple KR types (metric, count, milestone, rate, average)
 - **Quarterly Targets**: Break down annual KRs into quarterly milestones
 - **Tasks**: Task management linked to OKRs with due dates, priorities, and tags
@@ -76,6 +77,7 @@ okrs-tracker/
 │   ├── components/            # React components
 │   │   ├── activity/          # Activity feed components
 │   │   ├── analytics/         # Charts and analytics
+│   │   ├── dashboard/         # Dashboard widgets and grid system
 │   │   ├── import-export/     # Import/Export settings & dialogs
 │   │   ├── layout/            # Layout components (Navbar, PageHeader, EmptyState)
 │   │   ├── okr/               # OKR-specific components
@@ -277,6 +279,8 @@ Based on Radix UI with CVA variants. All in `src/components/ui/`:
 - `check_ins` - Progress check-ins
 - `tags` - Tags for categorizing tasks
 - `task_tags` - Many-to-many junction table
+- `dashboards` - Customizable dashboards per plan
+- `dashboard_widgets` - Widget configurations (type, position, size, config)
 - `activity_events` - Audit trail (auto-populated by triggers)
 - `weekly_reviews` - Weekly review records
 
@@ -337,6 +341,7 @@ supabase migration new <name>  # Create new migration
 ## Current State & Known Issues
 
 ### Recently Completed
+- Customizable widget-based dashboard for plan overview
 - Import/Export with JSON and Markdown formats
 - Cloud backups via Supabase Storage
 - Tags management page in Settings
@@ -351,7 +356,7 @@ supabase migration new <name>  # Create new migration
 ### Pending Improvements
 - Optimistic updates for better UX
 - Offline support consideration
-- Dashboard customization
+- Drag-and-drop widget reordering
 
 ## Testing
 

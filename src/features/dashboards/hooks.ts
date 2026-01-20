@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
 import * as api from "./api";
+import { DEFAULT_DASHBOARD_WIDGETS } from "./default-widgets";
 import type { DashboardInsert, DashboardUpdate, DashboardWidgetInsert, DashboardWidgetUpdate } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -219,4 +221,60 @@ export function useDeleteDashboardWidget() {
       toast(formatErrorMessage(error));
     },
   });
+}
+
+// ============================================================================
+// DEFAULT DASHBOARD INITIALIZATION
+// ============================================================================
+
+/**
+ * Ensures a default dashboard exists for the plan.
+ * Creates one with default widgets if it doesn't exist.
+ */
+export function useEnsureDefaultDashboard(planId: string) {
+  const queryClient = useQueryClient();
+  const isCreating = useRef(false);
+
+  const { data: defaultDashboard, isLoading } = useDefaultDashboard(planId);
+
+  useEffect(() => {
+    async function createDefaultDashboard() {
+      if (!planId || isLoading || defaultDashboard || isCreating.current) {
+        return;
+      }
+
+      isCreating.current = true;
+
+      try {
+        // Create the dashboard
+        const dashboard = await api.createDashboard({
+          plan_id: planId,
+          name: "Overview",
+          description: "Default dashboard",
+          is_default: true,
+        });
+
+        // Create default widgets
+        await Promise.all(
+          DEFAULT_DASHBOARD_WIDGETS.map((widget) =>
+            api.createDashboardWidget({
+              ...widget,
+              dashboard_id: dashboard.id,
+            })
+          )
+        );
+
+        // Invalidate queries to refetch
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.list(planId) });
+      } catch (error) {
+        console.error("Failed to create default dashboard:", error);
+      } finally {
+        isCreating.current = false;
+      }
+    }
+
+    createDefaultDashboard();
+  }, [planId, isLoading, defaultDashboard, queryClient]);
+
+  return { isInitializing: isLoading || (!defaultDashboard && !isCreating.current) };
 }

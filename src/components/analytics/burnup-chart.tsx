@@ -170,11 +170,11 @@ export function BurnupChart({ krs, checkIns, year }: BurnupChartProps) {
                       borderRadius: "8px",
                       fontSize: "12px",
                     }}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={((value: number | null, name: string) => {
                       if (value === null) return ["—", name];
                       const label = name === "target" ? "Target" : "Actual";
                       return [`${value.toLocaleString()}${selectedKr.unit ? ` ${selectedKr.unit}` : ""}`, label];
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     }) as any}
                     labelFormatter={(_, payload) => {
                       if (payload && payload[0]) {
