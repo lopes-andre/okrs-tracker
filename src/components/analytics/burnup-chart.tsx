@@ -11,7 +11,8 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import {
   Select,
   SelectContent,
@@ -111,135 +112,141 @@ export function BurnupChart({ krs, checkIns, year }: BurnupChartProps) {
     );
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-text-muted" />
-            Burn-Up Chart
-          </CardTitle>
-          <Select value={selectedKrId} onValueChange={setSelectedKrId}>
-            <SelectTrigger className="w-[200px] h-8">
-              <SelectValue placeholder="Select KR" />
-            </SelectTrigger>
-            <SelectContent>
-              {chartableKrs.map((kr) => (
-                <SelectItem key={kr.id} value={kr.id}>
-                  {kr.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  // Render chart content with configurable height
+  const renderChartContent = (height: number) => (
+    <>
+      {!selectedKr ? (
+        <div style={{ height }} className="flex items-center justify-center text-text-muted">
+          Select a KR to view its burn-up chart
         </div>
-      </CardHeader>
-      <CardContent>
-        {!selectedKr ? (
-          <div className="h-[250px] flex items-center justify-center text-text-muted">
-            Select a KR to view its burn-up chart
-          </div>
-        ) : (
-          <>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" />
-                  <XAxis 
-                    dataKey="week" 
-                    tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => value.toLocaleString()}
-                    domain={[selectedKr.startValue, 'auto']}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "white",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                    formatter={((value: number | null, name: string) => {
-                      if (value === null) return ["—", name];
-                      const label = name === "target" ? "Target" : "Actual";
-                      return [`${value.toLocaleString()}${selectedKr.unit ? ` ${selectedKr.unit}` : ""}`, label];
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    }) as any}
-                    labelFormatter={(_, payload) => {
-                      if (payload && payload[0]) {
-                        return payload[0].payload.fullWeek;
-                      }
-                      return "";
-                    }}
-                  />
-                  
-                  {/* Target line */}
-                  <Area
-                    type="monotone"
-                    dataKey="target"
-                    stroke="var(--text-subtle)"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    fill="none"
-                    dot={false}
-                  />
-                  
-                  {/* Actual area */}
-                  <Area
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="var(--accent)"
-                    strokeWidth={2}
-                    fill="url(#actualGradient)"
-                    dot={{ r: 2, fill: "var(--accent)" }}
-                    connectNulls={false}
-                  />
-                  
-                  {/* Scope line */}
-                  <ReferenceLine 
-                    y={scope} 
-                    stroke="var(--status-success)" 
-                    strokeDasharray="3 3"
-                    label={{ 
-                      value: `Target: ${scope.toLocaleString()}`, 
-                      position: "right",
-                      fill: "var(--status-success)",
-                      fontSize: 10,
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+      ) : (
+        <>
+          <div style={{ height }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" />
+                <XAxis
+                  dataKey="week"
+                  tick={{ fontSize: 10, fill: "var(--text-muted)" }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => value.toLocaleString()}
+                  domain={[selectedKr.startValue, 'auto']}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid var(--border)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                  formatter={((value: number | null, name: string) => {
+                    if (value === null) return ["—", name];
+                    const label = name === "target" ? "Target" : "Actual";
+                    return [`${value.toLocaleString()}${selectedKr.unit ? ` ${selectedKr.unit}` : ""}`, label];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  }) as any}
+                  labelFormatter={(_, payload) => {
+                    if (payload && payload[0]) {
+                      return payload[0].payload.fullWeek;
+                    }
+                    return "";
+                  }}
+                />
 
-            {/* Legend */}
-            <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border-soft text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 bg-accent" />
-                <span className="text-text-muted">Actual Progress</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed border-text-subtle" />
-                <span className="text-text-muted">Expected Pace</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-0.5 border-t-2 border-dashed border-status-success" />
-                <span className="text-text-muted">Target ({scope.toLocaleString()})</span>
-              </div>
+                {/* Target line */}
+                <Area
+                  type="monotone"
+                  dataKey="target"
+                  stroke="var(--text-subtle)"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  fill="none"
+                  dot={false}
+                />
+
+                {/* Actual area */}
+                <Area
+                  type="monotone"
+                  dataKey="actual"
+                  stroke="var(--accent)"
+                  strokeWidth={2}
+                  fill="url(#actualGradient)"
+                  dot={{ r: 2, fill: "var(--accent)" }}
+                  connectNulls={false}
+                />
+
+                {/* Scope line */}
+                <ReferenceLine
+                  y={scope}
+                  stroke="var(--status-success)"
+                  strokeDasharray="3 3"
+                  label={{
+                    value: `Target: ${scope.toLocaleString()}`,
+                    position: "right",
+                    fill: "var(--status-success)",
+                    fontSize: 10,
+                  }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border-soft text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 bg-accent" />
+              <span className="text-text-muted">Actual Progress</span>
             </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 border-t-2 border-dashed border-text-subtle" />
+              <span className="text-text-muted">Expected Pace</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-0.5 border-t-2 border-dashed border-status-success" />
+              <span className="text-text-muted">Target ({scope.toLocaleString()})</span>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+
+  // Header action buttons
+  const headerActions = (
+    <Select value={selectedKrId} onValueChange={setSelectedKrId}>
+      <SelectTrigger className="w-[200px] h-8">
+        <SelectValue placeholder="Select KR" />
+      </SelectTrigger>
+      <SelectContent>
+        {chartableKrs.map((kr) => (
+          <SelectItem key={kr.id} value={kr.id}>
+            {kr.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  return (
+    <ExpandableCard
+      title="Burn-Up Chart"
+      icon={<TrendingUp className="w-4 h-4 text-text-muted" />}
+      headerActions={headerActions}
+      fullscreenContent={renderChartContent(500)}
+    >
+      {renderChartContent(250)}
+    </ExpandableCard>
   );
 }

@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import {
   Select,
   SelectContent,
@@ -89,114 +89,120 @@ export function ActivityBarChart({ checkIns, year }: ActivityBarChartProps) {
     ? chartData.reduce((sum, d) => sum + d.count, 0) / chartData.length
     : 0;
 
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-text-muted" />
-            Check-in Activity
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-              <SelectTrigger className="w-28 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-              </SelectContent>
-            </Select>
-            {viewMode === "weekly" && (
-              <Select value={weeksToShow} onValueChange={setWeeksToShow}>
-                <SelectTrigger className="w-28 h-8">
-                  <Calendar className="w-3 h-3 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="4">4 weeks</SelectItem>
-                  <SelectItem value="8">8 weeks</SelectItem>
-                  <SelectItem value="12">12 weeks</SelectItem>
-                  <SelectItem value="26">26 weeks</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
-              <XAxis 
-                dataKey="label" 
-                tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                tickLine={false}
-                axisLine={{ stroke: "var(--border-soft)" }}
-              />
-              <YAxis 
-                tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={((value: number) => [`${value} check-ins`, ""]) as any}
-                labelFormatter={(_, payload) => {
-                  if (payload && payload[0]) {
-                    return payload[0].payload.fullLabel;
-                  }
-                  return "";
-                }}
-              />
-              <Bar 
-                dataKey="count" 
-                radius={[4, 4, 0, 0]}
-                maxBarSize={40}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`}
-                    fill={entry.count >= average ? "var(--accent)" : "var(--border)"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+  // Render chart content with configurable height
+  const renderChartContent = (height: number) => (
+    <>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border-soft)" }}
+            />
+            <YAxis
+              tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+              tickLine={false}
+              axisLine={false}
+              allowDecimals={false}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "white",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                fontSize: "12px",
+              }}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={((value: number) => [`${value} check-ins`, ""]) as any}
+              labelFormatter={(_, payload) => {
+                if (payload && payload[0]) {
+                  return payload[0].payload.fullLabel;
+                }
+                return "";
+              }}
+            />
+            <Bar
+              dataKey="count"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.count >= average ? "var(--accent)" : "var(--border)"}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
-        {/* Stats */}
-        <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border-soft">
-          <div className="text-center">
-            <p className="text-2xl font-bold font-heading">
-              {checkIns.length}
-            </p>
-            <p className="text-xs text-text-muted">Total check-ins</p>
-          </div>
-          <div className="w-px h-8 bg-border-soft" />
-          <div className="text-center">
-            <p className="text-2xl font-bold font-heading">
-              {average.toFixed(1)}
-            </p>
-            <p className="text-xs text-text-muted">Avg per {viewMode === "weekly" ? "week" : "month"}</p>
-          </div>
-          <div className="w-px h-8 bg-border-soft" />
-          <div className="text-center">
-            <p className="text-2xl font-bold font-heading">
-              {chartData.length > 0 ? Math.max(...chartData.map(d => d.count)) : 0}
-            </p>
-            <p className="text-xs text-text-muted">Best {viewMode === "weekly" ? "week" : "month"}</p>
-          </div>
+      {/* Stats */}
+      <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-border-soft">
+        <div className="text-center">
+          <p className="text-2xl font-bold font-heading">
+            {checkIns.length}
+          </p>
+          <p className="text-xs text-text-muted">Total check-ins</p>
         </div>
-      </CardContent>
-    </Card>
+        <div className="w-px h-8 bg-border-soft" />
+        <div className="text-center">
+          <p className="text-2xl font-bold font-heading">
+            {average.toFixed(1)}
+          </p>
+          <p className="text-xs text-text-muted">Avg per {viewMode === "weekly" ? "week" : "month"}</p>
+        </div>
+        <div className="w-px h-8 bg-border-soft" />
+        <div className="text-center">
+          <p className="text-2xl font-bold font-heading">
+            {chartData.length > 0 ? Math.max(...chartData.map(d => d.count)) : 0}
+          </p>
+          <p className="text-xs text-text-muted">Best {viewMode === "weekly" ? "week" : "month"}</p>
+        </div>
+      </div>
+    </>
+  );
+
+  // Header action buttons
+  const headerActions = (
+    <>
+      <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
+        <SelectTrigger className="w-28 h-8">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="weekly">Weekly</SelectItem>
+          <SelectItem value="monthly">Monthly</SelectItem>
+        </SelectContent>
+      </Select>
+      {viewMode === "weekly" && (
+        <Select value={weeksToShow} onValueChange={setWeeksToShow}>
+          <SelectTrigger className="w-28 h-8">
+            <Calendar className="w-3 h-3 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="4">4 weeks</SelectItem>
+            <SelectItem value="8">8 weeks</SelectItem>
+            <SelectItem value="12">12 weeks</SelectItem>
+            <SelectItem value="26">26 weeks</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
+    </>
+  );
+
+  return (
+    <ExpandableCard
+      title="Check-in Activity"
+      icon={<BarChart3 className="w-4 h-4 text-text-muted" />}
+      headerActions={headerActions}
+      fullscreenContent={renderChartContent(500)}
+    >
+      {renderChartContent(250)}
+    </ExpandableCard>
   );
 }

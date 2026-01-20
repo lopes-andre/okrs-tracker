@@ -8,7 +8,7 @@ import {
   Zap,
   Target,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import type { TaskMetrics } from "@/features/analytics/api";
@@ -74,102 +74,104 @@ export function TaskMetricsPanel({ metrics }: TaskMetricsPanelProps) {
     ? (metrics.tasksLinkedToKrs / totalTasks) * 100 
     : 0;
 
+  // Render content
+  const renderContent = () => (
+    <div className="space-y-6">
+      {/* Main Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          icon={ListTodo}
+          label="Active Tasks"
+          value={metrics.totalActive}
+          variant="default"
+        />
+        <MetricCard
+          icon={CheckCircle2}
+          label="Completed This Week"
+          value={metrics.completedThisWeek}
+          variant="success"
+        />
+        <MetricCard
+          icon={AlertTriangle}
+          label="Overdue"
+          value={metrics.overdueCount}
+          variant={metrics.overdueCount > 0 ? "danger" : "default"}
+        />
+        <MetricCard
+          icon={Zap}
+          label="Quick Wins"
+          value={metrics.quickWinsCompleted}
+          sublabel="High priority, low effort"
+          variant="accent"
+        />
+      </div>
+
+      {/* Progress Indicators */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Completion Rate */}
+        <div className="p-4 rounded-card border border-border-soft">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-small font-medium">Monthly Completion Rate</span>
+            <span className="text-small font-bold">{completionRate.toFixed(0)}%</span>
+          </div>
+          <Progress value={completionRate} className="h-2" />
+          <p className="text-xs text-text-muted mt-2">
+            {metrics.completedThisMonth} completed out of {metrics.totalActive + metrics.completedThisMonth} tasks
+          </p>
+        </div>
+
+        {/* OKR Linkage */}
+        <div className="p-4 rounded-card border border-border-soft">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-small font-medium">Tasks Linked to KRs</span>
+            <span className="text-small font-bold">{linkedPercentage.toFixed(0)}%</span>
+          </div>
+          <Progress
+            value={linkedPercentage}
+            className={cn(
+              "h-2",
+              linkedPercentage < 50 && "[&>div]:bg-status-warning"
+            )}
+          />
+          <p className="text-xs text-text-muted mt-2">
+            {metrics.tasksLinkedToKrs} linked, {metrics.orphanTasks} unlinked tasks
+          </p>
+        </div>
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border-soft">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs">Avg Completion</span>
+          </div>
+          <p className="text-lg font-bold">{metrics.avgCompletionDays}d</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
+            <CheckCircle2 className="w-3 h-3" />
+            <span className="text-xs">This Month</span>
+          </div>
+          <p className="text-lg font-bold">{metrics.completedThisMonth}</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
+            <Target className="w-3 h-3" />
+            <span className="text-xs">Linked to KRs</span>
+          </div>
+          <p className="text-lg font-bold">{metrics.tasksLinkedToKrs}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base flex items-center gap-2">
-          <ListTodo className="w-4 h-4 text-text-muted" />
-          Task Metrics
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            icon={ListTodo}
-            label="Active Tasks"
-            value={metrics.totalActive}
-            variant="default"
-          />
-          <MetricCard
-            icon={CheckCircle2}
-            label="Completed This Week"
-            value={metrics.completedThisWeek}
-            variant="success"
-          />
-          <MetricCard
-            icon={AlertTriangle}
-            label="Overdue"
-            value={metrics.overdueCount}
-            variant={metrics.overdueCount > 0 ? "danger" : "default"}
-          />
-          <MetricCard
-            icon={Zap}
-            label="Quick Wins"
-            value={metrics.quickWinsCompleted}
-            sublabel="High priority, low effort"
-            variant="accent"
-          />
-        </div>
-
-        {/* Progress Indicators */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Completion Rate */}
-          <div className="p-4 rounded-card border border-border-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-small font-medium">Monthly Completion Rate</span>
-              <span className="text-small font-bold">{completionRate.toFixed(0)}%</span>
-            </div>
-            <Progress value={completionRate} className="h-2" />
-            <p className="text-xs text-text-muted mt-2">
-              {metrics.completedThisMonth} completed out of {metrics.totalActive + metrics.completedThisMonth} tasks
-            </p>
-          </div>
-
-          {/* OKR Linkage */}
-          <div className="p-4 rounded-card border border-border-soft">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-small font-medium">Tasks Linked to KRs</span>
-              <span className="text-small font-bold">{linkedPercentage.toFixed(0)}%</span>
-            </div>
-            <Progress 
-              value={linkedPercentage} 
-              className={cn(
-                "h-2",
-                linkedPercentage < 50 && "[&>div]:bg-status-warning"
-              )}
-            />
-            <p className="text-xs text-text-muted mt-2">
-              {metrics.tasksLinkedToKrs} linked, {metrics.orphanTasks} unlinked tasks
-            </p>
-          </div>
-        </div>
-
-        {/* Additional Stats */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border-soft">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
-              <Clock className="w-3 h-3" />
-              <span className="text-xs">Avg Completion</span>
-            </div>
-            <p className="text-lg font-bold">{metrics.avgCompletionDays}d</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
-              <CheckCircle2 className="w-3 h-3" />
-              <span className="text-xs">This Month</span>
-            </div>
-            <p className="text-lg font-bold">{metrics.completedThisMonth}</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-text-muted mb-1">
-              <Target className="w-3 h-3" />
-              <span className="text-xs">Linked to KRs</span>
-            </div>
-            <p className="text-lg font-bold">{metrics.tasksLinkedToKrs}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <ExpandableCard
+      title="Task Metrics"
+      icon={<ListTodo className="w-4 h-4 text-text-muted" />}
+    >
+      {renderContent()}
+    </ExpandableCard>
   );
 }

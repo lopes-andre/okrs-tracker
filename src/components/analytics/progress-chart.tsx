@@ -10,7 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -176,169 +177,177 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
     );
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-text-muted" />
-            Progress Over Time
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
-              <SelectTrigger className="w-32 h-8">
-                <Calendar className="w-3 h-3 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ytd">Year to Date</SelectItem>
-                <SelectItem value="q1">Q1</SelectItem>
-                <SelectItem value="q2">Q2</SelectItem>
-                <SelectItem value="q3">Q3</SelectItem>
-                <SelectItem value="q4">Q4</SelectItem>
-                <SelectItem value="last30">Last 30 Days</SelectItem>
-                <SelectItem value="last90">Last 90 Days</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant={showExpected ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowExpected(!showExpected)}
-              className="h-8 gap-1"
-            >
-              {showExpected ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              Expected
-            </Button>
-          </div>
+  // Render chart content with configurable height
+  const renderChartContent = (height: number) => (
+    <>
+      {selectedKrIds.size === 0 ? (
+        <div className={`h-[${height}px] flex items-center justify-center text-text-muted`}>
+          Select at least one KR to view the chart
         </div>
-        
-        {/* KR Selection */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {chartableKrs.map((kr, index) => {
-            const isSelected = selectedKrIds.has(kr.id);
-            const colorIndex = [...selectedKrIds].indexOf(kr.id);
-            const color = isSelected && colorIndex >= 0 ? CHART_COLORS[colorIndex % CHART_COLORS.length] : undefined;
-            
+      ) : (
+        <div style={{ height }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                tickLine={{ stroke: "var(--border-soft)" }}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "var(--text-muted)" }}
+                tickLine={{ stroke: "var(--border-soft)" }}
+                tickFormatter={(value) => value.toLocaleString()}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "white",
+                  border: "1px solid var(--border)",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                }}
+                formatter={((value: number, name: string) => {
+                  const krId = name.replace("kr_", "").replace("expected_", "");
+                  const kr = krs.find((k) => k.id === krId);
+                  const isExpected = name.startsWith("expected_");
+                  return [
+                    `${value.toLocaleString()}${kr?.unit ? ` ${kr.unit}` : ""}`,
+                    isExpected ? `${kr?.name ?? "KR"} (Expected)` : kr?.name ?? "KR"
+                  ];
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                }) as any}
+              />
+
+              {/* Actual value lines */}
+              {[...selectedKrIds].map((krId, index) => {
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+                return (
+                  <Line
+                    key={`kr_${krId}`}
+                    type="monotone"
+                    dataKey={`kr_${krId}`}
+                    stroke={color}
+                    strokeWidth={2}
+                    dot={{ r: 2, fill: color }}
+                    activeDot={{ r: 4 }}
+                  />
+                );
+              })}
+
+              {/* Expected value lines (dashed) */}
+              {showExpected && [...selectedKrIds].map((krId, index) => {
+                const color = CHART_COLORS[index % CHART_COLORS.length];
+                return (
+                  <Line
+                    key={`expected_${krId}`}
+                    type="monotone"
+                    dataKey={`expected_${krId}`}
+                    stroke={color}
+                    strokeWidth={1}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    opacity={0.5}
+                  />
+                );
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Legend */}
+      {selectedKrIds.size > 0 && (
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs">
+          {[...selectedKrIds].map((krId, index) => {
+            const kr = krs.find((k) => k.id === krId);
+            const color = CHART_COLORS[index % CHART_COLORS.length];
             return (
-              <button
-                key={kr.id}
-                onClick={() => toggleKr(kr.id)}
-                className={cn(
-                  "px-2 py-1 rounded-pill text-xs font-medium transition-all border",
-                  isSelected
-                    ? "border-transparent text-white"
-                    : "border-border-soft bg-bg-1 text-text-muted hover:bg-bg-2"
-                )}
-                style={isSelected ? { backgroundColor: color } : undefined}
-              >
-                {kr.name}
-              </button>
+              <div key={krId} className="flex items-center gap-2">
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-text-muted">{kr?.name}</span>
+              </div>
             );
           })}
+          {showExpected && (
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-0 border-t-2 border-dashed border-text-muted" />
+              <span className="text-text-subtle">Expected pace</span>
+            </div>
+          )}
         </div>
-      </CardHeader>
-      
-      <CardContent>
-        {selectedKrIds.size === 0 ? (
-          <div className="h-[300px] flex items-center justify-center text-text-muted">
-            Select at least one KR to view the chart
-          </div>
-        ) : (
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" />
-                <XAxis 
-                  dataKey="label" 
-                  tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                  tickLine={{ stroke: "var(--border-soft)" }}
-                />
-                <YAxis 
-                  tick={{ fontSize: 11, fill: "var(--text-muted)" }}
-                  tickLine={{ stroke: "var(--border-soft)" }}
-                  tickFormatter={(value) => value.toLocaleString()}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  formatter={((value: number, name: string) => {
-                    const krId = name.replace("kr_", "").replace("expected_", "");
-                    const kr = krs.find((k) => k.id === krId);
-                    const isExpected = name.startsWith("expected_");
-                    return [
-                      `${value.toLocaleString()}${kr?.unit ? ` ${kr.unit}` : ""}`,
-                      isExpected ? `${kr?.name ?? "KR"} (Expected)` : kr?.name ?? "KR"
-                    ];
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  }) as any}
-                />
-                
-                {/* Actual value lines */}
-                {[...selectedKrIds].map((krId, index) => {
-                  const color = CHART_COLORS[index % CHART_COLORS.length];
-                  return (
-                    <Line
-                      key={`kr_${krId}`}
-                      type="monotone"
-                      dataKey={`kr_${krId}`}
-                      stroke={color}
-                      strokeWidth={2}
-                      dot={{ r: 2, fill: color }}
-                      activeDot={{ r: 4 }}
-                    />
-                  );
-                })}
-                
-                {/* Expected value lines (dashed) */}
-                {showExpected && [...selectedKrIds].map((krId, index) => {
-                  const color = CHART_COLORS[index % CHART_COLORS.length];
-                  return (
-                    <Line
-                      key={`expected_${krId}`}
-                      type="monotone"
-                      dataKey={`expected_${krId}`}
-                      stroke={color}
-                      strokeWidth={1}
-                      strokeDasharray="5 5"
-                      dot={false}
-                      opacity={0.5}
-                    />
-                  );
-                })}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      )}
+    </>
+  );
 
-        {/* Legend */}
-        {selectedKrIds.size > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-4 text-xs">
-            {[...selectedKrIds].map((krId, index) => {
-              const kr = krs.find((k) => k.id === krId);
-              const color = CHART_COLORS[index % CHART_COLORS.length];
-              return (
-                <div key={krId} className="flex items-center gap-2">
-                  <div 
-                    className="w-3 h-3 rounded-full" 
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="text-text-muted">{kr?.name}</span>
-                </div>
-              );
-            })}
-            {showExpected && (
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-0 border-t-2 border-dashed border-text-muted" />
-                <span className="text-text-subtle">Expected pace</span>
-              </div>
+  // KR selection pills for header
+  const krSelectionPills = (
+    <div className="flex flex-wrap gap-2 mt-3">
+      {chartableKrs.map((kr) => {
+        const isSelected = selectedKrIds.has(kr.id);
+        const colorIndex = [...selectedKrIds].indexOf(kr.id);
+        const color = isSelected && colorIndex >= 0 ? CHART_COLORS[colorIndex % CHART_COLORS.length] : undefined;
+
+        return (
+          <button
+            key={kr.id}
+            onClick={() => toggleKr(kr.id)}
+            className={cn(
+              "px-2 py-1 rounded-pill text-xs font-medium transition-all border",
+              isSelected
+                ? "border-transparent text-white"
+                : "border-border-soft bg-bg-1 text-text-muted hover:bg-bg-2"
             )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            style={isSelected ? { backgroundColor: color } : undefined}
+          >
+            {kr.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // Header action buttons
+  const headerActions = (
+    <>
+      <Select value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
+        <SelectTrigger className="w-32 h-8">
+          <Calendar className="w-3 h-3 mr-2" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ytd">Year to Date</SelectItem>
+          <SelectItem value="q1">Q1</SelectItem>
+          <SelectItem value="q2">Q2</SelectItem>
+          <SelectItem value="q3">Q3</SelectItem>
+          <SelectItem value="q4">Q4</SelectItem>
+          <SelectItem value="last30">Last 30 Days</SelectItem>
+          <SelectItem value="last90">Last 90 Days</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button
+        variant={showExpected ? "default" : "outline"}
+        size="sm"
+        onClick={() => setShowExpected(!showExpected)}
+        className="h-8 gap-1"
+      >
+        {showExpected ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+        Expected
+      </Button>
+    </>
+  );
+
+  return (
+    <ExpandableCard
+      title="Progress Over Time"
+      icon={<TrendingUp className="w-4 h-4 text-text-muted" />}
+      headerActions={headerActions}
+      headerExtra={krSelectionPills}
+      fullscreenContent={renderChartContent(500)}
+    >
+      {renderChartContent(300)}
+    </ExpandableCard>
   );
 }
