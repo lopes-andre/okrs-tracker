@@ -24,7 +24,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AnnualKrCard } from "./annual-kr-card";
@@ -181,35 +180,33 @@ export function ObjectiveCard({
 
               {/* Right side: Status + Progress */}
               <div className="flex items-center gap-4 shrink-0">
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs max-w-xs">
-                      <p className="font-medium mb-1">
-                        {status.label === "Ahead" || status.label === "On Track" 
-                          ? "You're doing great!" 
-                          : status.label === "At Risk" 
-                          ? "Needs attention" 
-                          : "Falling behind schedule"}
-                      </p>
-                      <div className="space-y-0.5 text-muted-foreground">
-                        <p>Current progress: {formatProgress(progress / 100)}</p>
-                        <p>Expected by today: {formatProgress(expectedProgress / 100)}</p>
-                        {progressDelta > 0 ? (
-                          <p className="text-status-success">You are {Math.abs(progressDelta).toFixed(1)}% ahead of schedule</p>
-                        ) : progressDelta < 0 ? (
-                          <p className="text-status-danger">You are {Math.abs(progressDelta).toFixed(1)}% behind schedule</p>
-                        ) : (
-                          <p>Exactly on track!</p>
-                        )}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <Badge variant={status.variant}>{status.label}</Badge>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs max-w-xs">
+                    <p className="font-medium mb-1">
+                      {status.label === "Ahead" || status.label === "On Track"
+                        ? "You're doing great!"
+                        : status.label === "At Risk"
+                        ? "Needs attention"
+                        : "Falling behind schedule"}
+                    </p>
+                    <div className="space-y-0.5 text-muted-foreground">
+                      <p>Current progress: {formatProgress(progress / 100)}</p>
+                      <p>Expected by today: {formatProgress(expectedProgress / 100)}</p>
+                      {progressDelta > 0 ? (
+                        <p className="text-status-success">You are {Math.abs(progressDelta).toFixed(1)}% ahead of schedule</p>
+                      ) : progressDelta < 0 ? (
+                        <p className="text-status-danger">You are {Math.abs(progressDelta).toFixed(1)}% behind schedule</p>
+                      ) : (
+                        <p>Exactly on track!</p>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
                 <div className="flex items-center gap-2 w-32">
                   <Progress value={progress} className="flex-1" />
                   <span className="font-heading font-bold text-body w-12 text-right">

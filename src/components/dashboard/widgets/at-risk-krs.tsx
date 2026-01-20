@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ArrowRight, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,7 @@ interface AtRiskKrsWidgetProps {
   config: Record<string, unknown>;
 }
 
-export function AtRiskKrsWidget({ config }: AtRiskKrsWidgetProps) {
+export const AtRiskKrsWidget = memo(function AtRiskKrsWidget({ config }: AtRiskKrsWidgetProps) {
   const { planId, atRiskKrs } = useDashboardData();
   const maxItems = (config.maxItems as number) || 5;
 
@@ -95,4 +96,4 @@ export function AtRiskKrsWidget({ config }: AtRiskKrsWidgetProps) {
       )}
     </div>
   );
-}
+});

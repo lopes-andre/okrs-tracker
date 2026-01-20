@@ -122,7 +122,6 @@ interface WeekCalendarProps {
 }
 
 function WeekCalendar({ year, reviews, onWeekClick, planCreatedAt }: WeekCalendarProps) {
-  const currentWeek = getCurrentWeekInfo();
   const reviewMap = new Map(reviews.map((r) => [r.week_number, r]));
   
   // Get total weeks in the year (can be 52 or 53 depending on year)

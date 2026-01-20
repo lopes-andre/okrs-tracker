@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Target, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ interface ObjectiveScorecardsWidgetProps {
   config: Record<string, unknown>;
 }
 
-export function ObjectiveScorecardsWidget({ config }: ObjectiveScorecardsWidgetProps) {
+export const ObjectiveScorecardsWidget = memo(function ObjectiveScorecardsWidget({ config }: ObjectiveScorecardsWidgetProps) {
   const { planId, objectives, annualKrs, checkIns, year } = useDashboardData();
   const maxItems = (config.maxItems as number) || 5;
 
@@ -103,4 +104,4 @@ export function ObjectiveScorecardsWidget({ config }: ObjectiveScorecardsWidgetP
       )}
     </div>
   );
-}
+});

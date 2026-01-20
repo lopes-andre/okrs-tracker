@@ -34,7 +34,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type {
@@ -365,36 +364,34 @@ export function AnnualKrDialog({
                 const isSelected = krType === type;
                 
                 return (
-                  <TooltipProvider key={type} delayDuration={300}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => handleTypeChange(type)}
-                          className={cn(
-                            "flex flex-col items-center gap-1.5 p-3 rounded-card border-2 transition-all",
-                            isSelected
-                              ? "border-accent bg-accent/5 text-accent"
-                              : "border-border-soft bg-bg-0 text-text-muted hover:border-border hover:bg-bg-1"
-                          )}
-                        >
-                          <Icon className={cn("w-5 h-5", isSelected && "text-accent")} />
-                          <span className={cn(
-                            "text-xs font-medium",
-                            isSelected ? "text-accent" : "text-text-strong"
-                          )}>
-                            {typeConf.label}
-                          </span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-[200px]">
-                        <p className="font-medium">{typeConf.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          e.g., {typeConf.example}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Tooltip key={type} delayDuration={300}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleTypeChange(type)}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 p-3 rounded-card border-2 transition-all",
+                          isSelected
+                            ? "border-accent bg-accent/5 text-accent"
+                            : "border-border-soft bg-bg-0 text-text-muted hover:border-border hover:bg-bg-1"
+                        )}
+                      >
+                        <Icon className={cn("w-5 h-5", isSelected && "text-accent")} />
+                        <span className={cn(
+                          "text-xs font-medium",
+                          isSelected ? "text-accent" : "text-text-strong"
+                        )}>
+                          {typeConf.label}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[200px]">
+                      <p className="font-medium">{typeConf.description}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        e.g., {typeConf.example}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -468,16 +465,14 @@ export function AnnualKrDialog({
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         Direction
-                        <TooltipProvider delayDuration={200}>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="w-3.5 h-3.5 text-text-subtle" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">How should progress be measured?</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-3.5 h-3.5 text-text-subtle" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">How should progress be measured?</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </Label>
                       <div className="grid grid-cols-3 gap-2">
                         {directions.map((d) => (
@@ -504,16 +499,14 @@ export function AnnualKrDialog({
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1.5">
                         Aggregation
-                        <TooltipProvider delayDuration={200}>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Info className="w-3.5 h-3.5 text-text-subtle" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">How to track progress across quarters</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Info className="w-3.5 h-3.5 text-text-subtle" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">How to track progress across quarters</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </Label>
                       <Select value={aggregation} onValueChange={(v) => setAggregation(v as KrAggregation)}>
                         <SelectTrigger>

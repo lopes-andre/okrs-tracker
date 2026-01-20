@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip,
@@ -36,7 +36,7 @@ const getColor = (count: number, maxCount: number): string => {
   return "bg-status-success";
 };
 
-export function ActivityHeatmap({ data, year }: ActivityHeatmapProps) {
+export const ActivityHeatmap = memo(function ActivityHeatmap({ data, year }: ActivityHeatmapProps) {
   const { grid, maxCount, totalCheckIns, activeDays, longestStreak } = useMemo(() => {
     // Create lookup map
     const dataMap = new Map(data.map((d) => [d.date, d]));
@@ -283,4 +283,4 @@ export function ActivityHeatmap({ data, year }: ActivityHeatmapProps) {
       </CardContent>
     </Card>
   );
-}
+});

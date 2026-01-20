@@ -136,7 +136,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       setImportResult({
         success: false,
         planId: "",
-        counts: { objectives: 0, annualKrs: 0, tasks: 0, tags: 0, checkIns: 0, weeklyReviews: 0 },
+        counts: { objectives: 0, annualKrs: 0, quarterTargets: 0, tasks: 0, tags: 0, krGroups: 0, checkIns: 0, weeklyReviews: 0 },
         errors: [error instanceof Error ? error.message : "An unexpected error occurred during import"],
       });
       setStep("complete");

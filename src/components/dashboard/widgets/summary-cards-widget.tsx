@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   Target,
   CheckCircle2,
@@ -72,7 +72,7 @@ function StatCard({ title, value, subtitle, icon: Icon, variant = "default" }: S
   );
 }
 
-export function SummaryCardsWidget({ config: _config }: SummaryCardsWidgetProps) {
+export const SummaryCardsWidget = memo(function SummaryCardsWidget({ config: _config }: SummaryCardsWidgetProps) {
   const { objectives, annualKrs, checkIns, tasks, year, overallProgress, atRiskKrs } = useDashboardData();
 
   // Calculate objectives status
@@ -162,4 +162,4 @@ export function SummaryCardsWidget({ config: _config }: SummaryCardsWidgetProps)
       </div>
     </div>
   );
-}
+});

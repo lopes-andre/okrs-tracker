@@ -13,15 +13,14 @@
  * All functions are pure and testable.
  */
 
-import type { 
-  AnnualKr, 
-  QuarterTarget, 
-  CheckIn, 
-  Task, 
+import type {
+  AnnualKr,
+  QuarterTarget,
+  CheckIn,
+  Task,
   Objective,
-  KrType, 
-  KrDirection, 
-  KrAggregation 
+  KrType,
+  KrDirection,
 } from "./supabase/types";
 
 // ============================================================================
@@ -254,8 +253,8 @@ export function filterCompletedTasksInWindow(
  * Check if a check-in passes a qualifier condition
  */
 export function checkQualifier(
-  checkIn: CheckIn,
-  qualifier: QualifierConfig
+  _checkIn: CheckIn,
+  _qualifier: QualifierConfig
 ): boolean {
   // For now, we don't have evidence_meta in the check-in schema
   // This is a placeholder for future extension
@@ -513,7 +512,7 @@ function computeMaintainProgress(
  */
 function computeMilestoneProgress(
   currentValue: number,
-  target: number
+  _target: number
 ): number {
   // If explicitly marked complete
   if (currentValue >= 1) return 1;
@@ -805,8 +804,7 @@ export function computeQuarterTargetProgress(
   const qtTasks = tasks.filter((t) => t.quarter_target_id === quarterTarget.id);
   
   const filteredCheckIns = filterCheckInsInWindow(qtCheckIns, window);
-  const filteredTasks = filterCompletedTasksInWindow(qtTasks, window);
-  
+
   // Get last check-in date
   const lastCheckInDate = filteredCheckIns.length > 0
     ? new Date(Math.max(...filteredCheckIns.map((ci) => new Date(ci.recorded_at).getTime())))
@@ -1477,7 +1475,7 @@ export function formatValueWithUnit(value: number, unit: string | null, krType: 
 /**
  * Format delta value
  */
-export function formatDelta(delta: number, unit: string | null, direction: KrDirection): string {
+export function formatDelta(delta: number, unit: string | null, _direction: KrDirection): string {
   const prefix = delta > 0 ? "+" : "";
   const formattedDelta = Number.isInteger(delta) 
     ? delta.toLocaleString() 

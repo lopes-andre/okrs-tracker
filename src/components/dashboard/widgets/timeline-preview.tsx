@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Activity, ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ function getEventLabel(eventType: string, entityType: string): string {
   return labels[eventType]?.[entityType] || `${entityType} ${eventType}`;
 }
 
-export function TimelinePreviewWidget({ config }: TimelinePreviewWidgetProps) {
+export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({ config }: TimelinePreviewWidgetProps) {
   const { planId } = useDashboardData();
   const maxItems = (config.maxItems as number) || 8;
 
@@ -115,4 +116,4 @@ export function TimelinePreviewWidget({ config }: TimelinePreviewWidgetProps) {
       </div>
     </div>
   );
-}
+});

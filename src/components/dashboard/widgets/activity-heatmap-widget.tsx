@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -33,7 +33,7 @@ const getColor = (count: number, maxCount: number): string => {
   return "bg-status-success";
 };
 
-export function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
+export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
   const { checkIns, year } = useDashboardData();
   const compact = (config.compact as boolean) ?? true;
 
@@ -270,4 +270,4 @@ export function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
       </div>
     </div>
   );
-}
+});

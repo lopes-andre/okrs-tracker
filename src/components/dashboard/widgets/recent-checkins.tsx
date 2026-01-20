@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { Clock, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ interface RecentCheckinsWidgetProps {
   config: Record<string, unknown>;
 }
 
-export function RecentCheckinsWidget({ config }: RecentCheckinsWidgetProps) {
+export const RecentCheckinsWidget = memo(function RecentCheckinsWidget({ config }: RecentCheckinsWidgetProps) {
   const { planId, annualKrs, checkIns } = useDashboardData();
   const maxItems = (config.maxItems as number) || 5;
 
@@ -93,4 +94,4 @@ export function RecentCheckinsWidget({ config }: RecentCheckinsWidgetProps) {
       </div>
     </div>
   );
-}
+});

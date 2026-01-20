@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import {
   Target,
@@ -25,7 +26,7 @@ const actions = [
   { label: "Settings", icon: Settings, href: (planId: string) => `/plans/${planId}/settings` },
 ];
 
-export function QuickActionsWidget({ config: _config }: QuickActionsWidgetProps) {
+export const QuickActionsWidget = memo(function QuickActionsWidget({ config: _config }: QuickActionsWidgetProps) {
   const { planId } = useDashboardData();
 
   return (
@@ -43,4 +44,4 @@ export function QuickActionsWidget({ config: _config }: QuickActionsWidgetProps)
       ))}
     </div>
   );
-}
+});

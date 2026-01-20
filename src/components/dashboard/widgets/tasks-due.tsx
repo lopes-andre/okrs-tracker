@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { CheckCircle2, Clock, ArrowRight, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +13,7 @@ interface TasksDueWidgetProps {
   config: Record<string, unknown>;
 }
 
-export function TasksDueWidget({ config }: TasksDueWidgetProps) {
+export const TasksDueWidget = memo(function TasksDueWidget({ config }: TasksDueWidgetProps) {
   const { planId, tasks } = useDashboardData();
   const maxItems = (config.maxItems as number) || 5;
 
@@ -128,4 +129,4 @@ export function TasksDueWidget({ config }: TasksDueWidgetProps) {
       )}
     </div>
   );
-}
+});

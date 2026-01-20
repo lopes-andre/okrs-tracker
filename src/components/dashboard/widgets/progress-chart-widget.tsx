@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -28,7 +28,7 @@ const CHART_COLORS = [
   "#8b5cf6", // violet
 ];
 
-export function ProgressChartWidget({ config: _config }: ProgressChartWidgetProps) {
+export const ProgressChartWidget = memo(function ProgressChartWidget({ config: _config }: ProgressChartWidgetProps) {
   const { annualKrs, checkIns, year } = useDashboardData();
 
   // Filter to chartable KRs (metric/count)
@@ -217,4 +217,4 @@ export function ProgressChartWidget({ config: _config }: ProgressChartWidgetProp
       )}
     </div>
   );
-}
+});

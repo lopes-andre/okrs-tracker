@@ -34,7 +34,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PaceBadge } from "./pace-badge";
@@ -138,37 +137,35 @@ function SimplePaceIndicator({ paceStatus, expectedValue, currentValue, unit }: 
   ];
   
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className={cn(
-            "inline-flex items-center justify-center w-5 h-5 rounded-full shrink-0",
-            isGood && "bg-status-success/15",
-            isAtRisk && "bg-status-warning/15",
-            isOffTrack && "bg-status-danger/15"
-          )}>
-            {isGood ? (
-              <Check className="w-3 h-3 text-status-success" />
-            ) : (
-              <AlertCircle className={cn(
-                "w-3 h-3",
-                isAtRisk ? "text-status-warning" : "text-status-danger"
-              )} />
-            )}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs max-w-xs">
-          <p className="font-medium mb-1">
-            {isGood ? "On Track" : isAtRisk ? "At Risk" : "Off Track"}
-          </p>
-          <div className="space-y-0.5 text-muted-foreground">
-            {tooltipLines.map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={cn(
+          "inline-flex items-center justify-center w-5 h-5 rounded-full shrink-0",
+          isGood && "bg-status-success/15",
+          isAtRisk && "bg-status-warning/15",
+          isOffTrack && "bg-status-danger/15"
+        )}>
+          {isGood ? (
+            <Check className="w-3 h-3 text-status-success" />
+          ) : (
+            <AlertCircle className={cn(
+              "w-3 h-3",
+              isAtRisk ? "text-status-warning" : "text-status-danger"
+            )} />
+          )}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs max-w-xs">
+        <p className="font-medium mb-1">
+          {isGood ? "On Track" : isAtRisk ? "At Risk" : "Off Track"}
+        </p>
+        <div className="space-y-0.5 text-muted-foreground">
+          {tooltipLines.map((line, i) => (
+            <p key={i}>{line}</p>
+          ))}
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -345,24 +342,22 @@ export function AnnualKrCard({
 
         {/* Quick Check-in Button */}
         {canEdit && onCheckIn && (
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={(e) => { e.stopPropagation(); onCheckIn(); }}
-                  className="gap-1.5 h-7 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <TrendingUp className="w-3.5 h-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Record check-in
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); onCheckIn(); }}
+                className="gap-1.5 h-7 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <TrendingUp className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              Record check-in
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {/* Actions */}
@@ -522,49 +517,47 @@ export function AnnualKrCard({
                   <div>
                     <p className="text-xs text-text-subtle mb-1">Current Value</p>
                     {hasProgressEngine && progressResult ? (
-                      <TooltipProvider delayDuration={200}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <p className={`text-xs font-medium ${
-                              progressResult.paceStatus === "ahead" ? "text-status-success" :
-                              progressResult.paceStatus === "on_track" ? "text-status-success" :
-                              progressResult.paceStatus === "at_risk" ? "text-status-warning" :
-                              progressResult.paceStatus === "off_track" ? "text-status-danger" :
-                              "text-text-strong"
-                            }`}>
-                              {formatValue(currentValue)}
-                              {(progressResult.paceStatus === "ahead" || progressResult.paceStatus === "on_track") && (
-                                <Check className="w-3 h-3 inline-block ml-1 align-text-bottom" />
-                              )}
-                              {progressResult.paceStatus === "at_risk" && (
-                                <AlertCircle className="w-3 h-3 inline-block ml-1 align-text-bottom" />
-                              )}
-                              {progressResult.paceStatus === "off_track" && (
-                                <AlertCircle className="w-3 h-3 inline-block ml-1 align-text-bottom" />
-                              )}
-                            </p>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="text-xs max-w-xs">
-                            <p className="font-medium mb-1">
-                              {progressResult.paceStatus === "ahead" || progressResult.paceStatus === "on_track" 
-                                ? "On Track" 
-                                : progressResult.paceStatus === "at_risk" 
-                                ? "At Risk" 
-                                : "Off Track"}
-                            </p>
-                            <div className="space-y-0.5 text-muted-foreground">
-                              <p>By today you should have {formatValue(progressResult.expectedValue)}</p>
-                              {currentValue > progressResult.expectedValue ? (
-                                <p>You are ahead by {formatValue(currentValue - progressResult.expectedValue)}</p>
-                              ) : currentValue < progressResult.expectedValue ? (
-                                <p>You are behind by {formatValue(progressResult.expectedValue - currentValue)}</p>
-                              ) : (
-                                <p>You are exactly on track!</p>
-                              )}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className={`text-xs font-medium ${
+                            progressResult.paceStatus === "ahead" ? "text-status-success" :
+                            progressResult.paceStatus === "on_track" ? "text-status-success" :
+                            progressResult.paceStatus === "at_risk" ? "text-status-warning" :
+                            progressResult.paceStatus === "off_track" ? "text-status-danger" :
+                            "text-text-strong"
+                          }`}>
+                            {formatValue(currentValue)}
+                            {(progressResult.paceStatus === "ahead" || progressResult.paceStatus === "on_track") && (
+                              <Check className="w-3 h-3 inline-block ml-1 align-text-bottom" />
+                            )}
+                            {progressResult.paceStatus === "at_risk" && (
+                              <AlertCircle className="w-3 h-3 inline-block ml-1 align-text-bottom" />
+                            )}
+                            {progressResult.paceStatus === "off_track" && (
+                              <AlertCircle className="w-3 h-3 inline-block ml-1 align-text-bottom" />
+                            )}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs max-w-xs">
+                          <p className="font-medium mb-1">
+                            {progressResult.paceStatus === "ahead" || progressResult.paceStatus === "on_track"
+                              ? "On Track"
+                              : progressResult.paceStatus === "at_risk"
+                              ? "At Risk"
+                              : "Off Track"}
+                          </p>
+                          <div className="space-y-0.5 text-muted-foreground">
+                            <p>By today you should have {formatValue(progressResult.expectedValue)}</p>
+                            {currentValue > progressResult.expectedValue ? (
+                              <p>You are ahead by {formatValue(currentValue - progressResult.expectedValue)}</p>
+                            ) : currentValue < progressResult.expectedValue ? (
+                              <p>You are behind by {formatValue(progressResult.expectedValue - currentValue)}</p>
+                            ) : (
+                              <p>You are exactly on track!</p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <p className={`text-xs font-medium ${
                         progress >= 100 ? "text-status-success" : "text-text-strong"
