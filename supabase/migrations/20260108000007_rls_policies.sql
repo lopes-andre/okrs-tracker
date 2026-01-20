@@ -21,9 +21,6 @@ ALTER TABLE check_ins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE annual_kr_tags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE task_tags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mindmap_views ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mindmap_nodes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mindmap_edges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dashboards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dashboard_widgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE saved_views ENABLE ROW LEVEL SECURITY;
@@ -390,82 +387,6 @@ CREATE POLICY "Editors can manage task tags"
       SELECT 1 FROM tasks t 
       WHERE t.id = task_id 
       AND has_plan_access(t.plan_id, 'editor')
-    )
-  );
-
--- ============================================================================
--- MINDMAP TABLES POLICIES
--- ============================================================================
-
--- Mindmap views (user-specific)
-CREATE POLICY "Users can view own mindmap views"
-  ON mindmap_views FOR SELECT
-  TO authenticated
-  USING (user_id = auth.uid() AND has_plan_access(plan_id, 'viewer'));
-
-CREATE POLICY "Users can manage own mindmap views"
-  ON mindmap_views FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid() AND has_plan_access(plan_id, 'viewer'))
-  WITH CHECK (user_id = auth.uid() AND has_plan_access(plan_id, 'viewer'));
-
--- Mindmap nodes
-CREATE POLICY "Users can view own mindmap nodes"
-  ON mindmap_nodes FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can manage own mindmap nodes"
-  ON mindmap_nodes FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
-    )
-  );
-
--- Mindmap edges
-CREATE POLICY "Users can view own mindmap edges"
-  ON mindmap_edges FOR SELECT
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can manage own mindmap edges"
-  ON mindmap_edges FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM mindmap_views mv 
-      WHERE mv.id = mindmap_view_id 
-      AND mv.user_id = auth.uid()
     )
   );
 

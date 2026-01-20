@@ -23,11 +23,11 @@ CREATE TYPE task_status AS ENUM ('pending', 'in_progress', 'completed', 'cancell
 -- Task priority enum
 CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high');
 
+-- Task effort enum (work required)
+CREATE TYPE task_effort AS ENUM ('light', 'moderate', 'heavy');
+
 -- Tag categorization
 CREATE TYPE tag_kind AS ENUM ('platform', 'funnel_stage', 'initiative', 'category', 'custom');
-
--- Entity types for mindmap nodes
-CREATE TYPE mindmap_entity_type AS ENUM ('plan', 'objective', 'annual_kr', 'quarter_target');
 
 -- Entity types for activity events
 CREATE TYPE event_entity_type AS ENUM (

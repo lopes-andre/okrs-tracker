@@ -79,23 +79,27 @@ BEGIN
       'title', NEW.title,
       'status', NEW.status,
       'priority', NEW.priority,
+      'effort', NEW.effort,
       'due_date', NEW.due_date,
+      'due_time', NEW.due_time,
       'objective_id', NEW.objective_id,
       'annual_kr_id', NEW.annual_kr_id,
       'quarter_target_id', NEW.quarter_target_id
     );
-    
+
     PERFORM log_activity_event(
       NEW.plan_id, 'task'::event_entity_type, NEW.id,
       'created'::event_type, NULL, v_new_data
     );
-    
+
   ELSIF TG_OP = 'UPDATE' THEN
     v_old_data := jsonb_build_object(
       'title', OLD.title,
       'status', OLD.status,
       'priority', OLD.priority,
+      'effort', OLD.effort,
       'due_date', OLD.due_date,
+      'due_time', OLD.due_time,
       'objective_id', OLD.objective_id,
       'annual_kr_id', OLD.annual_kr_id,
       'quarter_target_id', OLD.quarter_target_id
@@ -104,12 +108,14 @@ BEGIN
       'title', NEW.title,
       'status', NEW.status,
       'priority', NEW.priority,
+      'effort', NEW.effort,
       'due_date', NEW.due_date,
+      'due_time', NEW.due_time,
       'objective_id', NEW.objective_id,
       'annual_kr_id', NEW.annual_kr_id,
       'quarter_target_id', NEW.quarter_target_id
     );
-    
+
     -- Determine specific event type
     IF OLD.status != NEW.status THEN
       IF NEW.status = 'completed' THEN
@@ -120,28 +126,30 @@ BEGIN
     ELSE
       v_event_type := 'updated'::event_type;
     END IF;
-    
+
     PERFORM log_activity_event(
       NEW.plan_id, 'task'::event_entity_type, NEW.id,
       v_event_type, v_old_data, v_new_data
     );
-    
+
   ELSIF TG_OP = 'DELETE' THEN
     v_old_data := jsonb_build_object(
       'title', OLD.title,
       'status', OLD.status,
+      'priority', OLD.priority,
+      'effort', OLD.effort,
       'objective_id', OLD.objective_id,
       'annual_kr_id', OLD.annual_kr_id,
       'quarter_target_id', OLD.quarter_target_id
     );
-    
+
     PERFORM log_activity_event(
       OLD.plan_id, 'task'::event_entity_type, OLD.id,
       'deleted'::event_type, v_old_data, NULL
     );
-    
+
   END IF;
-  
+
   RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

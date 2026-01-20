@@ -1,93 +1,5 @@
 -- Migration: UI Persistence Tables
--- Description: Create mindmap_views, mindmap_nodes, mindmap_edges, dashboards, dashboard_widgets, and saved_views tables
-
--- ============================================================================
--- MINDMAP_VIEWS TABLE
--- ============================================================================
--- Stores user's mindmap viewport settings per plan
-
-CREATE TABLE mindmap_views (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  viewport_x NUMERIC NOT NULL DEFAULT 0,
-  viewport_y NUMERIC NOT NULL DEFAULT 0,
-  viewport_zoom NUMERIC NOT NULL DEFAULT 1.0 CHECK (viewport_zoom > 0),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- One view per user per plan
-  UNIQUE(plan_id, user_id)
-);
-
--- Indexes
-CREATE INDEX idx_mindmap_views_plan_id ON mindmap_views(plan_id);
-CREATE INDEX idx_mindmap_views_user_id ON mindmap_views(user_id);
-
--- Trigger for updated_at
-CREATE TRIGGER mindmap_views_updated_at
-  BEFORE UPDATE ON mindmap_views
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
-
-COMMENT ON TABLE mindmap_views IS 'User-specific mindmap viewport settings';
-
--- ============================================================================
--- MINDMAP_NODES TABLE
--- ============================================================================
--- Stores node positions in the mindmap
-
-CREATE TABLE mindmap_nodes (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  mindmap_view_id UUID NOT NULL REFERENCES mindmap_views(id) ON DELETE CASCADE,
-  entity_type mindmap_entity_type NOT NULL,
-  entity_id UUID NOT NULL,
-  position_x NUMERIC NOT NULL DEFAULT 0,
-  position_y NUMERIC NOT NULL DEFAULT 0,
-  is_collapsed BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- One node per entity per view
-  UNIQUE(mindmap_view_id, entity_type, entity_id)
-);
-
--- Indexes
-CREATE INDEX idx_mindmap_nodes_view_id ON mindmap_nodes(mindmap_view_id);
-CREATE INDEX idx_mindmap_nodes_entity ON mindmap_nodes(entity_type, entity_id);
-
--- Trigger for updated_at
-CREATE TRIGGER mindmap_nodes_updated_at
-  BEFORE UPDATE ON mindmap_nodes
-  FOR EACH ROW
-  EXECUTE FUNCTION set_updated_at();
-
-COMMENT ON TABLE mindmap_nodes IS 'Node positions in mindmap visualizations';
-
--- ============================================================================
--- MINDMAP_EDGES TABLE
--- ============================================================================
--- Stores custom edges (connections) in the mindmap
-
-CREATE TABLE mindmap_edges (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  mindmap_view_id UUID NOT NULL REFERENCES mindmap_views(id) ON DELETE CASCADE,
-  source_node_id UUID NOT NULL REFERENCES mindmap_nodes(id) ON DELETE CASCADE,
-  target_node_id UUID NOT NULL REFERENCES mindmap_nodes(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Prevent duplicate edges
-  UNIQUE(mindmap_view_id, source_node_id, target_node_id),
-  -- Prevent self-referencing edges
-  CHECK (source_node_id != target_node_id)
-);
-
--- Indexes
-CREATE INDEX idx_mindmap_edges_view_id ON mindmap_edges(mindmap_view_id);
-CREATE INDEX idx_mindmap_edges_source ON mindmap_edges(source_node_id);
-CREATE INDEX idx_mindmap_edges_target ON mindmap_edges(target_node_id);
-
-COMMENT ON TABLE mindmap_edges IS 'Custom connections between mindmap nodes';
+-- Description: Create dashboards, dashboard_widgets, and saved_views tables
 
 -- ============================================================================
 -- DASHBOARDS TABLE
@@ -116,8 +28,8 @@ CREATE TRIGGER dashboards_updated_at
   EXECUTE FUNCTION set_updated_at();
 
 -- Ensure only one default dashboard per plan
-CREATE UNIQUE INDEX idx_dashboards_default 
-  ON dashboards(plan_id) 
+CREATE UNIQUE INDEX idx_dashboards_default
+  ON dashboards(plan_id)
   WHERE is_default = TRUE;
 
 COMMENT ON TABLE dashboards IS 'Custom dashboards for plans';
@@ -186,8 +98,8 @@ CREATE TRIGGER saved_views_updated_at
   EXECUTE FUNCTION set_updated_at();
 
 -- Ensure only one default view per type per user per plan
-CREATE UNIQUE INDEX idx_saved_views_default 
-  ON saved_views(plan_id, user_id, view_type) 
+CREATE UNIQUE INDEX idx_saved_views_default
+  ON saved_views(plan_id, user_id, view_type)
   WHERE is_default = TRUE;
 
 COMMENT ON TABLE saved_views IS 'User-specific saved filter/sort configurations';

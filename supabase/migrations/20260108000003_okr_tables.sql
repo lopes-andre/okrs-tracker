@@ -147,18 +147,20 @@ CREATE TABLE tasks (
   description TEXT,
   status task_status NOT NULL DEFAULT 'pending',
   priority task_priority NOT NULL DEFAULT 'medium',
+  effort task_effort DEFAULT 'moderate',
   due_date DATE,
+  due_time TIME,
   completed_at TIMESTAMPTZ,
   assigned_to UUID REFERENCES profiles(id) ON DELETE SET NULL,
   sort_order INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
+
   -- Task can link to at most one parent: objective, annual_kr, or quarter_target (or none for plan-level)
   CONSTRAINT tasks_parent_check CHECK (
     (
-      (objective_id IS NOT NULL)::int + 
-      (annual_kr_id IS NOT NULL)::int + 
+      (objective_id IS NOT NULL)::int +
+      (annual_kr_id IS NOT NULL)::int +
       (quarter_target_id IS NOT NULL)::int
     ) <= 1
   )
@@ -172,11 +174,14 @@ CREATE INDEX idx_tasks_quarter_target_id ON tasks(quarter_target_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
 CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX idx_tasks_effort ON tasks(effort);
 
 -- Performance indexes for common query patterns
 CREATE INDEX idx_tasks_plan_status_due ON tasks(plan_id, status, due_date);
 CREATE INDEX idx_tasks_plan_completed ON tasks(plan_id, completed_at DESC) WHERE status = 'completed';
 CREATE INDEX idx_tasks_plan_active_due ON tasks(plan_id, due_date, created_at) WHERE status NOT IN ('completed', 'cancelled');
+CREATE INDEX idx_tasks_priority_effort ON tasks(priority, effort);
+CREATE INDEX idx_tasks_due_time ON tasks(due_date, due_time) WHERE due_time IS NOT NULL;
 
 -- Trigger for updated_at
 CREATE TRIGGER tasks_updated_at

@@ -17,11 +17,8 @@ supabase/
     ├── 20260108000006_activity_events.sql
     ├── 20260108000007_rls_policies.sql
     ├── 20260108000008_views.sql
-    ├── 20260110000001_add_due_time.sql
-    ├── 20260110000002_add_task_effort.sql
     ├── 20260111000002_weekly_reviews.sql
-    ├── 20260111000003_weekly_review_activity.sql
-    └── 20260119180700_drop_mindmap_tables.sql
+    └── 20260111000003_weekly_review_activity.sql
 ```
 
 ## Database Schema
