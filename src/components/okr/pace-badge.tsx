@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { 
@@ -133,23 +132,21 @@ export function PaceBadge({
     const tooltipLines = buildTooltipContent();
     
     return (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            {compactBadge}
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs max-w-xs">
-            <p className="font-medium">{formatPaceStatus(status)}</p>
-            {tooltipLines.length > 0 && (
-              <div className="mt-1 space-y-0.5 text-muted-foreground">
-                {tooltipLines.map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
-              </div>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {compactBadge}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs max-w-xs">
+          <p className="font-medium">{formatPaceStatus(status)}</p>
+          {tooltipLines.length > 0 && (
+            <div className="mt-1 space-y-0.5 text-muted-foreground">
+              {tooltipLines.map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
+          )}
+        </TooltipContent>
+      </Tooltip>
     );
   }
   
@@ -168,48 +165,46 @@ export function PaceBadge({
   const tooltipLines = buildTooltipContent();
   
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          {badge}
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <p className="font-medium mb-1">{formatPaceStatus(status)}</p>
-          
-          {/* Expected value messages */}
-          {tooltipLines.length > 0 && (
-            <div className="text-xs text-muted-foreground mb-2 space-y-0.5">
-              {tooltipLines.map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          )}
-          
-          {/* Progress details */}
-          {(progress !== undefined || expectedProgress !== undefined) && (
-            <div className="text-xs space-y-1 pt-2 border-t border-border">
-              {progress !== undefined && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Actual:</span>
-                  <span className="font-medium">{formatProgress(progress)}</span>
-                </div>
-              )}
-              {expectedProgress !== undefined && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Expected:</span>
-                  <span className="font-medium">{formatProgress(expectedProgress)}</span>
-                </div>
-              )}
-              {paceRatio !== undefined && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Pace ratio:</span>
-                  <span className="font-medium">{(paceRatio * 100).toFixed(0)}%</span>
-                </div>
-              )}
-            </div>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {badge}
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs">
+        <p className="font-medium mb-1">{formatPaceStatus(status)}</p>
+
+        {/* Expected value messages */}
+        {tooltipLines.length > 0 && (
+          <div className="text-xs text-muted-foreground mb-2 space-y-0.5">
+            {tooltipLines.map((line, i) => (
+              <p key={i}>{line}</p>
+            ))}
+          </div>
+        )}
+
+        {/* Progress details */}
+        {(progress !== undefined || expectedProgress !== undefined) && (
+          <div className="text-xs space-y-1 pt-2 border-t border-border">
+            {progress !== undefined && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Actual:</span>
+                <span className="font-medium">{formatProgress(progress)}</span>
+              </div>
+            )}
+            {expectedProgress !== undefined && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Expected:</span>
+                <span className="font-medium">{formatProgress(expectedProgress)}</span>
+              </div>
+            )}
+            {paceRatio !== undefined && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Pace ratio:</span>
+                <span className="font-medium">{(paceRatio * 100).toFixed(0)}%</span>
+              </div>
+            )}
+          </div>
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }

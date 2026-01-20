@@ -6,7 +6,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { QuarterTarget } from "@/lib/supabase/types";
@@ -128,47 +127,45 @@ export function QuarterTargetPills({
   // Compact view - small pills
   if (compact) {
     return (
-      <TooltipProvider delayDuration={100}>
-        <div className="flex items-center gap-1 shrink-0">
-          {quarters.map((q) => {
-            const target = targetMap.get(q);
-            const progress = getProgress(q);
-            const { status, label } = getQuarterStatus(q);
-            const styles = getStatusStyles(q);
+      <div className="flex items-center gap-1 shrink-0">
+        {quarters.map((q) => {
+          const target = targetMap.get(q);
+          const progress = getProgress(q);
+          const { status, label } = getQuarterStatus(q);
+          const styles = getStatusStyles(q);
 
-            return (
-              <Tooltip key={q}>
-                <TooltipTrigger asChild>
-                  <div
-                    className={cn(
-                      "w-7 h-7 rounded text-xs font-medium flex items-center justify-center border transition-all",
-                      styles.bg,
-                      styles.text,
-                      styles.border,
-                      status === "current" && "ring-2 ring-offset-1 ring-accent/30"
-                    )}
-                  >
-                    {status === "complete" ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : (
-                      `Q${q}`
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  <p className="font-medium">Q{q}: {label}</p>
-                  {target && (
-                    <p className="text-text-subtle">
-                      {target.current_value.toLocaleString()} / {target.target_value.toLocaleString()}
-                      {unit && ` ${unit}`} ({Math.round(progress)}%)
-                    </p>
+          return (
+            <Tooltip key={q} delayDuration={100}>
+              <TooltipTrigger asChild>
+                <div
+                  className={cn(
+                    "w-7 h-7 rounded text-xs font-medium flex items-center justify-center border transition-all",
+                    styles.bg,
+                    styles.text,
+                    styles.border,
+                    status === "current" && "ring-2 ring-offset-1 ring-accent/30"
                   )}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </TooltipProvider>
+                >
+                  {status === "complete" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  ) : (
+                    `Q${q}`
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                <p className="font-medium">Q{q}: {label}</p>
+                {target && (
+                  <p className="text-text-subtle">
+                    {target.current_value.toLocaleString()} / {target.target_value.toLocaleString()}
+                    {unit && ` ${unit}`} ({Math.round(progress)}%)
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
+      </div>
     );
   }
 

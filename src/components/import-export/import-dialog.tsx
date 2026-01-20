@@ -131,8 +131,15 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
       setImportResult(result);
       setStep("complete");
-    } catch {
-      setStep("options");
+    } catch (error) {
+      // Show error in the complete step with failure state
+      setImportResult({
+        success: false,
+        planId: "",
+        counts: { objectives: 0, annualKrs: 0, tasks: 0, tags: 0, checkIns: 0, weeklyReviews: 0 },
+        errors: [error instanceof Error ? error.message : "An unexpected error occurred during import"],
+      });
+      setStep("complete");
     }
   };
 

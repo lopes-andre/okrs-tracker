@@ -27,7 +27,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole } from "@/lib/supabase/types";
@@ -285,49 +284,45 @@ export function TaskRow({ task, role, onStatusChange, onEdit, onDelete }: TaskRo
       )}
 
       {/* Priority Badge - Filled, dominant, alert-style */}
-      <TooltipProvider delayDuration={300}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              className={cn(
-                "shrink-0 text-xs gap-1 cursor-default",
-                priorityConfig[task.priority].color
-              )}
-            >
-              <AlertTriangle className={cn("w-3 h-3", priorityConfig[task.priority].iconColor)} />
-              {priorityConfig[task.priority].label}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">
-            {priorityConfig[task.priority].tooltip}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <Badge
+            className={cn(
+              "shrink-0 text-xs gap-1 cursor-default",
+              priorityConfig[task.priority].color
+            )}
+          >
+            <AlertTriangle className={cn("w-3 h-3", priorityConfig[task.priority].iconColor)} />
+            {priorityConfig[task.priority].label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          {priorityConfig[task.priority].tooltip}
+        </TooltipContent>
+      </Tooltip>
 
       {/* Effort Badge - Outlined, informational, battery-style */}
       {task.effort && (
-        <TooltipProvider delayDuration={300}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "shrink-0 text-xs gap-1 cursor-default",
-                  effortConfig[task.effort].color
-                )}
-              >
-                {(() => {
-                  const EffortIcon = effortConfig[task.effort].Icon;
-                  return <EffortIcon className="w-3 h-3" />;
-                })()}
-                {effortConfig[task.effort].label}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {effortConfig[task.effort].tooltip}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Badge
+              variant="outline"
+              className={cn(
+                "shrink-0 text-xs gap-1 cursor-default",
+                effortConfig[task.effort].color
+              )}
+            >
+              {(() => {
+                const EffortIcon = effortConfig[task.effort].Icon;
+                return <EffortIcon className="w-3 h-3" />;
+              })()}
+              {effortConfig[task.effort].label}
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {effortConfig[task.effort].tooltip}
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Due Date / Completion Status */}

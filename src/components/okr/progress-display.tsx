@@ -12,7 +12,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PaceBadge } from "./pace-badge";
@@ -89,26 +88,24 @@ export function ProgressDisplay({
           
           {/* Delta from expected */}
           {showDelta && deltaFromExpected !== 0 && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Badge 
-                    variant={isAhead ? "success" : "warning"}
-                    className="text-[10px] px-1 py-0"
-                  >
-                    {deltaFromExpected > 0 ? "+" : ""}{deltaFromExpected}%
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p className="text-xs">
-                    {isAhead ? "Ahead of" : "Behind"} expected pace by {Math.abs(deltaFromExpected)}%
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Expected: {expectedPercent}%
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge
+                  variant={isAhead ? "success" : "warning"}
+                  className="text-[10px] px-1 py-0"
+                >
+                  {deltaFromExpected > 0 ? "+" : ""}{deltaFromExpected}%
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">
+                  {isAhead ? "Ahead of" : "Behind"} expected pace by {Math.abs(deltaFromExpected)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Expected: {expectedPercent}%
+                </p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -208,33 +205,31 @@ export function ProgressMini({
   const progressPercent = Math.round(progress.progress * 100);
   
   return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-1.5 cursor-default">
-            <Progress value={progressPercent} className="w-16 h-1.5" />
-            <span className="text-xs font-medium w-8">
-              {progressPercent}%
-            </span>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="flex items-center gap-1.5 cursor-default">
+          <Progress value={progressPercent} className="w-16 h-1.5" />
+          <span className="text-xs font-medium w-8">
+            {progressPercent}%
+          </span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="text-xs space-y-1">
+          <div className="flex justify-between gap-4">
+            <span>Progress:</span>
+            <span className="font-medium">{progressPercent}%</span>
           </div>
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          <div className="text-xs space-y-1">
-            <div className="flex justify-between gap-4">
-              <span>Progress:</span>
-              <span className="font-medium">{progressPercent}%</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span>Expected:</span>
-              <span className="font-medium">{Math.round(progress.expectedProgress * 100)}%</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span>Status:</span>
-              <span className="font-medium capitalize">{progress.paceStatus.replace("_", " ")}</span>
-            </div>
+          <div className="flex justify-between gap-4">
+            <span>Expected:</span>
+            <span className="font-medium">{Math.round(progress.expectedProgress * 100)}%</span>
           </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+          <div className="flex justify-between gap-4">
+            <span>Status:</span>
+            <span className="font-medium capitalize">{progress.paceStatus.replace("_", " ")}</span>
+          </div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }

@@ -40,14 +40,6 @@ const { from, to } = getPaginationRange(page, limit);
 const result = createPaginatedResult(data, count, page, limit);
 ```
 
-**Query Helpers:**
-```typescript
-getCurrentQuarter(); // 1-4
-getQuarterDateRange(year, quarter);
-calculateProgress(current, target, start);
-calculatePace(startDate, endDate, targetValue);
-```
-
 ### `query-client.tsx` - React Query Setup
 
 **Provider:**
@@ -112,13 +104,6 @@ formatErrorMessage(error) // Returns { title, description, variant: "destructive
 
 ```typescript
 cn("class1", condition && "class2")  // Merge Tailwind classes
-formatNumber(1234)                   // "1,234"
-formatPercentage(75.5, 1)            // "75.5%"
-formatDate(date, options)            // "Jan 19, 2026"
-getRelativeTime(date)                // "2h ago"
-truncate(str, length)                // "Long text..."
-getInitials("John Doe")              // "JD"
-delay(ms)                            // Promise that resolves after ms
 ```
 
 ### `design-tokens.ts` - Design System Values

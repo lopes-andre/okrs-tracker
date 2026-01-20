@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useDashboardData } from "../dashboard-data-provider";
@@ -216,45 +215,43 @@ export function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
             )}
 
             {/* Weeks */}
-            <TooltipProvider delayDuration={100}>
-              <div className="flex gap-[2px]">
-                {grid.map((week, weekIndex) => (
-                  <div key={weekIndex} className="flex flex-col gap-[2px]">
-                    {week.map((day, dayIndex) => {
-                      const isCurrentDay = isToday(day.date);
+            <div className="flex gap-[2px]">
+              {grid.map((week, weekIndex) => (
+                <div key={weekIndex} className="flex flex-col gap-[2px]">
+                  {week.map((day, dayIndex) => {
+                    const isCurrentDay = isToday(day.date);
 
-                      return (
-                        <Tooltip key={dayIndex}>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={cn(
-                                "w-[8px] h-[8px] rounded-[1px] transition-colors",
-                                day.isFuture
-                                  ? "bg-bg-1/50"
-                                  : !day.isYear
-                                    ? "bg-transparent"
-                                    : getColor(day.count, maxCount),
-                                isCurrentDay && "ring-1 ring-accent ring-offset-1"
-                              )}
-                            />
-                          </TooltipTrigger>
-                          {day.isYear && !day.isFuture && (
-                            <TooltipContent side="top" className="text-xs">
-                              <p className="font-medium">
-                                {day.count} check-in{day.count !== 1 ? "s" : ""}
-                              </p>
-                              <p className="text-text-muted">
-                                {format(day.date, "MMM d, yyyy")}
-                              </p>
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </TooltipProvider>
+                    return (
+                      <Tooltip key={dayIndex} delayDuration={100}>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "w-[8px] h-[8px] rounded-[1px] transition-colors",
+                              day.isFuture
+                                ? "bg-bg-1/50"
+                                : !day.isYear
+                                  ? "bg-transparent"
+                                  : getColor(day.count, maxCount),
+                              isCurrentDay && "ring-1 ring-accent ring-offset-1"
+                            )}
+                          />
+                        </TooltipTrigger>
+                        {day.isYear && !day.isFuture && (
+                          <TooltipContent side="top" className="text-xs">
+                            <p className="font-medium">
+                              {day.count} check-in{day.count !== 1 ? "s" : ""}
+                            </p>
+                            <p className="text-text-muted">
+                              {format(day.date, "MMM d, yyyy")}
+                            </p>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Legend */}

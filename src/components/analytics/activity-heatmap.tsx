@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Calendar } from "lucide-react";
@@ -225,48 +224,46 @@ export function ActivityHeatmap({ data, year }: ActivityHeatmapProps) {
               </div>
 
               {/* Weeks */}
-              <TooltipProvider delayDuration={100}>
-                <div className="flex gap-[2px]">
-                  {grid.map((week, weekIndex) => (
-                    <div key={weekIndex} className="flex flex-col gap-[2px]">
-                      {week.map((day, dayIndex) => {
-                        const isCurrentDay = isToday(day.date);
-                        
-                        return (
-                          <Tooltip key={dayIndex}>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={cn(
-                                  "w-[10px] h-[10px] rounded-[2px] transition-colors",
-                                  day.isFuture 
-                                    ? "bg-bg-1/50" 
-                                    : !day.isYear 
-                                      ? "bg-transparent" 
-                                      : getColor(day.count, maxCount),
-                                  isCurrentDay && "ring-1 ring-accent ring-offset-1"
-                                )}
-                              />
-                            </TooltipTrigger>
-                            {day.isYear && !day.isFuture && (
-                              <TooltipContent 
-                                side="top" 
-                                className="text-xs"
-                              >
-                                <p className="font-medium">
-                                  {day.count} check-in{day.count !== 1 ? "s" : ""}
-                                </p>
-                                <p className="text-text-muted">
-                                  {format(day.date, "EEEE, MMM d, yyyy")}
-                                </p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </TooltipProvider>
+              <div className="flex gap-[2px]">
+                {grid.map((week, weekIndex) => (
+                  <div key={weekIndex} className="flex flex-col gap-[2px]">
+                    {week.map((day, dayIndex) => {
+                      const isCurrentDay = isToday(day.date);
+
+                      return (
+                        <Tooltip key={dayIndex} delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={cn(
+                                "w-[10px] h-[10px] rounded-[2px] transition-colors",
+                                day.isFuture
+                                  ? "bg-bg-1/50"
+                                  : !day.isYear
+                                    ? "bg-transparent"
+                                    : getColor(day.count, maxCount),
+                                isCurrentDay && "ring-1 ring-accent ring-offset-1"
+                              )}
+                            />
+                          </TooltipTrigger>
+                          {day.isYear && !day.isFuture && (
+                            <TooltipContent
+                              side="top"
+                              className="text-xs"
+                            >
+                              <p className="font-medium">
+                                {day.count} check-in{day.count !== 1 ? "s" : ""}
+                              </p>
+                              <p className="text-text-muted">
+                                {format(day.date, "EEEE, MMM d, yyyy")}
+                              </p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Legend */}
