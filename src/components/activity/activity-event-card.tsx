@@ -68,10 +68,14 @@ const getEventBadgeVariant = (type: EventType): "success" | "warning" | "danger"
       return "success";
     case "completed":
       return "success";
+    case "started":
+      return "success";
     case "deleted":
       return "danger";
     case "status_changed":
       return "warning";
+    case "role_changed":
+      return "secondary";
     default:
       return "secondary";
   }
@@ -213,17 +217,19 @@ export function ActivityEventCard({ event, defaultExpanded = false }: ActivityEv
           "w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5",
           event.event_type === "created" && "bg-status-success/10",
           event.event_type === "completed" && "bg-status-success/10",
+          event.event_type === "started" && "bg-status-success/10",
           event.event_type === "deleted" && "bg-status-danger/10",
           event.event_type === "status_changed" && "bg-status-warning/10",
-          !["created", "completed", "deleted", "status_changed"].includes(event.event_type) && "bg-bg-1 border border-border-soft"
+          !["created", "completed", "started", "deleted", "status_changed"].includes(event.event_type) && "bg-bg-1 border border-border-soft"
         )}>
           <EventIcon className={cn(
             "w-4 h-4",
             event.event_type === "created" && "text-status-success",
             event.event_type === "completed" && "text-status-success",
+            event.event_type === "started" && "text-status-success",
             event.event_type === "deleted" && "text-status-danger",
             event.event_type === "status_changed" && "text-status-warning",
-            !["created", "completed", "deleted", "status_changed"].includes(event.event_type) && "text-text-muted"
+            !["created", "completed", "started", "deleted", "status_changed"].includes(event.event_type) && "text-text-muted"
           )} />
         </div>
 

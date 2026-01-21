@@ -65,10 +65,12 @@ const eventTypeOptions: { value: EventType; label: string }[] = [
   { value: "created", label: "Created" },
   { value: "updated", label: "Updated" },
   { value: "completed", label: "Completed" },
+  { value: "started", label: "Started" },
   { value: "status_changed", label: "Status Changed" },
   { value: "deleted", label: "Deleted" },
   { value: "joined", label: "Joined" },
   { value: "left", label: "Left" },
+  { value: "role_changed", label: "Role Changed" },
 ];
 
 export function ActivityFilters({ filters, onFiltersChange }: ActivityFiltersProps) {
