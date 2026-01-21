@@ -66,6 +66,17 @@ export function useAnnualKrWithDetails(krId: string) {
   });
 }
 
+/**
+ * Get tag IDs for a KR
+ */
+export function useKrTagIds(krId: string | null) {
+  return useQuery({
+    queryKey: krId ? queryKeys.annualKrs.tags(krId) : [],
+    queryFn: () => api.getKrTagIds(krId!),
+    enabled: !!krId,
+  });
+}
+
 // ============================================================================
 // MUTATIONS
 // ============================================================================

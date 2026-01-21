@@ -68,6 +68,7 @@ export const queryKeys = {
     byObjective: (objectiveId: string) => [...queryKeys.annualKrs.all, "byObjective", objectiveId] as const,
     detail: (krId: string) => [...queryKeys.annualKrs.all, "detail", krId] as const,
     withDetails: (krId: string) => [...queryKeys.annualKrs.all, "withDetails", krId] as const,
+    tags: (krId: string) => [...queryKeys.annualKrs.all, "tags", krId] as const,
   },
 
   // Quarter Targets

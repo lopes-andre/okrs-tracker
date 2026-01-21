@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use, useMemo } from "react";
+import { useState, use, useMemo, useEffect } from "react";
 import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -27,6 +27,7 @@ import {
   useUpdateAnnualKr,
   useDeleteAnnualKr,
   useSetKrTags,
+  useKrTagIds,
   useUpsertQuarterTargets,
   useKrGroups,
   useTags,
@@ -139,6 +140,16 @@ export default function OKRsPage({
   const [checkInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [checkInKr, setCheckInKr] = useState<(AnnualKr & { quarter_targets?: QuarterTarget[] }) | null>(null);
 
+  // Fetch current tags when editing a KR
+  const { data: editingKrTagIds } = useKrTagIds(editingKr?.id ?? null);
+
+  // Pre-populate tags when editing a KR
+  useEffect(() => {
+    if (editingKrTagIds) {
+      setKrSelectedTags(editingKrTagIds);
+    }
+  }, [editingKrTagIds]);
+
   // Permission check
   const canEdit = role === "owner" || role === "editor";
   const isLoading = planLoading || roleLoading || objectivesLoading;
@@ -203,8 +214,7 @@ export default function OKRsPage({
   function handleEditKr(kr: AnnualKr, objectiveId: string) {
     setEditingKr(kr);
     setKrObjectiveId(objectiveId);
-    // TODO: Fetch current tags for the KR
-    setKrSelectedTags([]);
+    setKrSelectedTags([]); // Cleared initially, populated by useEffect when tags are fetched
     setKrDialogOpen(true);
   }
 

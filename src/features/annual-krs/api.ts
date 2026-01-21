@@ -235,6 +235,21 @@ export async function removeTagFromKr(krId: string, tagId: string): Promise<void
 }
 
 /**
+ * Get tag IDs for a KR
+ */
+export async function getKrTagIds(krId: string): Promise<string[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("annual_kr_tags")
+    .select("tag_id")
+    .eq("annual_kr_id", krId) as { data: { tag_id: string }[] | null; error: unknown };
+
+  if (error) throw error;
+  return (data || []).map((row) => row.tag_id);
+}
+
+/**
  * Set all tags for a KR (replace existing)
  */
 export async function setKrTags(krId: string, tagIds: string[]): Promise<void> {
