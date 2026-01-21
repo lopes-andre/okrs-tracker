@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import type { Formatter } from "recharts/types/component/DefaultTooltipContent";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import {
@@ -151,12 +152,11 @@ export function BurnupChart({ krs, checkIns, year }: BurnupChartProps) {
                     borderRadius: "8px",
                     fontSize: "12px",
                   }}
-                  formatter={((value: number | null, name: string) => {
-                    if (value === null) return ["—", name];
+                  formatter={((value, name) => {
+                    if (typeof value !== "number") return ["—", String(name)];
                     const label = name === "target" ? "Target" : "Actual";
                     return [`${value.toLocaleString()}${selectedKr.unit ? ` ${selectedKr.unit}` : ""}`, label];
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  }) as any}
+                  }) as Formatter<number, string>}
                   labelFormatter={(_, payload) => {
                     if (payload && payload[0]) {
                       return payload[0].payload.fullWeek;

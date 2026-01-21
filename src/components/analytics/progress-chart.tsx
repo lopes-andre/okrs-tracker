@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import type { Formatter } from "recharts/types/component/DefaultTooltipContent";
 import { Card, CardContent } from "@/components/ui/card";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Button } from "@/components/ui/button";
@@ -206,16 +207,17 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={((value: number, name: string) => {
-                  const krId = name.replace("kr_", "").replace("expected_", "");
+                formatter={((value, name) => {
+                  if (typeof value !== "number") return null;
+                  const nameStr = String(name);
+                  const krId = nameStr.replace("kr_", "").replace("expected_", "");
                   const kr = krs.find((k) => k.id === krId);
-                  const isExpected = name.startsWith("expected_");
+                  const isExpected = nameStr.startsWith("expected_");
                   return [
                     `${value.toLocaleString()}${kr?.unit ? ` ${kr.unit}` : ""}`,
                     isExpected ? `${kr?.name ?? "KR"} (Expected)` : kr?.name ?? "KR"
                   ];
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }) as any}
+                }) as Formatter<number, string>}
               />
 
               {/* Actual value lines */}

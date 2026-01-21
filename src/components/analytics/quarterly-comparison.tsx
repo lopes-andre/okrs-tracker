@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import type { Formatter } from "recharts/types/component/DefaultTooltipContent";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, TrendingUp, TrendingDown } from "lucide-react";
@@ -154,11 +155,11 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
                 borderRadius: "8px",
                 fontSize: "12px",
               }}
-              formatter={((value: number, name: string) => {
+              formatter={((value, name) => {
+                if (typeof value !== "number") return null;
                 const label = name === "targetProgress" ? "Target" : "Actual";
                 return [`${value.toFixed(1)}%`, label];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              }) as any}
+              }) as Formatter<number, string>}
             />
 
             {/* Target bars (background) */}

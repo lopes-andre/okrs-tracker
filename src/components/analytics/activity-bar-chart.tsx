@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import type { Formatter } from "recharts/types/component/DefaultTooltipContent";
 import { ExpandableCard } from "@/components/ui/expandable-card";
 import {
   Select,
@@ -115,8 +116,10 @@ export function ActivityBarChart({ checkIns, year }: ActivityBarChartProps) {
                 borderRadius: "8px",
                 fontSize: "12px",
               }}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              formatter={((value: number) => [`${value} check-ins`, ""]) as any}
+              formatter={((value) => {
+                if (typeof value !== "number") return null;
+                return [`${value} check-ins`, ""];
+              }) as Formatter<number, string>}
               labelFormatter={(_, payload) => {
                 if (payload && payload[0]) {
                   return payload[0].payload.fullLabel;
