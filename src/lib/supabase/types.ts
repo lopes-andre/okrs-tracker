@@ -283,6 +283,7 @@ export interface TaskReminderSettings {
   time_reminder_15min: boolean;
   time_reminder_10min: boolean;
   time_reminder_5min: boolean;
+  time_reminder_on_time: boolean;
   time_reminder_overdue_30min: boolean;
   // Timestamps
   created_at: string;

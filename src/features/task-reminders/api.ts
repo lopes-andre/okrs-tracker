@@ -40,6 +40,7 @@ export async function getOrCreateTaskReminderSettings(
     time_reminder_15min: true,
     time_reminder_10min: true,
     time_reminder_5min: true,
+    time_reminder_on_time: true,
     time_reminder_overdue_30min: true,
   };
 

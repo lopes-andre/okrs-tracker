@@ -69,6 +69,7 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
   const [timeReminder15min, setTimeReminder15min] = useState(true);
   const [timeReminder10min, setTimeReminder10min] = useState(true);
   const [timeReminder5min, setTimeReminder5min] = useState(true);
+  const [timeReminderOnTime, setTimeReminderOnTime] = useState(true);
   const [timeReminderOverdue30min, setTimeReminderOverdue30min] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -87,6 +88,7 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       setTimeReminder15min(settings.time_reminder_15min);
       setTimeReminder10min(settings.time_reminder_10min);
       setTimeReminder5min(settings.time_reminder_5min);
+      setTimeReminderOnTime(settings.time_reminder_on_time ?? true);
       setTimeReminderOverdue30min(settings.time_reminder_overdue_30min);
       setHasChanges(false);
     }
@@ -108,6 +110,7 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       timeReminder15min !== settings.time_reminder_15min ||
       timeReminder10min !== settings.time_reminder_10min ||
       timeReminder5min !== settings.time_reminder_5min ||
+      timeReminderOnTime !== (settings.time_reminder_on_time ?? true) ||
       timeReminderOverdue30min !== settings.time_reminder_overdue_30min;
     setHasChanges(changed);
   }, [
@@ -124,6 +127,7 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
     timeReminder15min,
     timeReminder10min,
     timeReminder5min,
+    timeReminderOnTime,
     timeReminderOverdue30min,
   ]);
 
@@ -147,6 +151,7 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       time_reminder_15min: timeReminder15min,
       time_reminder_10min: timeReminder10min,
       time_reminder_5min: timeReminder5min,
+      time_reminder_on_time: timeReminderOnTime,
       time_reminder_overdue_30min: timeReminderOverdue30min,
     });
     setHasChanges(false);
@@ -415,6 +420,17 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
                     />
                     <Label htmlFor="reminder5" className="text-small">
                       5 minutes before
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="reminderOnTime"
+                      checked={timeReminderOnTime}
+                      onCheckedChange={(checked) => setTimeReminderOnTime(checked as boolean)}
+                      disabled={!canEdit}
+                    />
+                    <Label htmlFor="reminderOnTime" className="text-small font-medium text-accent">
+                      Right on time (at due time)
                     </Label>
                   </div>
                   <div className="flex items-center gap-2">
