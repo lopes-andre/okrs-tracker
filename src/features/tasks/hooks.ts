@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
 import * as api from "./api";
-import type { TaskInsert, TaskUpdate, TaskFilters, TaskStatus } from "@/lib/supabase/types";
+import type { Task, TaskInsert, TaskUpdate, TaskFilters, TaskStatus } from "@/lib/supabase/types";
 
 // ============================================================================
 // QUERIES
@@ -221,7 +221,7 @@ export function useUpdateTask(planId: string) {
 }
 
 /**
- * Update task status (convenience hook)
+ * Update task status (convenience hook) with optimistic updates
  */
 export function useUpdateTaskStatus(planId: string) {
   const queryClient = useQueryClient();
@@ -230,28 +230,62 @@ export function useUpdateTaskStatus(planId: string) {
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       api.updateTaskStatus(taskId, status),
+    onMutate: async ({ taskId, status }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.list(planId) });
+
+      // Snapshot the previous task detail
+      const previousTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(taskId));
+
+      // Optimistically update the task detail
+      if (previousTask) {
+        queryClient.setQueryData<Task>(queryKeys.tasks.detail(taskId), {
+          ...previousTask,
+          status,
+          completed_at: status === "completed" ? new Date().toISOString() : null,
+        });
+      }
+
+      // Optimistically update in list queries (grouped and regular)
+      const listQueryKey = queryKeys.tasks.list(planId);
+      queryClient.setQueriesData<Task[]>(
+        { queryKey: listQueryKey, exact: false },
+        (old) => old?.map((task) =>
+          task.id === taskId
+            ? { ...task, status, completed_at: status === "completed" ? new Date().toISOString() : null }
+            : task
+        )
+      );
+
+      return { previousTask, taskId };
+    },
+    onError: (error, { taskId }, context) => {
+      // Rollback on error
+      if (context?.previousTask) {
+        queryClient.setQueryData(queryKeys.tasks.detail(taskId), context.previousTask);
+      }
+      toast(formatErrorMessage(error));
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
-      // Invalidate timeline for activity events
-      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
-      // Invalidate plan stats to update counters
-      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
-      
       if (data.status === "completed") {
         toast(successMessages.taskCompleted);
       } else {
         toast(successMessages.taskUpdated);
       }
     },
-    onError: (error) => {
-      toast(formatErrorMessage(error));
+    onSettled: (_data, _error, { taskId }) => {
+      // Always refetch to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
     },
   });
 }
 
 /**
- * Complete a task
+ * Complete a task with optimistic updates
  */
 export function useCompleteTask(planId: string) {
   const queryClient = useQueryClient();
@@ -259,17 +293,52 @@ export function useCompleteTask(planId: string) {
 
   return useMutation({
     mutationFn: (taskId: string) => api.completeTask(taskId),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
-      // Invalidate timeline for activity events
-      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
-      // Invalidate plan stats to update counters
-      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
+    onMutate: async (taskId) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      await queryClient.cancelQueries({ queryKey: queryKeys.tasks.list(planId) });
+
+      // Snapshot the previous task detail
+      const previousTask = queryClient.getQueryData<Task>(queryKeys.tasks.detail(taskId));
+
+      // Optimistically update the task detail
+      if (previousTask) {
+        queryClient.setQueryData<Task>(queryKeys.tasks.detail(taskId), {
+          ...previousTask,
+          status: "completed" as TaskStatus,
+          completed_at: new Date().toISOString(),
+        });
+      }
+
+      // Optimistically update in list queries
+      const listQueryKey = queryKeys.tasks.list(planId);
+      queryClient.setQueriesData<Task[]>(
+        { queryKey: listQueryKey, exact: false },
+        (old) => old?.map((task) =>
+          task.id === taskId
+            ? { ...task, status: "completed" as TaskStatus, completed_at: new Date().toISOString() }
+            : task
+        )
+      );
+
+      return { previousTask, taskId };
+    },
+    onError: (error, taskId, context) => {
+      // Rollback on error
+      if (context?.previousTask) {
+        queryClient.setQueryData(queryKeys.tasks.detail(taskId), context.previousTask);
+      }
+      toast(formatErrorMessage(error));
+    },
+    onSuccess: () => {
       toast(successMessages.taskCompleted);
     },
-    onError: (error) => {
-      toast(formatErrorMessage(error));
+    onSettled: (_data, _error, taskId) => {
+      // Always refetch to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
     },
   });
 }

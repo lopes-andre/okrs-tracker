@@ -5,7 +5,7 @@ import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
 import * as api from "./api";
-import type { CheckInFilters, CheckInUpdate } from "@/lib/supabase/types";
+import type { CheckIn, CheckInFilters, CheckInUpdate } from "@/lib/supabase/types";
 
 // ============================================================================
 // QUERIES
@@ -87,7 +87,7 @@ export function useCheckInsByDay(planId: string) {
 // ============================================================================
 
 /**
- * Create a check-in (records progress)
+ * Create a check-in (records progress) with optimistic updates
  */
 export function useCreateCheckIn() {
   const queryClient = useQueryClient();
@@ -95,29 +95,69 @@ export function useCreateCheckIn() {
 
   return useMutation({
     mutationFn: (checkIn: Parameters<typeof api.createCheckIn>[0]) => api.createCheckIn(checkIn),
+    onMutate: async (newCheckIn) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: queryKeys.checkIns.byKr(newCheckIn.annual_kr_id) });
+
+      // Snapshot the previous value
+      const previousCheckIns = queryClient.getQueryData<CheckIn[]>(
+        queryKeys.checkIns.byKr(newCheckIn.annual_kr_id)
+      );
+
+      // Optimistically add the new check-in
+      const optimisticCheckIn: CheckIn = {
+        id: `temp-${Date.now()}`,
+        annual_kr_id: newCheckIn.annual_kr_id,
+        quarter_target_id: newCheckIn.quarter_target_id ?? null,
+        value: newCheckIn.value,
+        previous_value: null,
+        note: newCheckIn.note ?? null,
+        evidence_url: newCheckIn.evidence_url ?? null,
+        recorded_at: new Date().toISOString(),
+        recorded_by: newCheckIn.recorded_by,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<CheckIn[]>(
+        queryKeys.checkIns.byKr(newCheckIn.annual_kr_id),
+        (old) => [optimisticCheckIn, ...(old || [])]
+      );
+
+      // Return context with the snapshotted value
+      return { previousCheckIns, annualKrId: newCheckIn.annual_kr_id };
+    },
+    onError: (error, _newCheckIn, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousCheckIns !== undefined) {
+        queryClient.setQueryData(
+          queryKeys.checkIns.byKr(context.annualKrId),
+          context.previousCheckIns
+        );
+      }
+      toast(formatErrorMessage(error));
+    },
     onSuccess: (data) => {
-      // Invalidate ALL check-in queries (critical for quarterly progress updates)
-      queryClient.invalidateQueries({ queryKey: ["checkIns"] });
-      
+      toast(successMessages.checkInRecorded);
+
       // Also invalidate KR queries since current_value is updated
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.detail(data.annual_kr_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.withDetails(data.annual_kr_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });
-      
+
       // Invalidate timeline
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.all });
-      
-      toast(successMessages.checkInRecorded);
     },
-    onError: (error) => {
-      toast(formatErrorMessage(error));
+    onSettled: (_data, _error, variables) => {
+      // Always refetch to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.byKr(variables.annual_kr_id) });
+      queryClient.invalidateQueries({ queryKey: ["checkIns"] });
     },
   });
 }
 
 /**
- * Quick check-in (simplified)
+ * Quick check-in (simplified) with optimistic updates
  */
 export function useQuickCheckIn() {
   const queryClient = useQueryClient();
@@ -137,18 +177,58 @@ export function useQuickCheckIn() {
       evidenceUrl?: string;
       quarterTargetId?: string;
     }) => api.quickCheckIn(annualKrId, value, note, evidenceUrl, quarterTargetId),
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.checkIns.byKr(variables.annualKrId) });
+
+      // Snapshot the previous value
+      const previousCheckIns = queryClient.getQueryData<CheckIn[]>(
+        queryKeys.checkIns.byKr(variables.annualKrId)
+      );
+
+      // Optimistically add the new check-in
+      const optimisticCheckIn: CheckIn = {
+        id: `temp-${Date.now()}`,
+        annual_kr_id: variables.annualKrId,
+        quarter_target_id: variables.quarterTargetId ?? null,
+        value: variables.value,
+        previous_value: null,
+        note: variables.note ?? null,
+        evidence_url: variables.evidenceUrl ?? null,
+        recorded_at: new Date().toISOString(),
+        recorded_by: "", // Will be set by server
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<CheckIn[]>(
+        queryKeys.checkIns.byKr(variables.annualKrId),
+        (old) => [optimisticCheckIn, ...(old || [])]
+      );
+
+      return { previousCheckIns, annualKrId: variables.annualKrId };
+    },
+    onError: (error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousCheckIns !== undefined) {
+        queryClient.setQueryData(
+          queryKeys.checkIns.byKr(context.annualKrId),
+          context.previousCheckIns
+        );
+      }
+      toast(formatErrorMessage(error));
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.byKr(data.annual_kr_id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.all });
+      toast(successMessages.checkInRecorded);
+
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.detail(data.annual_kr_id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.timeline.all });
-      
-      toast(successMessages.checkInRecorded);
     },
-    onError: (error) => {
-      toast(formatErrorMessage(error));
+    onSettled: (_data, _error, variables) => {
+      // Always refetch to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.byKr(variables.annualKrId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.checkIns.all });
     },
   });
 }
