@@ -22,21 +22,15 @@ export const taskReminderKeys = {
 // SETTINGS HOOKS
 // ============================================================================
 
-/**
- * Get task reminder settings for a plan
- */
 export function useTaskReminderSettings(planId: string) {
   return useQuery({
     queryKey: taskReminderKeys.settings(planId),
     queryFn: () => api.getOrCreateTaskReminderSettings(planId),
     enabled: !!planId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 }
 
-/**
- * Update task reminder settings
- */
 export function useUpdateTaskReminderSettings(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -46,10 +40,7 @@ export function useUpdateTaskReminderSettings(planId: string) {
       api.updateTaskReminderSettings(planId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: taskReminderKeys.settings(planId) });
-      toast({
-        title: "Settings saved",
-        variant: "success",
-      });
+      toast({ title: "Settings saved", variant: "success" });
     },
     onError: (error) => {
       toast(formatErrorMessage(error));
@@ -61,27 +52,21 @@ export function useUpdateTaskReminderSettings(planId: string) {
 // TASK SUMMARY HOOKS
 // ============================================================================
 
-/**
- * Get tasks due summary for reminders
- */
 export function useTasksDueSummary(planId: string) {
   return useQuery({
     queryKey: taskReminderKeys.dueSummary(planId),
     queryFn: () => api.getTasksDueSummary(planId),
     enabled: !!planId,
-    refetchInterval: 60 * 1000, // Refetch every minute
+    refetchInterval: 5 * 60 * 1000, // Every 5 minutes is enough for summary
   });
 }
 
-/**
- * Get tasks with due time
- */
 export function useTasksWithDueTime(planId: string) {
   return useQuery({
     queryKey: taskReminderKeys.tasksWithTime(planId),
     queryFn: () => api.getTasksWithDueTime(planId),
     enabled: !!planId,
-    refetchInterval: 30 * 1000, // Refetch every 30 seconds
+    refetchInterval: 2 * 60 * 1000, // Every 2 minutes - we schedule timeouts from this
   });
 }
 
@@ -96,10 +81,8 @@ export function useNotificationPermission() {
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    // Check if notifications are supported
     const supported = typeof window !== "undefined" && "Notification" in window;
     setIsSupported(supported);
-
     if (supported) {
       setPermission(Notification.permission);
     }
@@ -107,7 +90,6 @@ export function useNotificationPermission() {
 
   const requestPermission = useCallback(async () => {
     if (!isSupported) return "denied" as NotificationPermission;
-
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
@@ -139,7 +121,6 @@ export function useServiceWorker() {
       return;
     }
 
-    // Register the service worker
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {
@@ -163,54 +144,35 @@ export function useReminderSound() {
 
   const playSound = useCallback((type: "normal" | "urgent" = "normal") => {
     try {
-      // Create audio context on demand
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       }
 
       const ctx = audioContextRef.current;
-
-      // Resume audio context if suspended (browser policy)
       if (ctx.state === "suspended") {
         ctx.resume();
       }
 
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
+      const playBeep = (frequency: number, startTime: number, duration: number, volume: number) => {
+        const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+        oscillator.type = "sine";
+        gainNode.gain.setValueAtTime(volume, startTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
 
       if (type === "urgent") {
-        // Urgent: Higher pitch, longer duration, double beep
-        oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
-        oscillator.type = "sine";
-        gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.3);
-
-        // Second beep
-        setTimeout(() => {
-          const osc2 = ctx.createOscillator();
-          const gain2 = ctx.createGain();
-          osc2.connect(gain2);
-          gain2.connect(ctx.destination);
-          osc2.frequency.setValueAtTime(880, ctx.currentTime);
-          osc2.type = "sine";
-          gain2.gain.setValueAtTime(0.3, ctx.currentTime);
-          gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-          osc2.start(ctx.currentTime);
-          osc2.stop(ctx.currentTime + 0.3);
-        }, 350);
+        // Double beep for urgent notifications
+        playBeep(880, ctx.currentTime, 0.15, 0.3);
+        playBeep(880, ctx.currentTime + 0.2, 0.15, 0.3);
       } else {
-        // Normal: Pleasant notification sound
-        oscillator.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-        oscillator.type = "sine";
-        gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.2);
+        // Single pleasant beep
+        playBeep(587.33, ctx.currentTime, 0.2, 0.2);
       }
     } catch (error) {
       console.error("Failed to play notification sound:", error);
@@ -221,7 +183,7 @@ export function useReminderSound() {
 }
 
 // ============================================================================
-// IN-APP NOTIFICATION CONTEXT
+// IN-APP NOTIFICATION CONTEXT (for future use)
 // ============================================================================
 
 export interface ReminderNotification {
@@ -287,12 +249,12 @@ export function useNotificationSender() {
         playSound(soundType);
       }
 
-      // Always show in-app toast notification (highest priority)
+      // Always show in-app toast (works regardless of system permission)
       toast({
         title,
         description: notifOptions.body,
         variant: soundType === "urgent" ? "destructive" : "default",
-        duration: soundType === "urgent" ? 10000 : 5000, // Longer for urgent
+        duration: soundType === "urgent" ? 10000 : 5000,
       });
 
       // Also send system notification if permission granted
@@ -306,30 +268,26 @@ export function useNotificationSender() {
         };
 
         try {
-          // Try using service worker for persistent notifications
           if (registration) {
             await registration.showNotification(title, defaultOptions);
-            return true;
+          } else {
+            new Notification(title, defaultOptions);
           }
-
-          // Fallback to regular Notification API
-          new Notification(title, defaultOptions);
-          return true;
         } catch (error) {
           console.error("Failed to send system notification:", error);
         }
       }
 
-      return true; // In-app notification always succeeds
+      return true;
     },
     [registration, isGranted, playSound, toast]
   );
 
-  return { sendNotification, isReady: true }; // Always ready for in-app notifications
+  return { sendNotification, isReady: true };
 }
 
 // ============================================================================
-// REMINDER SCHEDULER HOOK
+// REMINDER SCHEDULER HOOK - EFFICIENT TIMEOUT-BASED APPROACH
 // ============================================================================
 
 interface ReminderSchedulerOptions {
@@ -338,45 +296,154 @@ interface ReminderSchedulerOptions {
   settings: ReturnType<typeof useTaskReminderSettings>["data"];
 }
 
-// Time window constants (in milliseconds)
-const CHECK_INTERVAL = 10 * 1000; // Check every 10 seconds
+// Reminder offsets in minutes (positive = before, negative = after due time)
+const REMINDER_TYPES = [
+  { key: "15min", offsetMinutes: 15, label: "15 minutes", urgent: false },
+  { key: "10min", offsetMinutes: 10, label: "10 minutes", urgent: false },
+  { key: "5min", offsetMinutes: 5, label: "5 minutes", urgent: true },
+  { key: "ontime", offsetMinutes: 0, label: "now", urgent: true },
+  { key: "overdue30", offsetMinutes: -30, label: "30 minutes late", urgent: true },
+] as const;
+
+type ReminderKey = typeof REMINDER_TYPES[number]["key"];
 
 export function useReminderScheduler({ planId, enabled, settings }: ReminderSchedulerOptions) {
   const { sendNotification } = useNotificationSender();
   const { data: dueSummary } = useTasksDueSummary(planId);
-  const { refetch: refetchTasks } = useTasksWithDueTime(planId);
+  const { data: tasksWithTime } = useTasksWithDueTime(planId);
 
-  // Track which reminders have been sent to avoid duplicates
-  // Key format: "{reminderType}-{taskId}-{date}"
+  // Track scheduled timeouts and sent reminders
+  const scheduledTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const sentReminders = useRef<Set<string>>(new Set());
-  const lastCheckTime = useRef<number>(0);
 
-  // Hourly summary reminder
+  // Check if a reminder type is enabled in settings
+  const isReminderEnabled = useCallback((key: ReminderKey): boolean => {
+    if (!settings) return false;
+    switch (key) {
+      case "15min": return settings.time_reminder_15min;
+      case "10min": return settings.time_reminder_10min;
+      case "5min": return settings.time_reminder_5min;
+      case "ontime": return settings.time_reminder_on_time ?? true;
+      case "overdue30": return settings.time_reminder_overdue_30min;
+      default: return false;
+    }
+  }, [settings]);
+
+  // Schedule reminders for a single task - EFFICIENT: only sets timeouts, no polling
+  const scheduleTaskReminders = useCallback((task: { id: string; title: string; due_time: string }) => {
+    if (!settings) return;
+
+    // Capture settings values for the closure
+    const capturedSettings = {
+      sound_enabled: settings.sound_enabled,
+      business_hours_enabled: settings.business_hours_enabled,
+      business_hours_start: settings.business_hours_start,
+      business_hours_end: settings.business_hours_end,
+      business_days: settings.business_days,
+    };
+
+    const now = new Date();
+    const today = now.toDateString();
+    const [hours, minutes] = task.due_time.split(":").map(Number);
+    const dueTime = new Date();
+    dueTime.setHours(hours, minutes, 0, 0);
+
+    REMINDER_TYPES.forEach((reminder) => {
+      if (!isReminderEnabled(reminder.key)) return;
+
+      const reminderKey = `${reminder.key}-${task.id}-${today}`;
+
+      // Skip if already sent or already scheduled
+      if (sentReminders.current.has(reminderKey)) return;
+      if (scheduledTimeouts.current.has(reminderKey)) return;
+
+      // Calculate when this reminder should fire
+      const reminderTime = new Date(dueTime.getTime() - reminder.offsetMinutes * 60 * 1000);
+      const msUntilReminder = reminderTime.getTime() - now.getTime();
+
+      // Only schedule if reminder is in the future (with 5 second grace period for near-misses)
+      if (msUntilReminder > -5000) {
+        const delay = Math.max(0, msUntilReminder);
+
+        const timeout = setTimeout(() => {
+          // Double-check we haven't sent this already
+          if (sentReminders.current.has(reminderKey)) return;
+          sentReminders.current.add(reminderKey);
+          scheduledTimeouts.current.delete(reminderKey);
+
+          // Check business hours at fire time
+          if (capturedSettings.business_hours_enabled && !isWithinBusinessHours(capturedSettings)) {
+            return;
+          }
+
+          // Build notification message
+          let title: string;
+          let body: string;
+
+          if (reminder.key === "ontime") {
+            title = `"${task.title}" is due NOW!`;
+            body = "This task is due right now!";
+          } else if (reminder.key === "overdue30") {
+            title = `"${task.title}" is 30 minutes LATE!`;
+            body = "This task is overdue - please complete it or reschedule";
+          } else {
+            title = `"${task.title}" is due in ${reminder.label}`;
+            body = `Task reminder - ${reminder.label} left`;
+          }
+
+          sendNotification(title, {
+            body,
+            tag: `task-${task.id}-${reminder.key}`,
+            soundEnabled: capturedSettings.sound_enabled,
+            soundType: reminder.urgent ? "urgent" : "normal",
+            requireInteraction: reminder.urgent,
+            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
+          });
+
+          console.log(`[Reminders] Fired: ${reminder.key} for "${task.title}"`);
+        }, delay);
+
+        scheduledTimeouts.current.set(reminderKey, timeout);
+        console.log(`[Reminders] Scheduled: ${reminder.key} for "${task.title}" in ${Math.round(delay / 1000)}s`);
+      }
+    });
+  }, [settings, isReminderEnabled, sendNotification, planId]);
+
+  // Schedule reminders when tasks data changes
+  useEffect(() => {
+    if (!enabled || !settings || !tasksWithTime?.length) {
+      return;
+    }
+
+    // Schedule reminders for all tasks with due times
+    tasksWithTime.forEach(scheduleTaskReminders);
+
+    // Cleanup function: clear all scheduled timeouts
+    return () => {
+      scheduledTimeouts.current.forEach((timeout) => clearTimeout(timeout));
+      scheduledTimeouts.current.clear();
+    };
+  }, [enabled, settings, tasksWithTime, scheduleTaskReminders]);
+
+  // Hourly summary reminder (still uses interval, but only checks once per minute)
   useEffect(() => {
     if (!enabled || !settings?.hourly_reminders_enabled || !dueSummary) {
       return;
     }
 
-    // Check business hours
-    if (settings.business_hours_enabled && !isWithinBusinessHours(settings)) {
-      return;
-    }
-
-    const checkAndSendHourlySummary = () => {
+    const checkHourlySummary = () => {
       const now = new Date();
-      const currentHour = now.getHours();
-      const today = now.toDateString();
-      const summaryKey = `hourly-${today}-${currentHour}`;
 
-      // Only send once per hour
-      if (sentReminders.current.has(summaryKey)) {
+      // Only send at the top of the hour (first 2 minutes)
+      if (now.getMinutes() > 1) return;
+
+      // Check business hours
+      if (settings.business_hours_enabled && !isWithinBusinessHours(settings)) {
         return;
       }
 
-      // Only send at the top of the hour (within first minute)
-      if (now.getMinutes() > 1) {
-        return;
-      }
+      const summaryKey = `hourly-${now.toDateString()}-${now.getHours()}`;
+      if (sentReminders.current.has(summaryKey)) return;
 
       const { dueToday, overdue } = dueSummary;
       if (dueToday > 0 || overdue > 0) {
@@ -401,143 +468,12 @@ export function useReminderScheduler({ planId, enabled, settings }: ReminderSche
       }
     };
 
-    // Check immediately
-    checkAndSendHourlySummary();
-
-    // Check every minute for hourly summaries
-    const interval = setInterval(checkAndSendHourlySummary, 60 * 1000);
+    checkHourlySummary();
+    // Check once per minute - minimal overhead
+    const interval = setInterval(checkHourlySummary, 60 * 1000);
 
     return () => clearInterval(interval);
   }, [enabled, settings, dueSummary, planId, sendNotification]);
-
-  // Time-specific task reminders
-  useEffect(() => {
-    if (!enabled || !settings) {
-      return;
-    }
-
-    const checkTimeReminders = async () => {
-      const now = Date.now();
-
-      // Prevent checking too frequently
-      if (now - lastCheckTime.current < CHECK_INTERVAL - 1000) {
-        return;
-      }
-      lastCheckTime.current = now;
-
-      // Refetch tasks to get fresh data
-      const { data: freshTasks } = await refetchTasks();
-      if (!freshTasks?.length) {
-        return;
-      }
-
-      // Check business hours
-      if (settings.business_hours_enabled && !isWithinBusinessHours(settings)) {
-        return;
-      }
-
-      const nowDate = new Date();
-      const today = nowDate.toDateString();
-
-      freshTasks.forEach((task) => {
-        const [hours, minutes] = task.due_time.split(":").map(Number);
-        const dueTime = new Date();
-        dueTime.setHours(hours, minutes, 0, 0);
-
-        const diffMs = dueTime.getTime() - nowDate.getTime();
-        const diffMinutes = diffMs / 60000;
-
-        // Helper to check if we should send a reminder
-        const shouldSendReminder = (
-          targetMinutes: number,
-          settingEnabled: boolean,
-          keyPrefix: string
-        ): boolean => {
-          if (!settingEnabled) return false;
-
-          const key = `${keyPrefix}-${task.id}-${today}`;
-          if (sentReminders.current.has(key)) return false;
-
-          // Check if we're within the time window for this reminder
-          // e.g., for 15-minute reminder: between 14.5 and 15.5 minutes before
-          const lowerBound = targetMinutes - 0.5;
-          const upperBound = targetMinutes + 0.5;
-
-          if (diffMinutes >= lowerBound && diffMinutes <= upperBound) {
-            sentReminders.current.add(key);
-            return true;
-          }
-
-          return false;
-        };
-
-        // 15 minutes before
-        if (shouldSendReminder(15, settings.time_reminder_15min, "15min")) {
-          sendNotification(`"${task.title}" is due in 15 minutes`, {
-            body: "Task reminder - 15 minutes left",
-            tag: `task-${task.id}-15min`,
-            soundEnabled: settings.sound_enabled,
-            soundType: "normal",
-            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
-          });
-        }
-
-        // 10 minutes before
-        if (shouldSendReminder(10, settings.time_reminder_10min, "10min")) {
-          sendNotification(`"${task.title}" is due in 10 minutes`, {
-            body: "Task reminder - 10 minutes left",
-            tag: `task-${task.id}-10min`,
-            soundEnabled: settings.sound_enabled,
-            soundType: "normal",
-            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
-          });
-        }
-
-        // 5 minutes before
-        if (shouldSendReminder(5, settings.time_reminder_5min, "5min")) {
-          sendNotification(`"${task.title}" is due in 5 minutes`, {
-            body: "Task reminder - 5 minutes left!",
-            tag: `task-${task.id}-5min`,
-            soundEnabled: settings.sound_enabled,
-            soundType: "urgent",
-            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
-          });
-        }
-
-        // Right on time (0 minutes)
-        if (shouldSendReminder(0, settings.time_reminder_on_time ?? true, "ontime")) {
-          sendNotification(`"${task.title}" is due NOW!`, {
-            body: "This task is due right now!",
-            tag: `task-${task.id}-ontime`,
-            soundEnabled: settings.sound_enabled,
-            soundType: "urgent",
-            requireInteraction: true,
-            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
-          });
-        }
-
-        // 30 minutes overdue (diffMinutes will be negative)
-        if (shouldSendReminder(-30, settings.time_reminder_overdue_30min, "overdue30")) {
-          sendNotification(`"${task.title}" is 30 minutes LATE!`, {
-            body: "This task is overdue - please complete it or reschedule",
-            tag: `task-${task.id}-overdue`,
-            soundEnabled: settings.sound_enabled,
-            soundType: "urgent",
-            requireInteraction: true,
-            data: { url: `/plans/${planId}/tasks`, taskId: task.id },
-          });
-        }
-      });
-    };
-
-    // Check immediately
-    checkTimeReminders();
-
-    // Check every 10 seconds for precise timing
-    const interval = setInterval(checkTimeReminders, CHECK_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [enabled, settings, planId, sendNotification, refetchTasks]);
 
   // Clear sent reminders at midnight
   useEffect(() => {
@@ -553,21 +489,13 @@ export function useReminderScheduler({ planId, enabled, settings }: ReminderSche
     return () => clearTimeout(timeout);
   }, []);
 
-  // Debug: Log when scheduler is active
+  // Debug logging
   useEffect(() => {
-    if (enabled) {
+    if (enabled && settings) {
       console.log("[Reminders] Scheduler active for plan:", planId);
-      console.log("[Reminders] Settings:", {
-        sound: settings?.sound_enabled,
-        hourly: settings?.hourly_reminders_enabled,
-        "15min": settings?.time_reminder_15min,
-        "10min": settings?.time_reminder_10min,
-        "5min": settings?.time_reminder_5min,
-        onTime: settings?.time_reminder_on_time,
-        "30min overdue": settings?.time_reminder_overdue_30min,
-      });
+      console.log("[Reminders] Tasks with due time:", tasksWithTime?.length ?? 0);
     }
-  }, [enabled, planId, settings]);
+  }, [enabled, planId, settings, tasksWithTime?.length]);
 }
 
 // ============================================================================
@@ -583,14 +511,12 @@ function isWithinBusinessHours(settings: {
   if (!settings.business_hours_enabled) return true;
 
   const now = new Date();
-  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Convert Sunday from 0 to 7
+  const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
 
-  // Check if today is a business day
   if (!settings.business_days.includes(dayOfWeek)) {
     return false;
   }
 
-  // Check if current time is within business hours
   const [startHour, startMin] = settings.business_hours_start.split(":").map(Number);
   const [endHour, endMin] = settings.business_hours_end.split(":").map(Number);
 
