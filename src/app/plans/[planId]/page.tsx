@@ -17,6 +17,7 @@ import {
   useEnsureDefaultDashboard,
   useCreateDashboardWidget,
   useDeleteDashboardWidget,
+  useUpdateWidgetPositions,
 } from "@/features/dashboards/hooks";
 
 export default function PlanOverviewPage({
@@ -44,6 +45,7 @@ export default function PlanOverviewPage({
   // Mutations
   const createWidget = useCreateDashboardWidget();
   const deleteWidget = useDeleteDashboardWidget();
+  const updatePositions = useUpdateWidgetPositions();
 
   const isLoading = planLoading || dashboardLoading || (defaultDashboard && widgetsLoading);
   const canEdit = role === "owner" || role === "editor";
@@ -86,6 +88,16 @@ export default function PlanOverviewPage({
     });
   }
 
+  async function handleReorderWidgets(
+    newPositions: { id: string; position_x: number; position_y: number }[]
+  ) {
+    if (!defaultDashboard) return;
+    await updatePositions.mutateAsync({
+      dashboardId: defaultDashboard.id,
+      widgets: newPositions,
+    });
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -110,6 +122,7 @@ export default function PlanOverviewPage({
           widgets={widgets}
           isEditing={isEditing}
           onRemoveWidget={handleRemoveWidget}
+          onReorderWidgets={handleReorderWidgets}
         />
       </DashboardDataProvider>
 

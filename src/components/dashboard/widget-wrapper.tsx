@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Maximize2, MoreVertical, Trash2 } from "lucide-react";
+import { Maximize2, MoreVertical, Trash2, GripVertical } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,15 +41,20 @@ export function WidgetWrapper({
     <>
       <Card className={cn(
         "h-full flex flex-col transition-all",
-        isEditing && "ring-2 ring-accent/20 ring-offset-2"
+        isEditing && "ring-2 ring-accent/20 ring-offset-2 cursor-grab active:cursor-grabbing"
       )}>
         <CardHeader className="flex-shrink-0 flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-base font-medium flex items-center gap-2">
-            {Icon && <Icon className="w-4 h-4 text-text-muted" />}
+            {isEditing && (
+              <div className="text-text-subtle hover:text-text-muted transition-colors">
+                <GripVertical className="w-4 h-4" />
+              </div>
+            )}
+            {Icon && !isEditing && <Icon className="w-4 h-4 text-text-muted" />}
             {title}
           </CardTitle>
           <div className="flex items-center gap-1">
-            {supportsFullscreen && (
+            {supportsFullscreen && !isEditing && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -63,14 +68,22 @@ export function WidgetWrapper({
             {isEditing && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <MoreVertical className="w-4 h-4" />
                     <span className="sr-only">Widget options</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={onRemove}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove();
+                    }}
                     className="text-status-danger focus:text-status-danger"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
