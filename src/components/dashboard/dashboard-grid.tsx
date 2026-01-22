@@ -53,8 +53,9 @@ export function DashboardGrid({
   }, [onReorderWidgets]);
 
   // Render a single widget (used for both regular and overlay)
-  const renderWidget = useCallback((widget: DashboardWidget, isOverlay = false) => (
+  const renderWidget = useCallback((widget: DashboardWidget, isOverlay = false, includeKey = false) => (
     <div
+      key={includeKey ? widget.id : undefined}
       className={cn(
         "min-w-0 h-full",
         isOverlay && "shadow-2xl rounded-card"
@@ -86,7 +87,7 @@ export function DashboardGrid({
   if (!isEditing) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 auto-rows-[minmax(200px,auto)]">
-        {sortedWidgets.map((widget) => renderWidget(widget))}
+        {sortedWidgets.map((widget) => renderWidget(widget, false, true))}
       </div>
     );
   }
