@@ -191,9 +191,25 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
               </span>
             </div>
           ) : isGranted ? (
-            <div className="flex items-center gap-2 text-status-success">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-body-sm">Notifications are enabled</span>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-status-success">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="text-body-sm">Notifications are enabled</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  new Notification("Test Notification", {
+                    body: "If you see this as a system notification, Chrome notifications are working!",
+                    icon: "/icons/icon-192.png",
+                  });
+                }}
+                className="gap-2"
+              >
+                <Bell className="w-4 h-4" />
+                Send Test Notification
+              </Button>
             </div>
           ) : isDenied ? (
             <div className="flex items-center gap-2 text-status-danger">
