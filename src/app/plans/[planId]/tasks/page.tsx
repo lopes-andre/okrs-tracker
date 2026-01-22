@@ -16,6 +16,8 @@ import {
   History,
   Loader2,
   Calendar,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -23,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskRow, TaskDialog, CollapsibleTaskList } from "@/components/tasks";
+import { TaskRow, TaskDialog, CollapsibleTaskList, BulkActionsToolbar } from "@/components/tasks";
 import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-dialog";
 import {
   useTasksGrouped,
@@ -32,6 +34,10 @@ import {
   useUpdateTask,
   useDeleteTask,
   useSetTaskTags,
+  useBulkUpdateTaskStatus,
+  useBulkDeleteTasks,
+  useBulkAddTagToTasks,
+  useBulkRemoveTagFromTasks,
 } from "@/features/tasks/hooks";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
@@ -74,6 +80,12 @@ export default function TasksPage({
   const setTaskTags = useSetTaskTags(planId);
   const createTag = useCreateTag(planId);
 
+  // Bulk mutations
+  const bulkUpdateStatus = useBulkUpdateTaskStatus(planId);
+  const bulkDelete = useBulkDeleteTasks(planId);
+  const bulkAddTag = useBulkAddTagToTasks(planId);
+  const bulkRemoveTag = useBulkRemoveTagFromTasks(planId);
+
   // UI State
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithDetails | null>(null);
@@ -88,6 +100,12 @@ export default function TasksPage({
   });
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
   const [activeView, setActiveView] = useState<"list" | "grouped">("list");
+
+  // Selection state for bulk operations
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const isBulkProcessing = bulkUpdateStatus.isPending || bulkDelete.isPending ||
+    bulkAddTag.isPending || bulkRemoveTag.isPending;
 
   // Stats from grouped data
   const counts = groupedTasks?.counts || {
@@ -239,6 +257,55 @@ export default function TasksPage({
     setActiveFilter(filter === activeFilter ? "all" : filter);
   }
 
+  // Selection handlers
+  function toggleTaskSelection(taskId: string, selected: boolean) {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(taskId);
+      } else {
+        next.delete(taskId);
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedTaskIds(new Set());
+    setSelectMode(false);
+  }
+
+  function toggleSelectMode() {
+    if (selectMode) {
+      clearSelection();
+    } else {
+      setSelectMode(true);
+    }
+  }
+
+  // Bulk operation handlers
+  async function handleBulkStatusChange(status: TaskStatus) {
+    const taskIds = Array.from(selectedTaskIds);
+    await bulkUpdateStatus.mutateAsync({ taskIds, status });
+    clearSelection();
+  }
+
+  async function handleBulkDelete() {
+    const taskIds = Array.from(selectedTaskIds);
+    await bulkDelete.mutateAsync(taskIds);
+    clearSelection();
+  }
+
+  async function handleBulkAddTag(tagId: string) {
+    const taskIds = Array.from(selectedTaskIds);
+    await bulkAddTag.mutateAsync({ taskIds, tagId });
+  }
+
+  async function handleBulkRemoveTag(tagId: string) {
+    const taskIds = Array.from(selectedTaskIds);
+    await bulkRemoveTag.mutateAsync({ taskIds, tagId });
+  }
+
   // Determine which sections to show based on filter
   const showToday = activeFilter === "all" || activeFilter === "today";
   const showOverdue = activeFilter === "all" || activeFilter === "overdue";
@@ -264,6 +331,9 @@ export default function TasksPage({
         onStatusChange={handlers.onStatusChange}
         onEdit={handlers.onEdit}
         onDelete={handlers.onDelete}
+        selectable={selectMode}
+        selected={selectedTaskIds.has(task.id)}
+        onSelectChange={(selected) => toggleTaskSelection(task.id, selected)}
       />
     );
   }
@@ -281,10 +351,29 @@ export default function TasksPage({
           </Button>
         </Link>
         {canEdit && (
-          <Button onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Task
-          </Button>
+          <>
+            <Button
+              variant={selectMode ? "secondary" : "outline"}
+              onClick={toggleSelectMode}
+              className="gap-2"
+            >
+              {selectMode ? (
+                <>
+                  <CheckSquare className="w-4 h-4" />
+                  Exit Select
+                </>
+              ) : (
+                <>
+                  <Square className="w-4 h-4" />
+                  Select
+                </>
+              )}
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Task
+            </Button>
+          </>
         )}
       </PageHeader>
 
@@ -578,6 +667,9 @@ export default function TasksPage({
                             onDelete={() =>
                               setDeleteDialog({ open: true, task })
                             }
+                            selectable={selectMode}
+                            selected={selectedTaskIds.has(task.id)}
+                            onSelectChange={(selected) => toggleTaskSelection(task.id, selected)}
                           />
                         ))}
                       </div>
@@ -707,6 +799,18 @@ export default function TasksPage({
         description="This action cannot be undone."
         itemName={deleteDialog.task?.title || ""}
         onConfirm={handleDelete}
+      />
+
+      {/* Bulk Actions Toolbar */}
+      <BulkActionsToolbar
+        selectedCount={selectedTaskIds.size}
+        onClearSelection={clearSelection}
+        onBulkStatusChange={handleBulkStatusChange}
+        onBulkDelete={handleBulkDelete}
+        onBulkAddTag={handleBulkAddTag}
+        onBulkRemoveTag={handleBulkRemoveTag}
+        tags={tags}
+        isProcessing={isBulkProcessing}
       />
     </>
   );

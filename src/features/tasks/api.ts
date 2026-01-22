@@ -658,6 +658,91 @@ export async function getTaskTags(taskId: string): Promise<string[]> {
 // TASK STATISTICS
 // ============================================================================
 
+// ============================================================================
+// BULK TASK OPERATIONS
+// ============================================================================
+
+/**
+ * Bulk update task status
+ */
+export async function bulkUpdateTaskStatus(
+  taskIds: string[],
+  status: TaskStatus
+): Promise<Task[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .update({ status })
+    .in("id", taskIds)
+    .select();
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Bulk delete tasks
+ */
+export async function bulkDeleteTasks(taskIds: string[]): Promise<void> {
+  const supabase = createClient();
+
+  // First delete associated task_tags
+  await supabase
+    .from("task_tags")
+    .delete()
+    .in("task_id", taskIds);
+
+  // Then delete the tasks
+  const { error } = await supabase
+    .from("tasks")
+    .delete()
+    .in("id", taskIds);
+
+  if (error) throw error;
+}
+
+/**
+ * Bulk add a tag to multiple tasks
+ */
+export async function bulkAddTagToTasks(
+  taskIds: string[],
+  tagId: string
+): Promise<void> {
+  const supabase = createClient();
+
+  // Insert tag for each task (ignore duplicates with onConflict)
+  const inserts = taskIds.map((taskId) => ({ task_id: taskId, tag_id: tagId }));
+
+  const { error } = await supabase
+    .from("task_tags")
+    .upsert(inserts, { onConflict: "task_id,tag_id", ignoreDuplicates: true });
+
+  if (error) throw error;
+}
+
+/**
+ * Bulk remove a tag from multiple tasks
+ */
+export async function bulkRemoveTagFromTasks(
+  taskIds: string[],
+  tagId: string
+): Promise<void> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("task_tags")
+    .delete()
+    .in("task_id", taskIds)
+    .eq("tag_id", tagId);
+
+  if (error) throw error;
+}
+
+// ============================================================================
+// TASK STATISTICS
+// ============================================================================
+
 /**
  * Get task counts for a plan
  */

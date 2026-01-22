@@ -395,3 +395,117 @@ export function useSetTaskTags(planId: string) {
     },
   });
 }
+
+// ============================================================================
+// BULK MUTATIONS
+// ============================================================================
+
+/**
+ * Bulk update task status
+ */
+export function useBulkUpdateTaskStatus(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ taskIds, status }: { taskIds: string[]; status: TaskStatus }) =>
+      api.bulkUpdateTaskStatus(taskIds, status),
+    onSuccess: (data) => {
+      // Invalidate all affected task details
+      data.forEach((task) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(task.id) });
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
+
+      const statusLabel = data[0]?.status === "completed" ? "completed" : "updated";
+      toast({
+        title: `${data.length} tasks ${statusLabel}`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Bulk delete tasks
+ */
+export function useBulkDeleteTasks(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (taskIds: string[]) => api.bulkDeleteTasks(taskIds),
+    onSuccess: (_, taskIds) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.plans.all });
+
+      toast({
+        title: `${taskIds.length} tasks deleted`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Bulk add a tag to multiple tasks
+ */
+export function useBulkAddTagToTasks(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ taskIds, tagId }: { taskIds: string[]; tagId: string }) =>
+      api.bulkAddTagToTasks(taskIds, tagId),
+    onSuccess: (_, { taskIds }) => {
+      taskIds.forEach((taskId) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+
+      toast({
+        title: `Tag added to ${taskIds.length} tasks`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Bulk remove a tag from multiple tasks
+ */
+export function useBulkRemoveTagFromTasks(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ taskIds, tagId }: { taskIds: string[]; tagId: string }) =>
+      api.bulkRemoveTagFromTasks(taskIds, tagId),
+    onSuccess: (_, { taskIds }) => {
+      taskIds.forEach((taskId) => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+
+      toast({
+        title: `Tag removed from ${taskIds.length} tasks`,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
