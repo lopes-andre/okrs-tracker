@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Loader2, 
-  Plus, 
-  X, 
-  Tag as TagIcon, 
+import {
+  Loader2,
+  Plus,
+  X,
+  Tag as TagIcon,
   Clock,
   AlertTriangle,
   BatteryLow,
   BatteryMedium,
   BatteryFull,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -123,6 +126,7 @@ export function TaskDialog({
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [newTagName, setNewTagName] = useState("");
   const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [reminderEnabled, setReminderEnabled] = useState(true);
 
   // Filter KRs based on selected objective
   const filteredKrs = useMemo(() => {
@@ -169,6 +173,7 @@ export function TaskDialog({
         setObjectiveId(initialObjectiveId || task.objective_id || "");
         setAnnualKrId(task.annual_kr_id || "");
         setSelectedTagIds(initialSelectedTags);
+        setReminderEnabled(task.reminder_enabled ?? true);
       } else {
         setTitle("");
         setDescription("");
@@ -181,6 +186,7 @@ export function TaskDialog({
         setObjectiveId("");
         setAnnualKrId("");
         setSelectedTagIds([]);
+        setReminderEnabled(true);
       }
       setNewTagName("");
     }
@@ -239,6 +245,7 @@ export function TaskDialog({
             due_time: showTimeInput && dueTime ? dueTime : null,
             objective_id: finalObjectiveId,
             annual_kr_id: finalAnnualKrId,
+            reminder_enabled: reminderEnabled,
           }
         : {
             // Don't include plan_id - the hook adds it automatically
@@ -254,6 +261,7 @@ export function TaskDialog({
             quarter_target_id: null,
             assigned_to: null,
             sort_order: 0,
+            reminder_enabled: reminderEnabled,
           };
 
       await onSubmit(data, selectedTagIds);
@@ -446,6 +454,37 @@ export function TaskDialog({
               Leave empty for ideas/backlog tasks
             </p>
           </div>
+
+          {/* Reminder Toggle - only show if due date is set */}
+          {dueDate && (
+            <div className="flex items-center gap-3 p-3 rounded-card bg-bg-1/50 border border-border-soft">
+              <Checkbox
+                id="task-reminder"
+                checked={reminderEnabled}
+                onCheckedChange={(checked) => setReminderEnabled(checked as boolean)}
+              />
+              <Label
+                htmlFor="task-reminder"
+                className="flex items-center gap-2 cursor-pointer flex-1"
+              >
+                {reminderEnabled ? (
+                  <Bell className="w-4 h-4 text-accent" />
+                ) : (
+                  <BellOff className="w-4 h-4 text-text-muted" />
+                )}
+                <div>
+                  <span className="text-body-sm font-medium">
+                    {reminderEnabled ? "Reminder enabled" : "Reminder disabled"}
+                  </span>
+                  <p className="text-xs text-text-muted">
+                    {showTimeInput && dueTime
+                      ? "You'll be notified 15, 10, 5 min before and 30 min after due time"
+                      : "You'll receive hourly reminders on the due date"}
+                  </p>
+                </div>
+              </Label>
+            </div>
+          )}
 
           {/* Objective and KR Linking */}
           <div className="space-y-4 p-3 rounded-card bg-bg-1/50 border border-border-soft">

@@ -15,6 +15,7 @@ import {
   CalendarCheck,
   Tag,
   HardDrive,
+  Bell,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -54,6 +55,7 @@ import { useTimeline, useTimelinePaginated } from "@/features/timeline/hooks";
 import { ActivityEventCard, WeeklyReviewPanel, ActivityFilters, type ActivityFiltersState } from "@/components/activity";
 import { ReviewSettings } from "@/components/weekly-review";
 import { TagsSettings } from "@/components/tags";
+import { TaskReminderSettings } from "@/components/tasks";
 import { ImportExportSettings } from "@/components/import-export";
 import type { OkrRole, TimelineFilters } from "@/lib/supabase/types";
 import { useRouter } from "next/navigation";
@@ -215,6 +217,10 @@ export default function SettingsPage({
             <CalendarCheck className="w-4 h-4" />
             Weekly Reviews
           </TabsTrigger>
+          <TabsTrigger value="reminders" className="gap-2">
+            <Bell className="w-4 h-4" />
+            Reminders
+          </TabsTrigger>
           <TabsTrigger value="tags" className="gap-2">
             <Tag className="w-4 h-4" />
             Tags
@@ -352,6 +358,11 @@ export default function SettingsPage({
         {/* Weekly Reviews */}
         <TabsContent value="weekly-reviews">
           <ReviewSettings planId={planId} isOwner={isOwner} />
+        </TabsContent>
+
+        {/* Task Reminders */}
+        <TabsContent value="reminders">
+          <TaskReminderSettings planId={planId} isOwner={isOwner} />
         </TabsContent>
 
         {/* Tags */}

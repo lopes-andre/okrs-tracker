@@ -124,6 +124,7 @@ export interface Task {
   due_time: string | null;
   completed_at: string | null;
   assigned_to: string | null;
+  reminder_enabled: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -257,6 +258,37 @@ export interface WeeklyReviewSettings {
   updated_at: string;
 }
 
+// ============================================================================
+// TASK REMINDER TYPES
+// ============================================================================
+
+export interface TaskReminderSettings {
+  id: string;
+  plan_id: string;
+  // Master toggle
+  reminders_enabled: boolean;
+  // Business hours
+  business_hours_enabled: boolean;
+  business_hours_start: string; // HH:MM format
+  business_hours_end: string; // HH:MM format
+  business_days: number[]; // 1-7, 1=Monday
+  // Notification preferences
+  sound_enabled: boolean;
+  // Daily summary
+  daily_summary_enabled: boolean;
+  daily_summary_time: string; // HH:MM format
+  // Hourly reminders for due today tasks
+  hourly_reminders_enabled: boolean;
+  // Time-specific task reminders
+  time_reminder_15min: boolean;
+  time_reminder_10min: boolean;
+  time_reminder_5min: boolean;
+  time_reminder_overdue_30min: boolean;
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WeeklyReviewKrUpdate {
   id: string;
   weekly_review_id: string;
@@ -328,8 +360,12 @@ export type WeeklyReviewUpdate = Partial<Pick<WeeklyReview,
   'stats_overall_progress' | 'stats_total_krs' | 'week_rating'>>;
 
 export type WeeklyReviewSettingsInsert = Omit<WeeklyReviewSettings, 'id' | 'created_at' | 'updated_at'>;
-export type WeeklyReviewSettingsUpdate = Partial<Pick<WeeklyReviewSettings, 
+export type WeeklyReviewSettingsUpdate = Partial<Pick<WeeklyReviewSettings,
   'reminder_enabled' | 'reminder_day' | 'reminder_time' | 'auto_create_reviews'>>;
+
+// Task Reminder Settings Types
+export type TaskReminderSettingsInsert = Omit<TaskReminderSettings, 'id' | 'created_at' | 'updated_at'>;
+export type TaskReminderSettingsUpdate = Partial<Omit<TaskReminderSettings, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>;
 
 export type WeeklyReviewKrUpdateInsert = Omit<WeeklyReviewKrUpdate, 'id' | 'created_at'>;
 export type WeeklyReviewTaskInsert = Omit<WeeklyReviewTask, 'id' | 'created_at'>;

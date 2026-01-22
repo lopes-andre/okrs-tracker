@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/layout/navbar";
 import { PlanNav } from "@/components/layout/plan-nav";
+import { ReminderProvider } from "@/components/tasks";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function PlanLayout({
@@ -42,7 +43,9 @@ export default async function PlanLayout({
     <div className="min-h-screen bg-bg-1">
       <Navbar user={userData} />
       <PlanNav planId={planId} />
-      <main className="container-main py-8">{children}</main>
+      <ReminderProvider planId={planId}>
+        <main className="container-main py-8">{children}</main>
+      </ReminderProvider>
     </div>
   );
 }
