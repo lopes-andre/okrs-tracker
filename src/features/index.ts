@@ -49,3 +49,6 @@ export * from "./import-export";
 
 // Team Analytics
 export * from "./team-analytics";
+
+// Task Recurrence
+export * from "./task-recurrence";
