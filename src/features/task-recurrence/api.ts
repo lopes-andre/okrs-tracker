@@ -539,11 +539,27 @@ export async function deleteRecurringTask(
     const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
     const today = format(new Date(), "yyyy-MM-dd");
 
-    for (const instance of instances) {
-      if (instance.original_date >= today) {
-        await softDeleteInstance(instance.id);
-        await supabase.from("tasks").delete().eq("id", instance.task_id);
-      }
+    // Collect IDs for batch operations
+    const futureInstances = instances.filter((i) => i.original_date >= today);
+    const instanceIds = futureInstances.map((i) => i.id);
+    const taskIds = futureInstances.map((i) => i.task_id);
+
+    // Batch soft-delete instances
+    if (instanceIds.length > 0) {
+      const { error: instanceError } = await supabase
+        .from("task_recurrence_instances")
+        .update({ is_deleted: true })
+        .in("id", instanceIds);
+      if (instanceError) throw instanceError;
+    }
+
+    // Batch delete tasks
+    if (taskIds.length > 0) {
+      const { error: taskError } = await supabase
+        .from("tasks")
+        .delete()
+        .in("id", taskIds);
+      if (taskError) throw taskError;
     }
 
     // Update the rule to end today

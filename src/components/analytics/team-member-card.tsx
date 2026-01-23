@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { AlertTriangle, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -58,9 +59,11 @@ export function TeamMemberCard({ member, avgTasksPerMember }: TeamMemberCardProp
         <div className="flex items-start gap-3 mb-4">
           {/* Avatar */}
           {member.avatar_url ? (
-            <img
+            <Image
               src={member.avatar_url}
               alt={displayName}
+              width={40}
+              height={40}
               className="w-10 h-10 rounded-full object-cover shrink-0"
             />
           ) : (
