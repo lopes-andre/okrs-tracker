@@ -151,6 +151,10 @@ export const queryKeys = {
     all: ["comments"] as const,
     byTask: (taskId: string) => [...queryKeys.comments.all, "byTask", taskId] as const,
     count: (taskId: string) => [...queryKeys.comments.all, "count", taskId] as const,
+    unreadCount: (taskId: string, userId: string) =>
+      [...queryKeys.comments.all, "unreadCount", taskId, userId] as const,
+    unreadCounts: (userId: string) =>
+      [...queryKeys.comments.all, "unreadCounts", userId] as const,
   },
 
   // Notifications

@@ -14,6 +14,7 @@ import {
   BatteryLow,
   BatteryMedium,
   BatteryFull,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,12 @@ interface TaskRowProps {
   onSelectChange?: (selected: boolean) => void;
   /** Current user's ID for editing indicator */
   currentUserId?: string;
+  /** Number of comments on this task */
+  commentCount?: number;
+  /** Whether the task has unread comments for current user */
+  hasUnreadComments?: boolean;
+  /** Callback when comments icon is clicked */
+  onCommentsClick?: () => void;
 }
 
 // Priority: Alert/Impact style - filled, dominant, answers "Why does this matter?"
@@ -208,6 +215,9 @@ export function TaskRow({
   selected = false,
   onSelectChange,
   currentUserId,
+  commentCount = 0,
+  hasUnreadComments = false,
+  onCommentsClick,
 }: TaskRowProps) {
   const canEdit = role === "owner" || role === "editor";
   const isCompleted = task.status === "completed";
@@ -413,6 +423,43 @@ export function TaskRow({
                 </span>
               ))}
             </div>
+          </TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Comments Button */}
+      {onCommentsClick && (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCommentsClick();
+              }}
+              className={cn(
+                "shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors",
+                hasUnreadComments
+                  ? "text-accent bg-accent/10 hover:bg-accent/20"
+                  : "text-text-muted hover:text-text-strong hover:bg-bg-1"
+              )}
+            >
+              <MessageCircle className={cn("w-4 h-4", hasUnreadComments && "fill-accent/20")} />
+              {commentCount > 0 && (
+                <span className={cn(
+                  "text-xs font-medium",
+                  hasUnreadComments && "text-accent"
+                )}>
+                  {commentCount}
+                </span>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            {commentCount === 0
+              ? "Add comment"
+              : hasUnreadComments
+              ? `${commentCount} comment${commentCount > 1 ? "s" : ""} (unread)`
+              : `${commentCount} comment${commentCount > 1 ? "s" : ""}`}
           </TooltipContent>
         </Tooltip>
       )}

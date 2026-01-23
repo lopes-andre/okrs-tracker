@@ -124,3 +124,54 @@ export function useDeleteComment(taskId: string) {
     },
   });
 }
+
+// ============================================================================
+// UNREAD TRACKING HOOKS
+// ============================================================================
+
+/**
+ * Hook to get unread comment count for a single task
+ */
+export function useTaskUnreadCount(taskId: string | null, userId: string | null) {
+  return useQuery({
+    queryKey: taskId && userId ? queryKeys.comments.unreadCount(taskId, userId) : [],
+    queryFn: () => api.getTaskUnreadCount(taskId!, userId!),
+    enabled: !!taskId && !!userId,
+  });
+}
+
+/**
+ * Hook to get comment counts (total and unread) for multiple tasks
+ * Used when rendering task list to show badges
+ */
+export function useTasksCommentCounts(taskIds: string[], userId: string | null) {
+  return useQuery({
+    queryKey: userId ? queryKeys.comments.unreadCounts(userId) : [],
+    queryFn: () => api.getTasksCommentCounts(taskIds, userId!),
+    enabled: !!userId && taskIds.length > 0,
+    // Keep data fresh but don't refetch too often
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+/**
+ * Hook to mark comments on a task as read
+ * Called when user opens the comments dialog
+ */
+export function useMarkTaskCommentsAsRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      api.markTaskCommentsAsRead(taskId, userId),
+    onSuccess: (_, { taskId, userId }) => {
+      // Invalidate unread counts
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.comments.unreadCount(taskId, userId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.comments.unreadCounts(userId),
+      });
+    },
+  });
+}

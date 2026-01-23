@@ -16,8 +16,6 @@ import {
   Users,
   ChevronDown,
   Check,
-  MessageCircle,
-  ChevronRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -60,8 +58,6 @@ import type {
 import { cn } from "@/lib/utils";
 import { useEditingTracker } from "@/lib/realtime";
 import { EditingIndicator } from "@/components/layout/editing-indicator";
-import { CommentList } from "@/components/comments";
-import { useTaskCommentCount } from "@/features/comments/hooks";
 import type { Profile } from "@/lib/supabase/types";
 
 // Type for creating - without plan_id since the hook adds it
@@ -121,7 +117,7 @@ const effortOptions: {
 export function TaskDialog({
   open,
   onOpenChange,
-  planId,
+  planId: _planId,
   task,
   objectives = [],
   annualKrs = [],
@@ -131,17 +127,13 @@ export function TaskDialog({
   members = [],
   selectedAssignees: initialSelectedAssignees = [],
   currentUserId,
-  currentUserProfile,
-  isOwner = false,
+  currentUserProfile: _currentUserProfile,
+  isOwner: _isOwner = false,
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {
   const isEditing = !!task;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-
-  // Fetch comment count for the badge
-  const { data: commentCount = 0 } = useTaskCommentCount(isEditing ? task?.id ?? null : null);
 
   // Track editing state for real-time collaboration
   useEditingTracker(
@@ -792,46 +784,6 @@ export function TaskDialog({
               </div>
             )}
           </div>
-
-          {/* Comments Section - Only show when editing */}
-          {isEditing && task && (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setShowComments(!showComments)}
-                className="flex items-center gap-2 w-full text-left group"
-              >
-                <ChevronRight
-                  className={cn(
-                    "w-4 h-4 text-text-muted transition-transform",
-                    showComments && "rotate-90"
-                  )}
-                />
-                <MessageCircle className="w-4 h-4 text-text-muted" />
-                <span className="text-body-sm font-medium text-text-strong">
-                  Comments
-                </span>
-                {commentCount > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {commentCount}
-                  </Badge>
-                )}
-              </button>
-
-              {showComments && (
-                <div className="pl-6 pt-2">
-                  <CommentList
-                    taskId={task.id}
-                    planId={planId}
-                    members={members.map((m) => m.profile)}
-                    currentUser={currentUserProfile}
-                    currentUserId={currentUserId}
-                    isOwner={isOwner}
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
             <Button 

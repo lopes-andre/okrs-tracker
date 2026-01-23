@@ -4,10 +4,12 @@ import type {
   CommentInsert,
   CommentUpdate,
   CommentWithUser,
+  CommentRead,
 } from "@/lib/supabase/types";
 
 /**
  * Get all comments for a task with user info and mentions
+ * Sorted by most recent first
  */
 export async function getTaskComments(taskId: string): Promise<CommentWithUser[]> {
   const supabase = createClient();
@@ -24,7 +26,7 @@ export async function getTaskComments(taskId: string): Promise<CommentWithUser[]
       )
     `)
     .eq("task_id", taskId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return (data || []) as CommentWithUser[];
@@ -137,4 +139,160 @@ export async function updateCommentMentions(
 
     await supabase.from("comment_mentions").insert(mentions);
   }
+}
+
+// ============================================================================
+// UNREAD TRACKING
+// ============================================================================
+
+/**
+ * Get the user's last read timestamp for a task
+ */
+export async function getTaskLastRead(
+  taskId: string,
+  userId: string
+): Promise<CommentRead | null> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("comment_reads")
+    .select("*")
+    .eq("task_id", taskId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error && error.code !== "PGRST116") throw error; // PGRST116 = not found
+  return data as CommentRead | null;
+}
+
+/**
+ * Get count of unread comments for a task
+ * Comments created after the user's last read timestamp are considered unread
+ */
+export async function getTaskUnreadCount(
+  taskId: string,
+  userId: string
+): Promise<number> {
+  const supabase = createClient();
+
+  // Get last read timestamp
+  const lastRead = await getTaskLastRead(taskId, userId);
+
+  if (!lastRead) {
+    // User has never viewed this task's comments - all are unread
+    const { count, error } = await supabase
+      .from("comments")
+      .select("*", { count: "exact", head: true })
+      .eq("task_id", taskId);
+
+    if (error) throw error;
+    return count || 0;
+  }
+
+  // Count comments created after last read
+  const { count, error } = await supabase
+    .from("comments")
+    .select("*", { count: "exact", head: true })
+    .eq("task_id", taskId)
+    .gt("created_at", lastRead.last_read_at);
+
+  if (error) throw error;
+  return count || 0;
+}
+
+/**
+ * Check if a task has any unread comments for a user
+ */
+export async function hasUnreadComments(
+  taskId: string,
+  userId: string
+): Promise<boolean> {
+  const count = await getTaskUnreadCount(taskId, userId);
+  return count > 0;
+}
+
+/**
+ * Mark all comments on a task as read for a user
+ * Called when user opens the comments dialog
+ */
+export async function markTaskCommentsAsRead(
+  taskId: string,
+  userId: string
+): Promise<void> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("comment_reads")
+    .upsert(
+      {
+        task_id: taskId,
+        user_id: userId,
+        last_read_at: new Date().toISOString(),
+      },
+      { onConflict: "task_id,user_id" }
+    );
+
+  if (error) throw error;
+}
+
+/**
+ * Comment counts for a task
+ */
+export interface TaskCommentCounts {
+  total: number;
+  unread: number;
+}
+
+/**
+ * Get comment counts (total and unread) for multiple tasks at once
+ * Used when rendering task list to show badges
+ */
+export async function getTasksCommentCounts(
+  taskIds: string[],
+  userId: string
+): Promise<Record<string, TaskCommentCounts>> {
+  if (taskIds.length === 0) return {};
+
+  const supabase = createClient();
+
+  // Get all last read timestamps for these tasks
+  const { data: reads, error: readsError } = await supabase
+    .from("comment_reads")
+    .select("task_id, last_read_at")
+    .eq("user_id", userId)
+    .in("task_id", taskIds);
+
+  if (readsError) throw readsError;
+
+  const readMap = new Map(
+    (reads || []).map((r) => [r.task_id, r.last_read_at])
+  );
+
+  // Get all comments for these tasks
+  const { data: comments, error: commentsError } = await supabase
+    .from("comments")
+    .select("task_id, created_at")
+    .in("task_id", taskIds);
+
+  if (commentsError) throw commentsError;
+
+  // Calculate total and unread counts
+  const counts: Record<string, TaskCommentCounts> = {};
+  for (const taskId of taskIds) {
+    counts[taskId] = { total: 0, unread: 0 };
+  }
+
+  for (const comment of comments || []) {
+    if (!counts[comment.task_id]) {
+      counts[comment.task_id] = { total: 0, unread: 0 };
+    }
+    counts[comment.task_id].total += 1;
+
+    const lastRead = readMap.get(comment.task_id);
+    if (!lastRead || new Date(comment.created_at) > new Date(lastRead)) {
+      counts[comment.task_id].unread += 1;
+    }
+  }
+
+  return counts;
 }

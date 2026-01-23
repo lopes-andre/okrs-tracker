@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskRow, TaskDialog, CollapsibleTaskList, BulkActionsToolbar } from "@/components/tasks";
+import { CommentsDialog } from "@/components/comments";
 import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-dialog";
 import {
   useTasksGrouped,
@@ -46,6 +47,7 @@ import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useTags, useCreateTag } from "@/features/tags/hooks";
 import { usePlanRole, usePlanMembers, useCurrentUserId } from "@/features/plans/hooks";
 import { useSetTaskAssignees } from "@/features/tasks/hooks";
+import { useTasksCommentCounts } from "@/features/comments/hooks";
 import type {
   TaskStatus,
   TaskInsert,
@@ -115,6 +117,13 @@ export default function TasksPage({
   });
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
   const [activeView, setActiveView] = useState<"list" | "grouped">("list");
+  const [commentsDialog, setCommentsDialog] = useState<{
+    open: boolean;
+    task: TaskWithDetails | null;
+  }>({
+    open: false,
+    task: null,
+  });
   const [showMyTasksOnly, setShowMyTasksOnly] = useState(false);
 
   // Selection state for bulk operations
@@ -204,6 +213,26 @@ export default function TasksPage({
       ...backlogTasks,
     ];
   }, [groupedTasks, todayTasks, overdueTasks, thisWeekTasks, thisMonthTasks, backlogTasks]);
+
+  // All task IDs for fetching comment counts
+  const allTaskIds = useMemo(() => {
+    const ids = allActiveTasks.map((t) => t.id);
+    const completedIds = filteredRecentCompleted.map((t) => t.id);
+    return [...new Set([...ids, ...completedIds])];
+  }, [allActiveTasks, filteredRecentCompleted]);
+
+  // Fetch comment counts (total and unread) for all tasks
+  const { data: commentCounts = {} } = useTasksCommentCounts(allTaskIds, currentUserId || null);
+
+  // Extract member profiles for comments dialog
+  const memberProfiles = useMemo(() => {
+    return members.map((m) => m.profile).filter(Boolean) as NonNullable<typeof members[0]["profile"]>[];
+  }, [members]);
+
+  // Open comments dialog for a task
+  function openComments(task: TaskWithDetails) {
+    setCommentsDialog({ open: true, task });
+  }
 
   // Group tasks by Objective → KR for "By OKR" view
   // Structure: { objectiveId: { objective, krs: { krId: { kr, tasks } }, unassignedTasks } }
@@ -407,6 +436,7 @@ export default function TasksPage({
       onDelete: () => void;
     }
   ) {
+    const counts = commentCounts[task.id] || { total: 0, unread: 0 };
     return (
       <TaskRow
         key={task.id}
@@ -418,6 +448,10 @@ export default function TasksPage({
         selectable={selectMode}
         selected={selectedTaskIds.has(task.id)}
         onSelectChange={(selected) => toggleTaskSelection(task.id, selected)}
+        currentUserId={currentUserId ?? undefined}
+        commentCount={counts.total}
+        hasUnreadComments={counts.unread > 0}
+        onCommentsClick={() => openComments(task)}
       />
     );
   }
@@ -769,23 +803,30 @@ export default function TasksPage({
                       </p>
                     ) : (
                       <div className="divide-y divide-border-soft">
-                        {filteredRecentCompleted.map((task) => (
-                          <TaskRow
-                            key={task.id}
-                            task={task}
-                            role={userRole}
-                            onStatusChange={(status) =>
-                              handleStatusChange(task, status)
-                            }
-                            onEdit={() => openEdit(task)}
-                            onDelete={() =>
-                              setDeleteDialog({ open: true, task })
-                            }
-                            selectable={selectMode}
-                            selected={selectedTaskIds.has(task.id)}
-                            onSelectChange={(selected) => toggleTaskSelection(task.id, selected)}
-                          />
-                        ))}
+                        {filteredRecentCompleted.map((task) => {
+                          const counts = commentCounts[task.id] || { total: 0, unread: 0 };
+                          return (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              role={userRole}
+                              onStatusChange={(status) =>
+                                handleStatusChange(task, status)
+                              }
+                              onEdit={() => openEdit(task)}
+                              onDelete={() =>
+                                setDeleteDialog({ open: true, task })
+                              }
+                              selectable={selectMode}
+                              selected={selectedTaskIds.has(task.id)}
+                              onSelectChange={(selected) => toggleTaskSelection(task.id, selected)}
+                              currentUserId={currentUserId ?? undefined}
+                              commentCount={counts.total}
+                              hasUnreadComments={counts.unread > 0}
+                              onCommentsClick={() => openComments(task)}
+                            />
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
@@ -931,6 +972,22 @@ export default function TasksPage({
         tags={tags}
         isProcessing={isBulkProcessing}
       />
+
+      {/* Comments Dialog */}
+      {commentsDialog.task && (
+        <CommentsDialog
+          open={commentsDialog.open}
+          onOpenChange={(open) =>
+            setCommentsDialog({ ...commentsDialog, open })
+          }
+          task={commentsDialog.task}
+          planId={planId}
+          members={memberProfiles}
+          currentUser={currentUserProfile}
+          currentUserId={currentUserId ?? undefined}
+          isOwner={isOwner}
+        />
+      )}
     </>
   );
 }

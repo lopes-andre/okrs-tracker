@@ -250,6 +250,13 @@ export interface Notification {
   created_at: string;
 }
 
+export interface CommentRead {
+  id: string;
+  task_id: string;
+  user_id: string;
+  last_read_at: string;
+}
+
 // ============================================================================
 // WEEKLY REVIEW TYPES
 // ============================================================================
@@ -686,6 +693,11 @@ export interface Database {
         Row: Notification;
         Insert: NotificationInsert;
         Update: NotificationUpdate;
+      };
+      comment_reads: {
+        Row: CommentRead;
+        Insert: Omit<CommentRead, 'id'>;
+        Update: Pick<CommentRead, 'last_read_at'>;
       };
     };
     Views: {
