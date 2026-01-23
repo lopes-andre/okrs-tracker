@@ -6,7 +6,7 @@
 
 import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { handleSupabaseError } from "@/lib/api-utils";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays } from "date-fns";
 import {
   getNextOccurrences,
   configToRuleInsert,
@@ -450,8 +450,9 @@ export async function createRecurringTask(
 
   const rule = await createRecurrenceRule(ruleInsert);
 
-  // 5. Generate initial instances
-  const instances = await generateInstances(rule.id, startDate);
+  // 5. Generate initial instances (start from day AFTER the master task's due date
+  // since the master task itself serves as the first occurrence)
+  const instances = await generateInstances(rule.id, addDays(startDate, 1));
 
   return { masterTask, rule, instances };
 }
