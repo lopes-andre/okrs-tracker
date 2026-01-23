@@ -250,11 +250,12 @@ export function useNotificationSender() {
       }
 
       // Always show in-app toast (works regardless of system permission)
+      // duration: 0 means it won't auto-dismiss - user must close it manually
       toast({
         title,
         description: notifOptions.body,
         variant: soundType === "urgent" ? "destructive" : "default",
-        duration: soundType === "urgent" ? 10000 : 5000,
+        duration: 0,
       });
 
       // Also send system notification if permission granted
@@ -262,7 +263,7 @@ export function useNotificationSender() {
         const defaultOptions: NotificationOptions = {
           icon: "/icons/icon-192.png",
           badge: "/icons/badge-72.png",
-          requireInteraction: soundType === "urgent",
+          requireInteraction: true, // Always require user to dismiss
           silent: true, // We handle sound ourselves
           ...notifOptions,
         };
@@ -396,15 +397,12 @@ export function useReminderScheduler({ planId, enabled, settings }: ReminderSche
             tag: `task-${task.id}-${reminder.key}`,
             soundEnabled: capturedSettings.sound_enabled,
             soundType: reminder.urgent ? "urgent" : "normal",
-            requireInteraction: reminder.urgent,
+            requireInteraction: true,
             data: { url: `/plans/${planId}/tasks`, taskId: task.id },
           });
-
-          console.log(`[Reminders] Fired: ${reminder.key} for "${task.title}"`);
         }, delay);
 
         scheduledTimeouts.current.set(reminderKey, timeout);
-        console.log(`[Reminders] Scheduled: ${reminder.key} for "${task.title}" in ${Math.round(delay / 1000)}s`);
       }
     });
   }, [settings, isReminderEnabled, sendNotification, planId]);
@@ -483,19 +481,10 @@ export function useReminderScheduler({ planId, enabled, settings }: ReminderSche
 
     const timeout = setTimeout(() => {
       sentReminders.current.clear();
-      console.log("[Reminders] Cleared sent reminders at midnight");
     }, msUntilMidnight);
 
     return () => clearTimeout(timeout);
   }, []);
-
-  // Debug logging
-  useEffect(() => {
-    if (enabled && settings) {
-      console.log("[Reminders] Scheduler active for plan:", planId);
-      console.log("[Reminders] Tasks with due time:", tasksWithTime?.length ?? 0);
-    }
-  }, [enabled, planId, settings, tasksWithTime?.length]);
 }
 
 // ============================================================================

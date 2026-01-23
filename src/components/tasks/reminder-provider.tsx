@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useTaskReminderSettings,
   useReminderScheduler,
-  useServiceWorker,
   useNotificationPermission,
 } from "@/features/task-reminders";
 
@@ -17,22 +16,17 @@ interface ReminderProviderProps {
 
 /**
  * ReminderProvider wraps the plan pages and handles:
- * - Service worker registration
  * - Reminder scheduling based on settings
  * - Notification permission banner
  */
 export function ReminderProvider({ planId, children }: ReminderProviderProps) {
   const { data: settings, isLoading } = useTaskReminderSettings(planId);
-  const { isRegistered } = useServiceWorker();
   const { isGranted, isDenied, isSupported, requestPermission } = useNotificationPermission();
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Enable scheduler when settings are loaded and reminders are enabled
   // DO NOT require notification permission - in-app toasts work without it
-  // DO NOT require service worker - it's only for background notifications
-  const schedulerEnabled =
-    !isLoading &&
-    !!settings?.reminders_enabled;
+  const schedulerEnabled = !isLoading && !!settings?.reminders_enabled;
 
   // Run the reminder scheduler
   useReminderScheduler({
@@ -40,24 +34,6 @@ export function ReminderProvider({ planId, children }: ReminderProviderProps) {
     enabled: schedulerEnabled,
     settings,
   });
-
-  // Debug logging
-  useEffect(() => {
-    console.log("[Reminders] Provider state:", {
-      isLoading,
-      settingsLoaded: !!settings,
-      remindersEnabled: settings?.reminders_enabled,
-      serviceWorkerRegistered: isRegistered,
-      notificationPermission: isGranted ? "granted" : isDenied ? "denied" : "default",
-      schedulerEnabled,
-    });
-  }, [isLoading, settings, isRegistered, isGranted, isDenied, schedulerEnabled]);
-
-  useEffect(() => {
-    if (schedulerEnabled) {
-      console.log("[Reminders] Scheduler is now ACTIVE for plan:", planId);
-    }
-  }, [schedulerEnabled, planId]);
 
   // Show notification permission banner if:
   // - Notifications are supported
