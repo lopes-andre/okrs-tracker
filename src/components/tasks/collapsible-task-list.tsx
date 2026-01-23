@@ -103,6 +103,8 @@ export function CollapsibleTaskList({
   const displayedTasks =
     maxItems && !showPagination ? tasks.slice(0, maxItems) : tasks;
   const hasMore = maxItems && !showPagination && tasks.length > maxItems;
+  // Show truncation indicator when totalCount is provided and greater than displayed tasks
+  const isTruncated = totalCount !== undefined && totalCount > displayedTasks.length;
 
   if (count === 0 && !showPagination) {
     return null; // Don't render empty sections
@@ -160,6 +162,15 @@ export function CollapsibleTaskList({
                 <div className="py-3 text-center border-t border-border-soft">
                   <p className="text-small text-text-muted">
                     +{tasks.length - maxItems!} more tasks
+                  </p>
+                </div>
+              )}
+
+              {/* Truncation indicator when totalCount exceeds displayed */}
+              {!hasMore && isTruncated && (
+                <div className="py-3 text-center border-t border-border-soft">
+                  <p className="text-small text-text-muted">
+                    Showing {displayedTasks.length} of {totalCount} tasks
                   </p>
                 </div>
               )}

@@ -811,67 +811,30 @@ export default function TasksPage({
 
               {/* Future (due after this month, truncated) */}
               {showFuture && futureData && futureData.total > 0 && (
-                <Card className="opacity-80">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FastForward className="w-4 h-4 text-text-subtle" />
-                        <CardTitle className="text-h5 text-text-muted">
-                          Future
-                        </CardTitle>
-                        <Badge variant="secondary">{futureData.total}</Badge>
-                      </div>
-                      {futureData.total > futureData.tasks.length && (
-                        <span className="text-xs text-text-muted">
-                          Showing {futureData.tasks.length} of {futureData.total}
-                        </span>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    {isLoadingFuture ? (
-                      <div className="py-6 flex justify-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
-                      </div>
-                    ) : (
-                      <div className="divide-y divide-border-soft">
-                        {(showMyTasksOnly
-                          ? futureData.tasks.filter(
-                              (task) =>
-                                task.assignees?.some((a) => a.user_id === currentUserId) ||
-                                task.assigned_to === currentUserId
-                            )
-                          : futureData.tasks
-                        ).map((task) => {
-                          const counts = commentCounts[task.id] || { total: 0, unread: 0 };
-                          return (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              role={userRole}
-                              onStatusChange={(status) =>
-                                handleStatusChange(task, status)
-                              }
-                              onEdit={() => openEdit(task)}
-                              onDelete={() =>
-                                setDeleteDialog({ open: true, task })
-                              }
-                              selectable={selectMode}
-                              selected={selectedTaskIds.has(task.id)}
-                              onSelectChange={(selected) =>
-                                toggleTaskSelection(task.id, selected)
-                              }
-                              currentUserId={currentUserId || undefined}
-                              commentCount={counts.total}
-                              hasUnreadComments={counts.unread > 0}
-                              onCommentsClick={() => openComments(task)}
-                            />
-                          );
-                        })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <CollapsibleTaskList
+                  title="Future"
+                  count={futureData.total}
+                  tasks={
+                    showMyTasksOnly
+                      ? futureData.tasks.filter(
+                          (task) =>
+                            task.assignees?.some((a) => a.user_id === currentUserId) ||
+                            task.assigned_to === currentUserId
+                        )
+                      : futureData.tasks
+                  }
+                  totalCount={futureData.total}
+                  icon={<FastForward className="w-4 h-4 text-text-subtle" />}
+                  variant="muted"
+                  defaultExpanded={false}
+                  isLoading={isLoadingFuture}
+                  role={userRole}
+                  onStatusChange={handleStatusChange}
+                  onEdit={openEdit}
+                  onDelete={(task) => setDeleteDialog({ open: true, task })}
+                  renderTask={renderTask}
+                  emptyMessage="No future tasks scheduled"
+                />
               )}
 
               {/* Completed (recent only, link to logbook) */}
