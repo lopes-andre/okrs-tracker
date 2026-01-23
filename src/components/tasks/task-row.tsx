@@ -32,6 +32,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole, TaskAssignee } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { EditingDot } from "@/components/layout/editing-indicator";
 
 interface TaskRowProps {
   task: Task & {
@@ -57,6 +58,8 @@ interface TaskRowProps {
   selected?: boolean;
   /** Callback when selection changes (only used if selectable is true) */
   onSelectChange?: (selected: boolean) => void;
+  /** Current user's ID for editing indicator */
+  currentUserId?: string;
 }
 
 // Priority: Alert/Impact style - filled, dominant, answers "Why does this matter?"
@@ -204,6 +207,7 @@ export function TaskRow({
   selectable = false,
   selected = false,
   onSelectChange,
+  currentUserId,
 }: TaskRowProps) {
   const canEdit = role === "owner" || role === "editor";
   const isCompleted = task.status === "completed";
@@ -319,6 +323,13 @@ export function TaskRow({
           );
         })()}
       </div>
+
+      {/* Editing Indicator */}
+      <EditingDot
+        entityType="task"
+        entityId={task.id}
+        currentUserId={currentUserId}
+      />
 
       {/* Quarter Badge */}
       {task.quarter_target && (

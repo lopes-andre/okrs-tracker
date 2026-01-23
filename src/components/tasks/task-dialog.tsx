@@ -49,6 +49,8 @@ import type {
   PlanMemberWithProfile,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { useEditingTracker } from "@/lib/realtime";
+import { EditingIndicator } from "@/components/layout/editing-indicator";
 
 // Type for creating - without plan_id since the hook adds it
 type TaskCreateData = Omit<TaskInsert, "plan_id">;
@@ -65,6 +67,7 @@ interface TaskDialogProps {
   initialObjectiveId?: string; // For pre-populating objective when editing task with KR
   members?: PlanMemberWithProfile[];
   selectedAssignees?: string[];
+  currentUserId?: string; // For editing indicator
   onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[], assigneeIds: string[]) => Promise<void>;
   onCreateTag?: (name: string) => Promise<Tag>;
 }
@@ -113,11 +116,18 @@ export function TaskDialog({
   initialObjectiveId = "",
   members = [],
   selectedAssignees: initialSelectedAssignees = [],
+  currentUserId,
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {
   const isEditing = !!task;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Track editing state for real-time collaboration
+  useEditingTracker(
+    open && isEditing ? "task" : null,
+    open && isEditing ? task?.id ?? null : null
+  );
 
   // Form state
   const [title, setTitle] = useState("");
@@ -291,9 +301,18 @@ export function TaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading">
-            {isEditing ? "Edit Task" : "Create Task"}
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-heading">
+              {isEditing ? "Edit Task" : "Create Task"}
+            </DialogTitle>
+            {isEditing && task && (
+              <EditingIndicator
+                entityType="task"
+                entityId={task.id}
+                currentUserId={currentUserId}
+              />
+            )}
+          </div>
           <DialogDescription>
             {isEditing
               ? "Update the task details below."

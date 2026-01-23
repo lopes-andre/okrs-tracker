@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { getQueryKeysToInvalidate, DEFAULT_REALTIME_TABLES } from "./invalidation-map";
-import type { RealtimeTable, RealtimeEvent, PresenceState } from "./types";
+import type { RealtimeTable, RealtimeEvent, PresenceState, EditableEntityType } from "./types";
 
 interface UseRealtimeSyncOptions {
   planId: string;
@@ -23,6 +23,7 @@ interface UseRealtimeSyncReturn {
   connectionStatus: "connected" | "disconnected" | "reconnecting";
   onlineUsers: PresenceState[];
   trackPresence: (page?: string) => void;
+  trackEditing: (entityType: EditableEntityType | null, entityId: string | null) => void;
 }
 
 /**
@@ -44,6 +45,7 @@ export function useRealtimeSync({
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "reconnecting">("disconnected");
   const [onlineUsers, setOnlineUsers] = useState<PresenceState[]>([]);
   const currentPageRef = useRef<string | undefined>(undefined);
+  const currentEditingRef = useRef<{ entityType: EditableEntityType; entityId: string } | null>(null);
 
   // Use refs for callbacks to avoid dependency changes
   const onEventRef = useRef(onEvent);
@@ -71,6 +73,7 @@ export function useRealtimeSync({
     (page?: string) => {
       currentPageRef.current = page;
       if (channelRef.current && userId) {
+        const editing = currentEditingRef.current;
         channelRef.current.track({
           oduserId: userId,
           email: userEmail || "",
@@ -78,6 +81,43 @@ export function useRealtimeSync({
           avatarUrl: null,
           onlineAt: new Date().toISOString(),
           currentPage: page,
+          editing: editing
+            ? {
+                entityType: editing.entityType,
+                entityId: editing.entityId,
+                startedAt: new Date().toISOString(),
+              }
+            : null,
+        });
+      }
+    },
+    [userId, userEmail, userFullName]
+  );
+
+  // Track user editing a specific entity
+  const trackEditing = useCallback(
+    (entityType: EditableEntityType | null, entityId: string | null) => {
+      if (entityType && entityId) {
+        currentEditingRef.current = { entityType, entityId };
+      } else {
+        currentEditingRef.current = null;
+      }
+
+      if (channelRef.current && userId) {
+        channelRef.current.track({
+          oduserId: userId,
+          email: userEmail || "",
+          fullName: userFullName || null,
+          avatarUrl: null,
+          onlineAt: new Date().toISOString(),
+          currentPage: currentPageRef.current,
+          editing: entityType && entityId
+            ? {
+                entityType,
+                entityId,
+                startedAt: new Date().toISOString(),
+              }
+            : null,
         });
       }
     },
@@ -209,6 +249,7 @@ export function useRealtimeSync({
 
         // Track presence after subscription
         if (userId) {
+          const editing = currentEditingRef.current;
           await channel.track({
             oduserId: userId,
             email: userEmail || "",
@@ -216,6 +257,13 @@ export function useRealtimeSync({
             avatarUrl: null,
             onlineAt: new Date().toISOString(),
             currentPage: currentPageRef.current,
+            editing: editing
+              ? {
+                  entityType: editing.entityType,
+                  entityId: editing.entityId,
+                  startedAt: new Date().toISOString(),
+                }
+              : null,
           });
         }
       } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
@@ -246,5 +294,6 @@ export function useRealtimeSync({
     connectionStatus,
     onlineUsers,
     trackPresence,
+    trackEditing,
   };
 }

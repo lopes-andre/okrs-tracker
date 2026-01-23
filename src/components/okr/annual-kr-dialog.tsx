@@ -48,6 +48,8 @@ import type {
   PlanMemberWithProfile,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import { useEditingTracker } from "@/lib/realtime";
+import { EditingIndicator } from "@/components/layout/editing-indicator";
 
 interface AnnualKrDialogProps {
   open: boolean;
@@ -58,6 +60,7 @@ interface AnnualKrDialogProps {
   tags: Tag[];
   members?: PlanMemberWithProfile[];
   selectedTags?: string[];
+  currentUserId?: string;
   onSubmit: (data: AnnualKrInsert | AnnualKrUpdate, tagIds: string[]) => Promise<void>;
 }
 
@@ -204,10 +207,17 @@ export function AnnualKrDialog({
   tags,
   members = [],
   selectedTags: initialSelectedTags = [],
+  currentUserId,
   onSubmit,
 }: AnnualKrDialogProps) {
   const isEditing = !!kr;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Track editing state for real-time collaboration
+  useEditingTracker(
+    open && isEditing ? "kr" : null,
+    open && isEditing ? kr?.id ?? null : null
+  );
 
   // Form state
   const [name, setName] = useState("");
@@ -351,9 +361,18 @@ export function AnnualKrDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading text-h4">
-            {isEditing ? "Edit Key Result" : "Create Key Result"}
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-heading text-h4">
+              {isEditing ? "Edit Key Result" : "Create Key Result"}
+            </DialogTitle>
+            {isEditing && kr && (
+              <EditingIndicator
+                entityType="kr"
+                entityId={kr.id}
+                currentUserId={currentUserId}
+              />
+            )}
+          </div>
           <DialogDescription>
             {isEditing
               ? "Update the key result configuration."
@@ -617,12 +636,15 @@ export function AnnualKrDialog({
             {groups.length > 0 && (
               <div className="space-y-2">
                 <Label>Group (optional)</Label>
-                <Select value={groupId} onValueChange={setGroupId}>
+                <Select
+                  value={groupId || "none"}
+                  onValueChange={(v) => setGroupId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a group" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No group</SelectItem>
+                    <SelectItem value="none">No group</SelectItem>
                     {groups.map((g) => (
                       <SelectItem key={g.id} value={g.id}>
                         {g.name}
@@ -647,12 +669,15 @@ export function AnnualKrDialog({
                     </TooltipContent>
                   </Tooltip>
                 </Label>
-                <Select value={ownerId} onValueChange={setOwnerId}>
+                <Select
+                  value={ownerId || "none"}
+                  onValueChange={(v) => setOwnerId(v === "none" ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Assign an owner" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No owner</SelectItem>
+                    <SelectItem value="none">No owner</SelectItem>
                     {members.map((m) => (
                       <SelectItem key={m.user_id} value={m.user_id}>
                         {m.profile.full_name || m.profile.email}

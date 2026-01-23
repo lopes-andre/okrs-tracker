@@ -10,13 +10,14 @@ import {
   type ReactNode,
 } from "react";
 import { useRealtimeSync } from "./use-realtime-sync";
-import type { PresenceState, RealtimeEvent } from "./types";
+import type { PresenceState, RealtimeEvent, EditableEntityType } from "./types";
 
 interface RealtimeContextValue {
   isConnected: boolean;
   connectionStatus: "connected" | "disconnected" | "reconnecting";
   onlineUsers: PresenceState[];
   trackPresence: (page?: string) => void;
+  trackEditing: (entityType: EditableEntityType | null, entityId: string | null) => void;
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -60,6 +61,7 @@ export function RealtimeProvider({
     connectionStatus,
     onlineUsers,
     trackPresence,
+    trackEditing,
   } = useRealtimeSync({
     planId,
     userId,
@@ -77,8 +79,9 @@ export function RealtimeProvider({
       connectionStatus,
       onlineUsers,
       trackPresence,
+      trackEditing,
     }),
-    [isConnected, connectionStatus, onlineUsers, trackPresence]
+    [isConnected, connectionStatus, onlineUsers, trackPresence, trackEditing]
   );
 
   return (
@@ -110,6 +113,7 @@ export function useRealtime(): RealtimeContextValue {
       connectionStatus: "disconnected",
       onlineUsers: [],
       trackPresence: () => {},
+      trackEditing: () => {},
     };
   }
 
@@ -126,4 +130,59 @@ export function usePresenceTracking(page: string) {
   useEffect(() => {
     trackPresence(page);
   }, [page, trackPresence]);
+}
+
+/**
+ * Hook to track editing state for an entity.
+ * Automatically clears editing state when the component unmounts.
+ *
+ * @param entityType - The type of entity being edited (or null to stop tracking)
+ * @param entityId - The ID of the entity being edited (or null to stop tracking)
+ */
+export function useEditingTracker(
+  entityType: EditableEntityType | null,
+  entityId: string | null
+) {
+  const { trackEditing } = useRealtime();
+
+  useEffect(() => {
+    if (entityType && entityId) {
+      trackEditing(entityType, entityId);
+    }
+
+    // Clear editing state when unmounting or when entity changes
+    return () => {
+      trackEditing(null, null);
+    };
+  }, [entityType, entityId, trackEditing]);
+}
+
+/**
+ * Hook to get users currently editing a specific entity.
+ * Returns an array of users (excluding the current user) who are editing the entity.
+ *
+ * @param entityType - The type of entity to check
+ * @param entityId - The ID of the entity to check
+ * @param currentUserId - The current user's ID (to exclude from results)
+ */
+export function useEditingUsers(
+  entityType: EditableEntityType,
+  entityId: string,
+  currentUserId?: string
+): PresenceState[] {
+  const { onlineUsers } = useRealtime();
+
+  return useMemo(() => {
+    return onlineUsers.filter((user) => {
+      // Exclude current user
+      if (currentUserId && user.oduserId === currentUserId) {
+        return false;
+      }
+      // Check if editing this entity
+      return (
+        user.editing?.entityType === entityType &&
+        user.editing?.entityId === entityId
+      );
+    });
+  }, [onlineUsers, entityType, entityId, currentUserId]);
 }

@@ -27,6 +27,16 @@ export interface RealtimeEvent<T = Record<string, unknown>> {
   commit_timestamp: string;
 }
 
+// Entity types that can be edited
+export type EditableEntityType = "task" | "objective" | "kr" | "quarter_targets" | "check_in";
+
+// Editing state for an entity
+export interface EditingState {
+  entityType: EditableEntityType;
+  entityId: string;
+  startedAt: string;
+}
+
 // Presence state for online users
 export interface PresenceState {
   oduserId: string;
@@ -35,6 +45,7 @@ export interface PresenceState {
   avatarUrl: string | null;
   onlineAt: string;
   currentPage?: string;
+  editing?: EditingState | null;
 }
 
 // Subscription options

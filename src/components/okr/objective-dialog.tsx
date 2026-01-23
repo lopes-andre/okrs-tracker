@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Objective, ObjectiveInsert, ObjectiveUpdate } from "@/lib/supabase/types";
+import { useEditingTracker } from "@/lib/realtime";
+import { EditingIndicator } from "@/components/layout/editing-indicator";
 
 interface ObjectiveDialogProps {
   open: boolean;
@@ -21,6 +23,7 @@ interface ObjectiveDialogProps {
   planId: string;
   objective?: Objective | null;
   existingCodes: string[];
+  currentUserId?: string;
   onSubmit: (data: ObjectiveInsert | ObjectiveUpdate) => Promise<void>;
 }
 
@@ -30,10 +33,17 @@ export function ObjectiveDialog({
   planId,
   objective,
   existingCodes,
+  currentUserId,
   onSubmit,
 }: ObjectiveDialogProps) {
   const isEditing = !!objective;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Track editing state for real-time collaboration
+  useEditingTracker(
+    open && isEditing ? "objective" : null,
+    open && isEditing ? objective?.id ?? null : null
+  );
 
   // Form state
   const [code, setCode] = useState("");
@@ -90,9 +100,18 @@ export function ObjectiveDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="font-heading">
-            {isEditing ? "Edit Objective" : "Create Objective"}
-          </DialogTitle>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="font-heading">
+              {isEditing ? "Edit Objective" : "Create Objective"}
+            </DialogTitle>
+            {isEditing && objective && (
+              <EditingIndicator
+                entityType="objective"
+                entityId={objective.id}
+                currentUserId={currentUserId}
+              />
+            )}
+          </div>
           <DialogDescription>
             {isEditing
               ? "Update the objective details below."
