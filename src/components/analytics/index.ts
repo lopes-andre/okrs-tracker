@@ -10,3 +10,10 @@ export { ProductivityPanel } from "./productivity-panel";
 export { SavedViews, useSavedViews, type ViewConfig, type SavedView } from "./saved-views";
 export { QuarterlyComparison } from "./quarterly-comparison";
 export { WeeklyReviewMetrics } from "./weekly-review-metrics";
+
+// Advanced Analytics
+export { VelocityChart } from "./velocity-chart";
+export { PriorityBurndownChart } from "./priority-burndown-chart";
+export { TaskCompletionAnalysis } from "./task-completion-analysis";
+export { CheckInVelocityChart } from "./checkin-velocity-chart";
+export { KrTypePerformance } from "./kr-type-performance";

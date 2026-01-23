@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { BarChart3, TrendingUp, Loader2, Target } from "lucide-react";
+import { BarChart3, TrendingUp, Loader2, Target, ListTodo } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,17 +14,18 @@ import {
 } from "@/components/ui/select";
 import { usePlan } from "@/features";
 import { useCheckIns } from "@/features/check-ins/hooks";
-import { 
-  useAnalyticsSummary, 
+import {
+  useAnalyticsSummary,
   useKrPerformanceData,
   useCheckInsByDay,
   useTaskMetrics,
   useProductivityStats,
+  useAnalyticsData,
 } from "@/features/analytics/hooks";
 import { useState } from "react";
-import { 
-  SummaryCards, 
-  KrPerformanceTable, 
+import {
+  SummaryCards,
+  KrPerformanceTable,
   ProgressChart,
   PaceAnalysisPanel,
   ActivityBarChart,
@@ -36,6 +37,11 @@ import {
   useSavedViews,
   QuarterlyComparison,
   WeeklyReviewMetrics,
+  VelocityChart,
+  PriorityBurndownChart,
+  TaskCompletionAnalysis,
+  CheckInVelocityChart,
+  KrTypePerformance,
   type ViewConfig,
 } from "@/components/analytics";
 
@@ -73,6 +79,10 @@ export default function AnalyticsPage({
   const { data: checkInsByDay = [] } = useCheckInsByDay(planId);
   const { data: taskMetrics } = useTaskMetrics(planId);
   const { data: productivityStats } = useProductivityStats(planId);
+  const { data: analyticsData } = useAnalyticsData(planId, planYear);
+
+  // Tasks for advanced analytics
+  const tasks = analyticsData?.tasks || [];
 
   const isLoading = isLoadingPlan || isLoadingSummary || isLoadingPerformance || isLoadingCheckIns;
 
@@ -115,11 +125,12 @@ export default function AnalyticsPage({
 
       {/* Analytics Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">KR Performance</TabsTrigger>
+          <TabsTrigger value="tasks">Task Analytics</TabsTrigger>
           <TabsTrigger value="pace">Pace Analysis</TabsTrigger>
-          <TabsTrigger value="heatmap">Activity Heatmap</TabsTrigger>
+          <TabsTrigger value="heatmap">Activity</TabsTrigger>
           <TabsTrigger value="reviews">Weekly Reviews</TabsTrigger>
         </TabsList>
 
@@ -195,9 +206,55 @@ export default function AnalyticsPage({
               }}
             />
           ) : (
-            krPerformanceData && (
-              <KrPerformanceTable data={krPerformanceData} />
-            )
+            <div className="space-y-6">
+              {krPerformanceData && (
+                <>
+                  <KrPerformanceTable data={krPerformanceData} />
+
+                  {/* KR Type Performance & Check-in Velocity */}
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    <KrTypePerformance krs={krPerformanceData} />
+                    <CheckInVelocityChart
+                      checkIns={allCheckIns}
+                      krs={krPerformanceData}
+                      year={planYear}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Task Analytics Tab */}
+        <TabsContent value="tasks">
+          {tasks.length === 0 ? (
+            <EmptyState
+              icon={ListTodo}
+              title="No tasks yet"
+              description="Create tasks to see task analytics and velocity tracking."
+              action={{
+                label: "Create Task",
+                href: `/plans/${planId}/tasks`,
+              }}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* Velocity & Burndown Row */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                <VelocityChart tasks={tasks} year={planYear} />
+                <PriorityBurndownChart tasks={tasks} year={planYear} />
+              </div>
+
+              {/* Task Completion Analysis */}
+              <TaskCompletionAnalysis tasks={tasks} />
+
+              {/* Task Metrics & Productivity (also shown in Activity tab) */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {taskMetrics && <TaskMetricsPanel metrics={taskMetrics} />}
+                {productivityStats && <ProductivityPanel stats={productivityStats} />}
+              </div>
+            </div>
           )}
         </TabsContent>
 
