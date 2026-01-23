@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, use, useMemo, useEffect } from "react";
-import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo } from "lucide-react";
+import { Plus, Target, Loader2, TrendingUp, CheckCircle2, ListTodo, User } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
   usePlanRole,
   usePlanStats,
   usePlanMembers,
+  useCurrentUserId,
   useObjectivesWithKrs,
   useCreateObjective,
   useUpdateObjective,
@@ -95,6 +96,7 @@ export default function OKRsPage({
   const { data: tags = [] } = useTags(planId);
   const { data: checkIns = [] } = useCheckIns(planId);
   const { data: members = [] } = usePlanMembers(planId);
+  const { data: currentUserId } = useCurrentUserId();
   
   // Organize check-ins by KR ID
   const checkInsByKr = useMemo(() => {
@@ -141,6 +143,7 @@ export default function OKRsPage({
 
   const [checkInDialogOpen, setCheckInDialogOpen] = useState(false);
   const [checkInKr, setCheckInKr] = useState<(AnnualKr & { quarter_targets?: QuarterTarget[] }) | null>(null);
+  const [showMyKrsOnly, setShowMyKrsOnly] = useState(false);
 
   // Fetch current tags when editing a KR
   const { data: editingKrTagIds } = useKrTagIds(editingKr?.id ?? null);
@@ -158,6 +161,30 @@ export default function OKRsPage({
 
   // Get existing objective codes
   const existingCodes = objectives?.map((o) => o.code) || [];
+
+  // Filter objectives to only show those with KRs owned by the current user
+  const filteredObjectives = useMemo(() => {
+    if (!showMyKrsOnly || !currentUserId || !objectives) {
+      return objectives || [];
+    }
+    // Filter to objectives that have at least one KR owned by the current user
+    return objectives
+      .map((obj) => ({
+        ...obj,
+        annual_krs: obj.annual_krs?.filter((kr) => kr.owner_id === currentUserId) || [],
+      }))
+      .filter((obj) => obj.annual_krs.length > 0);
+  }, [objectives, showMyKrsOnly, currentUserId]);
+
+  // Count of "My KRs" for badge
+  const myKrsCount = useMemo(() => {
+    if (!objectives || !currentUserId) return 0;
+    return objectives.reduce(
+      (count, obj) =>
+        count + (obj.annual_krs?.filter((kr) => kr.owner_id === currentUserId).length || 0),
+      0
+    );
+  }, [objectives, currentUserId]);
 
   // Calculate real-time overall progress from check-ins
   const overallProgress = useMemo(() => {
@@ -317,12 +344,25 @@ export default function OKRsPage({
         title="Objectives & Key Results"
         description={plan ? `${plan.name} • ${plan.year}` : "Define and track your annual OKRs"}
       >
-        {canEdit && (
-          <Button onClick={handleCreateObjective} className="gap-2">
-            <Plus className="w-4 h-4" />
-            New Objective
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* My KRs Filter Toggle - Show when user owns at least one KR */}
+          {myKrsCount > 0 && (
+            <Button
+              variant={showMyKrsOnly ? "default" : "outline"}
+              onClick={() => setShowMyKrsOnly(!showMyKrsOnly)}
+              className="gap-2"
+            >
+              <User className="w-4 h-4" />
+              {showMyKrsOnly ? `My KRs (${myKrsCount})` : "All KRs"}
+            </Button>
+          )}
+          {canEdit && (
+            <Button onClick={handleCreateObjective} className="gap-2">
+              <Plus className="w-4 h-4" />
+              New Objective
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
       {/* Stats */}
@@ -351,9 +391,9 @@ export default function OKRsPage({
       </div>
 
       {/* Objectives List */}
-      {objectives && objectives.length > 0 ? (
+      {filteredObjectives.length > 0 ? (
         <div className="space-y-4">
-          {objectives.map((objective) => (
+          {filteredObjectives.map((objective) => (
             <ObjectiveCard
               key={objective.id}
               objective={objective}
@@ -382,6 +422,16 @@ export default function OKRsPage({
             />
           ))}
         </div>
+      ) : showMyKrsOnly && objectives && objectives.length > 0 ? (
+        <EmptyState
+          icon={User}
+          title="No KRs assigned to you"
+          description="You don't own any Key Results in this plan yet"
+          action={{
+            label: "Show All KRs",
+            onClick: () => setShowMyKrsOnly(false),
+          }}
+        />
       ) : (
         <EmptyState
           icon={Target}

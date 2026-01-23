@@ -288,3 +288,18 @@ export function useDeclinePlanInvite() {
     },
   });
 }
+
+// ============================================================================
+// CURRENT USER
+// ============================================================================
+
+/**
+ * Get the current authenticated user's ID
+ */
+export function useCurrentUserId() {
+  return useQuery({
+    queryKey: queryKeys.profile.current,
+    queryFn: api.getCurrentUserId,
+    staleTime: 5 * 60 * 1000, // User ID doesn't change often
+  });
+}

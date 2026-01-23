@@ -18,6 +18,7 @@ import {
   Calendar,
   CheckSquare,
   Square,
+  User,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -42,7 +43,7 @@ import {
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useTags, useCreateTag } from "@/features/tags/hooks";
-import { usePlanRole, usePlanMembers } from "@/features/plans/hooks";
+import { usePlanRole, usePlanMembers, useCurrentUserId } from "@/features/plans/hooks";
 import { useSetTaskAssignees } from "@/features/tasks/hooks";
 import type {
   TaskStatus,
@@ -72,6 +73,7 @@ export default function TasksPage({
   const { data: tags = [] } = useTags(planId);
   const { data: role } = usePlanRole(planId);
   const { data: members = [] } = usePlanMembers(planId);
+  const { data: currentUserId } = useCurrentUserId();
   const userRole: OkrRole = role || "viewer";
   const canEdit = userRole === "owner" || userRole === "editor";
 
@@ -104,6 +106,7 @@ export default function TasksPage({
   });
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
   const [activeView, setActiveView] = useState<"list" | "grouped">("list");
+  const [showMyTasksOnly, setShowMyTasksOnly] = useState(false);
 
   // Selection state for bulk operations
   const [selectMode, setSelectMode] = useState(false);
@@ -111,7 +114,32 @@ export default function TasksPage({
   const isBulkProcessing = bulkUpdateStatus.isPending || bulkDelete.isPending ||
     bulkAddTag.isPending || bulkRemoveTag.isPending;
 
-  // Stats from grouped data
+  // Filter function for "My Tasks" view
+  const filterMyTasks = useMemo(() => {
+    if (!showMyTasksOnly || !currentUserId) {
+      return (tasks: TaskWithDetails[]) => tasks;
+    }
+    return (tasks: TaskWithDetails[]) =>
+      tasks.filter((task) =>
+        task.assignees?.some((a) => a.user_id === currentUserId) ||
+        task.assigned_to === currentUserId
+      );
+  }, [showMyTasksOnly, currentUserId]);
+
+  // Apply "My Tasks" filter to the grouped data
+  const filteredGroupedTasks = useMemo(() => {
+    if (!groupedTasks) return null;
+    return {
+      today: filterMyTasks(groupedTasks.today),
+      overdue: filterMyTasks(groupedTasks.overdue),
+      thisWeek: filterMyTasks(groupedTasks.thisWeek),
+      thisMonth: filterMyTasks(groupedTasks.thisMonth),
+      backlog: filterMyTasks(groupedTasks.backlog),
+      completed: filterMyTasks(groupedTasks.completed),
+    };
+  }, [groupedTasks, filterMyTasks]);
+
+  // Stats from grouped data (always show full counts, filtered lists use filtered data)
   const counts = groupedTasks?.counts || {
     active: 0,
     today: 0,
@@ -122,12 +150,39 @@ export default function TasksPage({
     completed: 0,
   };
 
-  // Task lists
-  const todayTasks = groupedTasks?.today || [];
-  const overdueTasks = groupedTasks?.overdue || [];
-  const thisWeekTasks = groupedTasks?.thisWeek || [];
-  const thisMonthTasks = groupedTasks?.thisMonth || [];
-  const backlogTasks = groupedTasks?.backlog || [];
+  // Filtered counts when "My Tasks" is active
+  const filteredCounts = useMemo(() => {
+    if (!filteredGroupedTasks) return counts;
+    return {
+      active:
+        filteredGroupedTasks.today.length +
+        filteredGroupedTasks.overdue.length +
+        filteredGroupedTasks.thisWeek.length +
+        filteredGroupedTasks.thisMonth.length +
+        filteredGroupedTasks.backlog.length,
+      today: filteredGroupedTasks.today.length,
+      overdue: filteredGroupedTasks.overdue.length,
+      thisWeek: filteredGroupedTasks.thisWeek.length,
+      thisMonth: filteredGroupedTasks.thisMonth.length,
+      backlog: filteredGroupedTasks.backlog.length,
+      completed: filteredGroupedTasks.completed.length,
+    };
+  }, [filteredGroupedTasks, counts]);
+
+  // Display counts - use filtered counts when "My Tasks" is active
+  const displayCounts = showMyTasksOnly ? filteredCounts : counts;
+
+  // Task lists (filtered when "My Tasks" is active)
+  const todayTasks = filteredGroupedTasks?.today || [];
+  const overdueTasks = filteredGroupedTasks?.overdue || [];
+  const thisWeekTasks = filteredGroupedTasks?.thisWeek || [];
+  const thisMonthTasks = filteredGroupedTasks?.thisMonth || [];
+  const backlogTasks = filteredGroupedTasks?.backlog || [];
+
+  // Filter recent completed tasks when "My Tasks" is active
+  const filteredRecentCompleted = useMemo(() => {
+    return filterMyTasks(recentCompleted);
+  }, [recentCompleted, filterMyTasks]);
 
   // All active tasks for grouping
   const allActiveTasks = useMemo(() => {
@@ -360,6 +415,16 @@ export default function TasksPage({
             Logbook
           </Button>
         </Link>
+        {members.length > 1 && (
+          <Button
+            variant={showMyTasksOnly ? "default" : "outline"}
+            onClick={() => setShowMyTasksOnly(!showMyTasksOnly)}
+            className="gap-2"
+          >
+            <User className="w-4 h-4" />
+            {showMyTasksOnly ? "My Tasks" : "All Tasks"}
+          </Button>
+        )}
         {canEdit && (
           <>
             <Button
@@ -398,7 +463,7 @@ export default function TasksPage({
         >
           <CardContent className="pt-4 text-center">
             <ListTodo className="w-5 h-5 mx-auto mb-1 text-text-muted" />
-            <p className="text-h4 font-bold text-text-strong">{counts.active}</p>
+            <p className="text-h4 font-bold text-text-strong">{displayCounts.active}</p>
             <p className="text-small text-text-muted">Active</p>
           </CardContent>
         </Card>
@@ -406,14 +471,14 @@ export default function TasksPage({
         <Card
           className={cn(
             "cursor-pointer transition-all hover:border-status-info/50",
-            counts.today > 0 && "border-status-info/30",
+            displayCounts.today > 0 && "border-status-info/30",
             activeFilter === "today" && "ring-2 ring-status-info/30"
           )}
           onClick={() => handleStatsClick("today")}
         >
           <CardContent className="pt-4 text-center">
             <Calendar className="w-5 h-5 mx-auto mb-1 text-status-info" />
-            <p className="text-h4 font-bold text-status-info">{counts.today}</p>
+            <p className="text-h4 font-bold text-status-info">{displayCounts.today}</p>
             <p className="text-small text-text-muted">Today</p>
           </CardContent>
         </Card>
@@ -421,7 +486,7 @@ export default function TasksPage({
         <Card
           className={cn(
             "cursor-pointer transition-all hover:border-status-danger/50",
-            counts.overdue > 0 && "border-status-danger/30",
+            displayCounts.overdue > 0 && "border-status-danger/30",
             activeFilter === "overdue" && "ring-2 ring-status-danger/30"
           )}
           onClick={() => handleStatsClick("overdue")}
@@ -431,10 +496,10 @@ export default function TasksPage({
             <p
               className={cn(
                 "text-h4 font-bold",
-                counts.overdue > 0 ? "text-status-danger" : "text-text-strong"
+                displayCounts.overdue > 0 ? "text-status-danger" : "text-text-strong"
               )}
             >
-              {counts.overdue}
+              {displayCounts.overdue}
             </p>
             <p className="text-small text-text-muted">Overdue</p>
           </CardContent>
@@ -450,7 +515,7 @@ export default function TasksPage({
           <CardContent className="pt-4 text-center">
             <Clock className="w-5 h-5 mx-auto mb-1 text-status-warning" />
             <p className="text-h4 font-bold text-status-warning">
-              {counts.thisWeek}
+              {displayCounts.thisWeek}
             </p>
             <p className="text-small text-text-muted">This Week</p>
           </CardContent>
@@ -466,7 +531,7 @@ export default function TasksPage({
           <CardContent className="pt-4 text-center">
             <CheckCircle2 className="w-5 h-5 mx-auto mb-1 text-status-success" />
             <p className="text-h4 font-bold text-status-success">
-              {counts.completed}
+              {displayCounts.completed}
             </p>
             <p className="text-small text-text-muted">Completed</p>
           </CardContent>
@@ -527,7 +592,7 @@ export default function TasksPage({
                 <Loader2 className="w-8 h-8 animate-spin text-text-muted" />
               </CardContent>
             </Card>
-          ) : counts.active === 0 && counts.completed === 0 ? (
+          ) : counts.active === 0 && displayCounts.completed === 0 ? (
             <EmptyState
               icon={ListTodo}
               title="No tasks yet"
@@ -548,7 +613,7 @@ export default function TasksPage({
               {showToday && (
                 <CollapsibleTaskList
                   title="Today"
-                  count={counts.today}
+                  count={displayCounts.today}
                   tasks={todayTasks}
                   icon={<Calendar className="w-4 h-4 text-status-info" />}
                   variant="accent"
@@ -566,7 +631,7 @@ export default function TasksPage({
               {showOverdue && (
                 <CollapsibleTaskList
                   title="Overdue"
-                  count={counts.overdue}
+                  count={displayCounts.overdue}
                   tasks={overdueTasks}
                   icon={<AlertTriangle className="w-4 h-4 text-status-danger" />}
                   variant="danger"
@@ -584,7 +649,7 @@ export default function TasksPage({
               {showThisWeek && (
                 <CollapsibleTaskList
                   title="This Week"
-                  count={counts.thisWeek}
+                  count={displayCounts.thisWeek}
                   tasks={thisWeekTasks}
                   icon={<Clock className="w-4 h-4 text-status-warning" />}
                   variant="warning"
@@ -602,7 +667,7 @@ export default function TasksPage({
               {showThisMonth && (
                 <CollapsibleTaskList
                   title="This Month"
-                  count={counts.thisMonth}
+                  count={displayCounts.thisMonth}
                   tasks={thisMonthTasks}
                   icon={<CalendarDays className="w-4 h-4 text-text-muted" />}
                   variant="default"
@@ -620,7 +685,7 @@ export default function TasksPage({
               {showBacklog && (
                 <CollapsibleTaskList
                   title="Ideas Backlog"
-                  count={counts.backlog}
+                  count={displayCounts.backlog}
                   tasks={backlogTasks}
                   icon={<Lightbulb className="w-4 h-4 text-text-subtle" />}
                   variant="muted"
@@ -644,7 +709,7 @@ export default function TasksPage({
                         <CardTitle className="text-h5 text-text-muted">
                           Recently Completed
                         </CardTitle>
-                        <Badge variant="success">{counts.completed}</Badge>
+                        <Badge variant="success">{displayCounts.completed}</Badge>
                       </div>
                       <Link href={`/plans/${planId}/tasks/logbook`}>
                         <Button variant="ghost" size="sm" className="gap-1">
@@ -659,13 +724,13 @@ export default function TasksPage({
                       <div className="py-6 flex justify-center">
                         <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
                       </div>
-                    ) : recentCompleted.length === 0 ? (
+                    ) : filteredRecentCompleted.length === 0 ? (
                       <p className="py-6 text-center text-body-sm text-text-muted">
                         No completed tasks yet
                       </p>
                     ) : (
                       <div className="divide-y divide-border-soft">
-                        {recentCompleted.map((task) => (
+                        {filteredRecentCompleted.map((task) => (
                           <TaskRow
                             key={task.id}
                             task={task}

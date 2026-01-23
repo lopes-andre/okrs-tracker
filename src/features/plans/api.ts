@@ -355,3 +355,16 @@ export async function getPlanStats(planId: string): Promise<{
   if (error && error.code !== "PGRST116") throw error;
   return data;
 }
+
+// ============================================================================
+// CURRENT USER
+// ============================================================================
+
+/**
+ * Get the current authenticated user's ID
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
