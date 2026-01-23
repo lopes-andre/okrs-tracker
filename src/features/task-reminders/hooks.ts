@@ -416,10 +416,13 @@ export function useReminderScheduler({ planId, enabled, settings }: ReminderSche
     // Schedule reminders for all tasks with due times
     tasksWithTime.forEach(scheduleTaskReminders);
 
+    // Capture the current ref value for cleanup (React hooks/exhaustive-deps rule)
+    const timeoutsMap = scheduledTimeouts.current;
+
     // Cleanup function: clear all scheduled timeouts
     return () => {
-      scheduledTimeouts.current.forEach((timeout) => clearTimeout(timeout));
-      scheduledTimeouts.current.clear();
+      timeoutsMap.forEach((timeout) => clearTimeout(timeout));
+      timeoutsMap.clear();
     };
   }, [enabled, settings, tasksWithTime, scheduleTaskReminders]);
 

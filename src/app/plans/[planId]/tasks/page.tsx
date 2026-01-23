@@ -166,7 +166,7 @@ export default function TasksPage({
   }, [groupedTasks, filterMyTasks]);
 
   // Stats from grouped data (always show full counts, filtered lists use filtered data)
-  const counts = groupedTasks?.counts || {
+  const counts = useMemo(() => groupedTasks?.counts || {
     active: 0,
     today: 0,
     overdue: 0,
@@ -175,38 +175,38 @@ export default function TasksPage({
     future: 0,
     backlog: 0,
     completed: 0,
-  };
+  }, [groupedTasks?.counts]);
+
+  // Task lists (filtered when "My Tasks" is active)
+  const todayTasks = useMemo(() => filteredGroupedTasks?.today || [], [filteredGroupedTasks?.today]);
+  const overdueTasks = useMemo(() => filteredGroupedTasks?.overdue || [], [filteredGroupedTasks?.overdue]);
+  const thisWeekTasks = useMemo(() => filteredGroupedTasks?.thisWeek || [], [filteredGroupedTasks?.thisWeek]);
+  const thisMonthTasks = useMemo(() => filteredGroupedTasks?.thisMonth || [], [filteredGroupedTasks?.thisMonth]);
+  const backlogTasks = useMemo(() => filteredGroupedTasks?.backlog || [], [filteredGroupedTasks?.backlog]);
 
   // Filtered counts when "My Tasks" is active
   const filteredCounts = useMemo(() => {
     if (!filteredGroupedTasks) return counts;
     return {
       active:
-        filteredGroupedTasks.today.length +
-        filteredGroupedTasks.overdue.length +
-        filteredGroupedTasks.thisWeek.length +
-        filteredGroupedTasks.thisMonth.length +
-        filteredGroupedTasks.future.length +
-        filteredGroupedTasks.backlog.length,
-      today: filteredGroupedTasks.today.length,
-      overdue: filteredGroupedTasks.overdue.length,
-      thisWeek: filteredGroupedTasks.thisWeek.length,
-      thisMonth: filteredGroupedTasks.thisMonth.length,
-      future: filteredGroupedTasks.future.length,
-      backlog: filteredGroupedTasks.backlog.length,
-      completed: filteredGroupedTasks.completed.length,
+        todayTasks.length +
+        overdueTasks.length +
+        thisWeekTasks.length +
+        thisMonthTasks.length +
+        (filteredGroupedTasks.future?.length || 0) +
+        backlogTasks.length,
+      today: todayTasks.length,
+      overdue: overdueTasks.length,
+      thisWeek: thisWeekTasks.length,
+      thisMonth: thisMonthTasks.length,
+      future: filteredGroupedTasks.future?.length || 0,
+      backlog: backlogTasks.length,
+      completed: filteredGroupedTasks.completed?.length || 0,
     };
-  }, [filteredGroupedTasks, counts]);
+  }, [filteredGroupedTasks, counts, todayTasks, overdueTasks, thisWeekTasks, thisMonthTasks, backlogTasks]);
 
   // Display counts - use filtered counts when "My Tasks" is active
   const displayCounts = showMyTasksOnly ? filteredCounts : counts;
-
-  // Task lists (filtered when "My Tasks" is active)
-  const todayTasks = filteredGroupedTasks?.today || [];
-  const overdueTasks = filteredGroupedTasks?.overdue || [];
-  const thisWeekTasks = filteredGroupedTasks?.thisWeek || [];
-  const thisMonthTasks = filteredGroupedTasks?.thisMonth || [];
-  const backlogTasks = filteredGroupedTasks?.backlog || [];
 
   // Filter recent completed tasks when "My Tasks" is active
   const filteredRecentCompleted = useMemo(() => {

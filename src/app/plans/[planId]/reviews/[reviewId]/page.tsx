@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useMemo } from "react";
+import { use, useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -294,25 +294,39 @@ export default function ReviewWizardPage({
     if (canGoBack) setCurrentStep((s) => s - 1);
   };
 
-  // Auto-save on step change
+  // Auto-save on step change (not on every keystroke)
+  // We use refs to capture latest values without triggering saves on every field change
+  const wentWellRef = useRef(wentWell);
+  const toImproveRef = useRef(toImprove);
+  const lessonsRef = useRef(lessons);
+  const notesRef = useRef(notes);
+  const ratingRef = useRef(rating);
+
+  // Keep refs in sync with state
+  useEffect(() => { wentWellRef.current = wentWell; }, [wentWell]);
+  useEffect(() => { toImproveRef.current = toImprove; }, [toImprove]);
+  useEffect(() => { lessonsRef.current = lessons; }, [lessons]);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+  useEffect(() => { ratingRef.current = rating; }, [rating]);
+
   useEffect(() => {
     if (!review || currentStep === 0) return;
-    
+
     const timeoutId = setTimeout(() => {
       updateReview.mutate({
         reviewId,
         updates: {
-          reflection_what_went_well: wentWell || null,
-          reflection_what_to_improve: toImprove || null,
-          reflection_lessons_learned: lessons || null,
-          reflection_notes: notes || null,
-          week_rating: rating,
+          reflection_what_went_well: wentWellRef.current || null,
+          reflection_what_to_improve: toImproveRef.current || null,
+          reflection_lessons_learned: lessonsRef.current || null,
+          reflection_notes: notesRef.current || null,
+          week_rating: ratingRef.current,
         },
       });
     }, 500);
-    
+
     return () => clearTimeout(timeoutId);
-  }, [currentStep]);
+  }, [currentStep, review, reviewId, updateReview]);
 
   // Complete review
   const handleComplete = async () => {

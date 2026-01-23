@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -42,11 +42,13 @@ export function SearchCommand({ planId, open, onOpenChange }: SearchCommandProps
   const { data: results, isLoading } = usePlanSearch(planId, query);
 
   // Build flat list of results for keyboard navigation
-  const flatResults: SearchResultItem[] = [];
+  const flatResults = useMemo<SearchResultItem[]>(() => {
+    if (!results) return [];
 
-  if (results) {
+    const items: SearchResultItem[] = [];
+
     results.objectives.forEach((obj) => {
-      flatResults.push({
+      items.push({
         id: obj.id,
         type: "objective",
         title: `${obj.code}: ${obj.name}`,
@@ -55,7 +57,7 @@ export function SearchCommand({ planId, open, onOpenChange }: SearchCommandProps
     });
 
     results.annualKrs.forEach((kr) => {
-      flatResults.push({
+      items.push({
         id: kr.id,
         type: "kr",
         title: kr.name,
@@ -65,7 +67,7 @@ export function SearchCommand({ planId, open, onOpenChange }: SearchCommandProps
     });
 
     results.tasks.forEach((task) => {
-      flatResults.push({
+      items.push({
         id: task.id,
         type: "task",
         title: task.title,
@@ -73,7 +75,9 @@ export function SearchCommand({ planId, open, onOpenChange }: SearchCommandProps
         href: `/plans/${planId}/tasks`,
       });
     });
-  }
+
+    return items;
+  }, [results, planId]);
 
   // Reset selection when results change
   useEffect(() => {

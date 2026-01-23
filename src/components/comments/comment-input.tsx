@@ -103,6 +103,45 @@ export function CommentInput({
     []
   );
 
+  // Handle form submission (defined before handleKeyDown to allow proper dependency)
+  const handleSubmit = useCallback(async () => {
+    if (!content.trim() || isSubmitting) return;
+
+    try {
+      await onSubmit(content.trim(), Array.from(mentionedUserIds));
+      setContent("");
+      setMentionedUserIds(new Set());
+    } catch {
+      // Error handling is done in the parent component
+    }
+  }, [content, mentionedUserIds, isSubmitting, onSubmit]);
+
+  // Select a mention from the dropdown (defined before handleKeyDown to allow proper dependency)
+  const selectMention = useCallback(
+    (member: Profile) => {
+      const displayName = member.full_name || member.email.split("@")[0];
+      const beforeMention = content.slice(0, mention.startIndex);
+      const afterMention = content.slice(
+        mention.startIndex + mention.query.length + 1
+      );
+      const newContent = `${beforeMention}@${displayName} ${afterMention}`;
+
+      setContent(newContent);
+      setMentionedUserIds((prev) => new Set([...prev, member.id]));
+      setMention({ isActive: false, startIndex: 0, query: "", selectedIndex: 0 });
+
+      // Focus back on textarea
+      setTimeout(() => {
+        if (textareaRef.current) {
+          const newCursorPos = beforeMention.length + displayName.length + 2;
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        }
+      }, 0);
+    },
+    [content, mention]
+  );
+
   // Handle keyboard navigation in mention list
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -144,47 +183,8 @@ export function CommentInput({
           break;
       }
     },
-    [mention, filteredMembers]
+    [mention, filteredMembers, handleSubmit, selectMention]
   );
-
-  // Select a mention from the dropdown
-  const selectMention = useCallback(
-    (member: Profile) => {
-      const displayName = member.full_name || member.email.split("@")[0];
-      const beforeMention = content.slice(0, mention.startIndex);
-      const afterMention = content.slice(
-        mention.startIndex + mention.query.length + 1
-      );
-      const newContent = `${beforeMention}@${displayName} ${afterMention}`;
-
-      setContent(newContent);
-      setMentionedUserIds((prev) => new Set([...prev, member.id]));
-      setMention({ isActive: false, startIndex: 0, query: "", selectedIndex: 0 });
-
-      // Focus back on textarea
-      setTimeout(() => {
-        if (textareaRef.current) {
-          const newCursorPos = beforeMention.length + displayName.length + 2;
-          textareaRef.current.focus();
-          textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        }
-      }, 0);
-    },
-    [content, mention]
-  );
-
-  // Handle form submission
-  const handleSubmit = useCallback(async () => {
-    if (!content.trim() || isSubmitting) return;
-
-    try {
-      await onSubmit(content.trim(), Array.from(mentionedUserIds));
-      setContent("");
-      setMentionedUserIds(new Set());
-    } catch {
-      // Error handling is done in the parent component
-    }
-  }, [content, mentionedUserIds, isSubmitting, onSubmit]);
 
   const userInitials = currentUser?.full_name
     ? currentUser.full_name

@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/query-client";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Load Plus Jakarta Sans for headings
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -34,12 +35,15 @@ export const metadata: Metadata = {
     ],
     apple: "/icons/apple-touch-icon.png",
   },
-  themeColor: "#2563EB",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "OKRs Tracker",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563EB",
 };
 
 export default function RootLayout({
@@ -52,7 +56,9 @@ export default function RootLayout({
       <body className="min-h-screen">
         <QueryProvider>
           <TooltipProvider delayDuration={200}>
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </TooltipProvider>
           <Toaster />
         </QueryProvider>
