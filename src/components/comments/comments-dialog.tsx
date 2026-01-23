@@ -291,75 +291,6 @@ export function CommentsDialog({
               </Avatar>
 
               <div className="flex-1 space-y-3">
-                {/* Mention picker button */}
-                <div className="relative">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute -top-1 right-0 h-7 text-xs gap-1 z-10"
-                    onClick={() => setShowMentionPicker(!showMentionPicker)}
-                  >
-                    <AtSign className="h-3.5 w-3.5" />
-                    Mention
-                  </Button>
-
-                  {showMentionPicker && (
-                    <div className="absolute right-0 top-6 z-20 w-64 bg-bg-0 border border-border-soft rounded-card shadow-lg p-2">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-text-muted">
-                          Mention someone
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-5 w-5"
-                          onClick={() => setShowMentionPicker(false)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <input
-                        type="text"
-                        value={mentionQuery}
-                        onChange={(e) => setMentionQuery(e.target.value)}
-                        placeholder="Search..."
-                        className="w-full px-2 py-1 text-sm border border-border-soft rounded mb-2 bg-bg-0"
-                        autoFocus
-                      />
-                      <div className="max-h-40 overflow-y-auto space-y-1">
-                        {filteredMembers.map((member) => (
-                          <button
-                            key={member.id}
-                            onClick={() => insertMention(member)}
-                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-bg-1 text-left"
-                          >
-                            <Avatar className="h-6 w-6">
-                              {member.avatar_url && (
-                                <AvatarImage src={member.avatar_url} />
-                              )}
-                              <AvatarFallback className="text-[10px]">
-                                {member.full_name?.slice(0, 2).toUpperCase() ||
-                                  member.email.slice(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {member.full_name || member.email}
-                              </p>
-                              {member.full_name && (
-                                <p className="text-xs text-text-muted truncate">
-                                  {member.email}
-                                </p>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 <MarkdownEditor
                   value={newComment}
                   onChange={setNewComment}
@@ -369,7 +300,76 @@ export function CommentsDialog({
                   showCharCount={false}
                 />
 
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between">
+                  {/* Mention picker */}
+                  <div className="relative">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => setShowMentionPicker(!showMentionPicker)}
+                    >
+                      <AtSign className="h-3.5 w-3.5" />
+                      Mention
+                    </Button>
+
+                    {showMentionPicker && (
+                      <div className="absolute left-0 bottom-full mb-1 z-20 w-64 bg-bg-0 border border-border-soft rounded-card shadow-lg p-2">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-text-muted">
+                            Mention someone
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={() => setShowMentionPicker(false)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <input
+                          type="text"
+                          value={mentionQuery}
+                          onChange={(e) => setMentionQuery(e.target.value)}
+                          placeholder="Search..."
+                          className="w-full px-2 py-1 text-sm border border-border-soft rounded mb-2 bg-bg-0"
+                          autoFocus
+                        />
+                        <div className="max-h-40 overflow-y-auto space-y-1">
+                          {filteredMembers.map((member) => (
+                            <button
+                              key={member.id}
+                              onClick={() => insertMention(member)}
+                              className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-bg-1 text-left"
+                            >
+                              <Avatar className="h-6 w-6">
+                                {member.avatar_url && (
+                                  <AvatarImage src={member.avatar_url} />
+                                )}
+                                <AvatarFallback className="text-[10px]">
+                                  {member.full_name?.slice(0, 2).toUpperCase() ||
+                                    member.email.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {member.full_name || member.email}
+                                </p>
+                                {member.full_name && (
+                                  <p className="text-xs text-text-muted truncate">
+                                    {member.email}
+                                  </p>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <Button
                     onClick={handleCreate}
                     disabled={createComment.isPending || !newComment.trim()}
