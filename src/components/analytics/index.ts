@@ -17,3 +17,9 @@ export { PriorityBurndownChart } from "./priority-burndown-chart";
 export { TaskCompletionAnalysis } from "./task-completion-analysis";
 export { CheckInVelocityChart } from "./checkin-velocity-chart";
 export { KrTypePerformance } from "./kr-type-performance";
+
+// Team Analytics
+export { TeamSummaryCards } from "./team-summary-cards";
+export { TeamMemberCard } from "./team-member-card";
+export { WorkloadDistributionChart } from "./workload-distribution-chart";
+export { ContributionTimeline } from "./contribution-timeline";

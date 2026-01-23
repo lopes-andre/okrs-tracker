@@ -163,4 +163,12 @@ export const queryKeys = {
     list: (userId: string) => [...queryKeys.notifications.all, "list", userId] as const,
     unreadCount: (userId: string) => [...queryKeys.notifications.all, "unreadCount", userId] as const,
   },
+
+  // Team Analytics
+  teamAnalytics: {
+    all: ["teamAnalytics"] as const,
+    workload: (planId: string) => [...queryKeys.teamAnalytics.all, "workload", planId] as const,
+    contributions: (planId: string, dateFrom?: string, dateTo?: string) =>
+      [...queryKeys.teamAnalytics.all, "contributions", planId, dateFrom, dateTo] as const,
+  },
 } as const;

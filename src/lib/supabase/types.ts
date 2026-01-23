@@ -571,6 +571,52 @@ export interface SortParams {
 // DATABASE SCHEMA TYPE (for Supabase client)
 // ============================================================================
 
+// ============================================================================
+// TEAM ANALYTICS TYPES
+// ============================================================================
+
+export interface MemberWorkloadStats {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  avatar_url: string | null;
+  role: OkrRole;
+  tasks_assigned: number;
+  tasks_completed: number;
+  tasks_in_progress: number;
+  tasks_overdue: number;
+  tasks_by_priority: { high: number; medium: number; low: number };
+  tasks_by_effort: { heavy: number; moderate: number; light: number };
+  check_ins_made: number;
+  krs_owned: number;
+  activity_count: number;
+  last_activity_at: string | null;
+}
+
+export interface MemberContributionByPeriod {
+  user_id: string;
+  period_date: string;
+  check_ins_count: number;
+  tasks_completed_count: number;
+  tasks_created_count: number;
+  total_activity: number;
+}
+
+export interface TeamSummaryMetrics {
+  total_members: number;
+  active_members: number;
+  total_tasks_assigned: number;
+  avg_tasks_per_member: number;
+  workload_balance_score: number; // 0-100
+  overloaded_members: number;
+  underutilized_members: number;
+  total_check_ins: number;
+}
+
+// ============================================================================
+// DATABASE SCHEMA TYPE (for Supabase client)
+// ============================================================================
+
 export interface Database {
   public: {
     Tables: {

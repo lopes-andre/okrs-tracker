@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { BarChart3, TrendingUp, Loader2, Target, ListTodo } from "lucide-react";
+import { BarChart3, TrendingUp, Loader2, Target, ListTodo, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,11 @@ import {
   useProductivityStats,
   useAnalyticsData,
 } from "@/features/analytics/hooks";
+import {
+  useTeamWorkload,
+  useTeamSummary,
+  useTeamContributions,
+} from "@/features/team-analytics/hooks";
 import { useState } from "react";
 import {
   SummaryCards,
@@ -42,6 +47,10 @@ import {
   TaskCompletionAnalysis,
   CheckInVelocityChart,
   KrTypePerformance,
+  TeamSummaryCards,
+  TeamMemberCard,
+  WorkloadDistributionChart,
+  ContributionTimeline,
   type ViewConfig,
 } from "@/components/analytics";
 
@@ -80,6 +89,11 @@ export default function AnalyticsPage({
   const { data: taskMetrics } = useTaskMetrics(planId);
   const { data: productivityStats } = useProductivityStats(planId);
   const { data: analyticsData } = useAnalyticsData(planId, planYear);
+
+  // Team analytics data
+  const { data: teamWorkload = [] } = useTeamWorkload(planId);
+  const { data: teamSummary } = useTeamSummary(planId);
+  const { data: teamContributions = [] } = useTeamContributions(planId);
 
   // Tasks for advanced analytics
   const tasks = analyticsData?.tasks || [];
@@ -132,6 +146,7 @@ export default function AnalyticsPage({
           <TabsTrigger value="pace">Pace Analysis</TabsTrigger>
           <TabsTrigger value="heatmap">Activity</TabsTrigger>
           <TabsTrigger value="reviews">Weekly Reviews</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -294,6 +309,46 @@ export default function AnalyticsPage({
         {/* Weekly Reviews Tab */}
         <TabsContent value="reviews">
           <WeeklyReviewMetrics planId={planId} />
+        </TabsContent>
+
+        {/* Team Tab */}
+        <TabsContent value="team">
+          {teamWorkload.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="No team members yet"
+              description="Invite team members to see team analytics."
+              action={{
+                label: "Manage Team",
+                href: `/plans/${planId}/settings`,
+              }}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* Team Summary Cards */}
+              {teamSummary && <TeamSummaryCards summary={teamSummary} />}
+
+              {/* Member Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {teamWorkload.map((member) => (
+                  <TeamMemberCard
+                    key={member.user_id}
+                    member={member}
+                    avgTasksPerMember={teamSummary?.avg_tasks_per_member || 0}
+                  />
+                ))}
+              </div>
+
+              {/* Charts Row */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                <WorkloadDistributionChart data={teamWorkload} />
+                <ContributionTimeline
+                  contributions={teamContributions}
+                  members={teamWorkload}
+                />
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </>
