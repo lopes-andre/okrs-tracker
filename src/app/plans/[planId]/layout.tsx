@@ -41,19 +41,19 @@ export default async function PlanLayout({
   } : null;
 
   return (
-    <div className="min-h-screen bg-bg-1">
-      <Navbar user={userData} />
-      <PlanNav planId={planId} />
-      <RealtimeWrapper
-        planId={planId}
-        userId={user?.id}
-        userEmail={user?.email}
-        userFullName={fullName}
-      >
+    <RealtimeWrapper
+      planId={planId}
+      userId={user?.id}
+      userEmail={user?.email}
+      userFullName={fullName}
+    >
+      <div className="min-h-screen bg-bg-1">
+        <Navbar user={userData} />
+        <PlanNav planId={planId} />
         <ReminderProvider planId={planId}>
           <main className="container-main py-8">{children}</main>
         </ReminderProvider>
-      </RealtimeWrapper>
-    </div>
+      </div>
+    </RealtimeWrapper>
   );
 }
