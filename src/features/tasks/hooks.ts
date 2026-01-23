@@ -122,6 +122,17 @@ export function useRecentCompletedTasks(planId: string, limit: number = 10) {
 }
 
 /**
+ * Get future tasks (due after this month) with total count
+ */
+export function useFutureTasks(planId: string, limit: number = 10) {
+  return useQuery({
+    queryKey: [...queryKeys.tasks.list(planId), "future", limit],
+    queryFn: () => api.getFutureTasks(planId, limit),
+    enabled: !!planId,
+  });
+}
+
+/**
  * Get task counts for stats cards
  */
 export function useTaskCounts(planId: string) {

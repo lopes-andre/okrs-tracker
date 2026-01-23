@@ -20,6 +20,7 @@ import {
   Square,
   User,
   Users,
+  FastForward,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -33,6 +34,7 @@ import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-d
 import {
   useTasksGrouped,
   useRecentCompletedTasks,
+  useFutureTasks,
   useCreateTask,
   useUpdateTask,
   useDeleteTask,
@@ -73,6 +75,8 @@ export default function TasksPage({
   const { data: groupedTasks, isLoading } = useTasksGrouped(planId);
   const { data: recentCompleted = [], isLoading: isLoadingCompleted } =
     useRecentCompletedTasks(planId, 10);
+  const { data: futureData, isLoading: isLoadingFuture } =
+    useFutureTasks(planId, 10);
   const { data: objectives = [] } = useObjectives(planId);
   const { data: annualKrs = [] } = useAnnualKrs(planId);
   const { data: tags = [] } = useTags(planId);
@@ -155,6 +159,7 @@ export default function TasksPage({
       overdue: filterMyTasks(groupedTasks.overdue),
       thisWeek: filterMyTasks(groupedTasks.thisWeek),
       thisMonth: filterMyTasks(groupedTasks.thisMonth),
+      future: filterMyTasks(groupedTasks.future),
       backlog: filterMyTasks(groupedTasks.backlog),
       completed: filterMyTasks(groupedTasks.completed),
     };
@@ -167,6 +172,7 @@ export default function TasksPage({
     overdue: 0,
     thisWeek: 0,
     thisMonth: 0,
+    future: 0,
     backlog: 0,
     completed: 0,
   };
@@ -180,11 +186,13 @@ export default function TasksPage({
         filteredGroupedTasks.overdue.length +
         filteredGroupedTasks.thisWeek.length +
         filteredGroupedTasks.thisMonth.length +
+        filteredGroupedTasks.future.length +
         filteredGroupedTasks.backlog.length,
       today: filteredGroupedTasks.today.length,
       overdue: filteredGroupedTasks.overdue.length,
       thisWeek: filteredGroupedTasks.thisWeek.length,
       thisMonth: filteredGroupedTasks.thisMonth.length,
+      future: filteredGroupedTasks.future.length,
       backlog: filteredGroupedTasks.backlog.length,
       completed: filteredGroupedTasks.completed.length,
     };
@@ -453,6 +461,7 @@ export default function TasksPage({
   const showThisWeek = activeFilter === "all" || activeFilter === "thisWeek";
   const showThisMonth = activeFilter === "all";
   const showBacklog = activeFilter === "all";
+  const showFuture = activeFilter === "all";
   const showCompleted = activeFilter === "all" || activeFilter === "completed";
 
   // Render task function for CollapsibleTaskList
@@ -782,7 +791,7 @@ export default function TasksPage({
                 />
               )}
 
-              {/* Ideas Backlog (no due date + future) */}
+              {/* Ideas Backlog (no due date) */}
               {showBacklog && (
                 <CollapsibleTaskList
                   title="Ideas Backlog"
@@ -798,6 +807,71 @@ export default function TasksPage({
                   renderTask={renderTask}
                   emptyMessage="No tasks in backlog"
                 />
+              )}
+
+              {/* Future (due after this month, truncated) */}
+              {showFuture && futureData && futureData.total > 0 && (
+                <Card className="opacity-80">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FastForward className="w-4 h-4 text-text-subtle" />
+                        <CardTitle className="text-h5 text-text-muted">
+                          Future
+                        </CardTitle>
+                        <Badge variant="secondary">{futureData.total}</Badge>
+                      </div>
+                      {futureData.total > futureData.tasks.length && (
+                        <span className="text-xs text-text-muted">
+                          Showing {futureData.tasks.length} of {futureData.total}
+                        </span>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {isLoadingFuture ? (
+                      <div className="py-6 flex justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border-soft">
+                        {(showMyTasksOnly
+                          ? futureData.tasks.filter(
+                              (task) =>
+                                task.assignees?.some((a) => a.user_id === currentUserId) ||
+                                task.assigned_to === currentUserId
+                            )
+                          : futureData.tasks
+                        ).map((task) => {
+                          const counts = commentCounts[task.id] || { total: 0, unread: 0 };
+                          return (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              role={userRole}
+                              onStatusChange={(status) =>
+                                handleStatusChange(task, status)
+                              }
+                              onEdit={() => openEdit(task)}
+                              onDelete={() =>
+                                setDeleteDialog({ open: true, task })
+                              }
+                              selectable={selectMode}
+                              selected={selectedTaskIds.has(task.id)}
+                              onSelectChange={(selected) =>
+                                toggleTaskSelection(task.id, selected)
+                              }
+                              currentUserId={currentUserId || undefined}
+                              commentCount={counts.total}
+                              hasUnreadComments={counts.unread > 0}
+                              onCommentsClick={() => openComments(task)}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
               {/* Completed (recent only, link to logbook) */}

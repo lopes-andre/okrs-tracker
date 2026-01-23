@@ -245,6 +245,7 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
   overdue: TaskWithDetails[];
   thisWeek: TaskWithDetails[];
   thisMonth: TaskWithDetails[];
+  future: TaskWithDetails[];
   backlog: TaskWithDetails[];
   completed: TaskWithDetails[];
   counts: {
@@ -253,6 +254,7 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
     overdue: number;
     thisWeek: number;
     thisMonth: number;
+    future: number;
     backlog: number;
     completed: number;
   };
@@ -271,6 +273,7 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
     overdue: [] as TaskWithDetails[],
     thisWeek: [] as TaskWithDetails[],
     thisMonth: [] as TaskWithDetails[],
+    future: [] as TaskWithDetails[],
     backlog: [] as TaskWithDetails[],
     completed: [] as TaskWithDetails[],
     counts: {
@@ -279,6 +282,7 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
       overdue: 0,
       thisWeek: 0,
       thisMonth: 0,
+      future: 0,
       backlog: 0,
       completed: 0,
     },
@@ -325,9 +329,9 @@ export async function getTasksGrouped(planId: string, filters?: Omit<TaskFilters
       result.thisMonth.push(task);
       result.counts.thisMonth++;
     } else {
-      // Future tasks go into backlog
-      result.backlog.push(task);
-      result.counts.backlog++;
+      // Future tasks (due after this month)
+      result.future.push(task);
+      result.counts.future++;
     }
   }
 
@@ -460,6 +464,58 @@ export async function getRecentCompletedTasks(
 ): Promise<TaskWithDetails[]> {
   const result = await getTasksPaginated(planId, 1, limit, { status: 'completed' });
   return result.data;
+}
+
+/**
+ * Get future tasks (due after this month) with total count
+ */
+export async function getFutureTasks(
+  planId: string,
+  limit: number = 10
+): Promise<{ tasks: TaskWithDetails[]; total: number }> {
+  const supabase = createClient();
+  const monthEnd = endOfMonth(new Date());
+  const monthEndStr = format(monthEnd, "yyyy-MM-dd");
+
+  // Get total count of future tasks
+  const { count, error: countError } = await supabase
+    .from("tasks")
+    .select("*", { count: "exact", head: true })
+    .eq("plan_id", planId)
+    .not("status", "in", "(completed,cancelled)")
+    .gt("due_date", monthEndStr);
+
+  if (countError) throw countError;
+
+  // Get the limited set of future tasks with details
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(`
+      *,
+      objective:objectives(id, code, name),
+      annual_kr:annual_krs(id, name, kr_type, unit, objective_id, objective:objectives(id, code, name)),
+      quarter_target:quarter_targets(id, quarter, target_value),
+      assigned_user:profiles(id, full_name, avatar_url),
+      task_tags(tag:tags(*)),
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url))
+    `)
+    .eq("plan_id", planId)
+    .not("status", "in", "(completed,cancelled)")
+    .gt("due_date", monthEndStr)
+    .order("due_date", { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+
+  const tasks = (data || []).map((task) => ({
+    ...task,
+    tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
+    assignees: task.task_assignees || [],
+    task_tags: undefined,
+    task_assignees: undefined,
+  })) as TaskWithDetails[];
+
+  return { tasks, total: count || 0 };
 }
 
 /**
