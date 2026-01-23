@@ -509,3 +509,77 @@ export function useBulkRemoveTagFromTasks(planId: string) {
     },
   });
 }
+
+// ============================================================================
+// TASK ASSIGNEES
+// ============================================================================
+
+/**
+ * Get assignees for a task
+ */
+export function useTaskAssignees(taskId: string | null) {
+  return useQuery({
+    queryKey: taskId ? queryKeys.tasks.assignees(taskId) : [],
+    queryFn: () => api.getTaskAssignees(taskId!),
+    enabled: !!taskId,
+  });
+}
+
+/**
+ * Set assignees for a task
+ */
+export function useSetTaskAssignees(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ taskId, userIds }: { taskId: string; userIds: string[] }) =>
+      api.setTaskAssignees(taskId, userIds),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assignees(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+      toast({
+        title: "Assignees updated",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Add an assignee to a task
+ */
+export function useAddTaskAssignee(planId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      api.addTaskAssignee(taskId, userId),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assignees(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+    },
+  });
+}
+
+/**
+ * Remove an assignee from a task
+ */
+export function useRemoveTaskAssignee(planId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      api.removeTaskAssignee(taskId, userId),
+    onSuccess: (_, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assignees(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.list(planId) });
+    },
+  });
+}

@@ -13,6 +13,7 @@ import {
   BatteryFull,
   Bell,
   BellOff,
+  Users,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type {
   Task,
   TaskInsert,
@@ -44,6 +46,7 @@ import type {
   Objective,
   AnnualKr,
   Tag,
+  PlanMemberWithProfile,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +63,9 @@ interface TaskDialogProps {
   tags?: Tag[];
   selectedTags?: string[];
   initialObjectiveId?: string; // For pre-populating objective when editing task with KR
-  onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[]) => Promise<void>;
+  members?: PlanMemberWithProfile[];
+  selectedAssignees?: string[];
+  onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[], assigneeIds: string[]) => Promise<void>;
   onCreateTag?: (name: string) => Promise<Tag>;
 }
 
@@ -106,6 +111,8 @@ export function TaskDialog({
   tags = [],
   selectedTags: initialSelectedTags = [],
   initialObjectiveId = "",
+  members = [],
+  selectedAssignees: initialSelectedAssignees = [],
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {
@@ -127,6 +134,7 @@ export function TaskDialog({
   const [newTagName, setNewTagName] = useState("");
   const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
 
   // Filter KRs based on selected objective
   const filteredKrs = useMemo(() => {
@@ -174,6 +182,7 @@ export function TaskDialog({
         setAnnualKrId(task.annual_kr_id || "");
         setSelectedTagIds(initialSelectedTags);
         setReminderEnabled(task.reminder_enabled ?? true);
+        setSelectedAssigneeIds(initialSelectedAssignees);
       } else {
         setTitle("");
         setDescription("");
@@ -187,10 +196,11 @@ export function TaskDialog({
         setAnnualKrId("");
         setSelectedTagIds([]);
         setReminderEnabled(true);
+        setSelectedAssigneeIds([]);
       }
       setNewTagName("");
     }
-  }, [open, task, initialSelectedTags, initialObjectiveId]);
+  }, [open, task, initialSelectedTags, initialObjectiveId, initialSelectedAssignees]);
 
   // When objective changes, reset KR selection if the KR doesn't belong to new objective
   useEffect(() => {
@@ -205,6 +215,12 @@ export function TaskDialog({
   function handleTagToggle(tagId: string) {
     setSelectedTagIds((prev) =>
       prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  }
+
+  function handleAssigneeToggle(userId: string) {
+    setSelectedAssigneeIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   }
 
@@ -264,7 +280,7 @@ export function TaskDialog({
             reminder_enabled: reminderEnabled,
           };
 
-      await onSubmit(data, selectedTagIds);
+      await onSubmit(data, selectedTagIds, selectedAssigneeIds);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -551,6 +567,81 @@ export function TaskDialog({
               </p>
             )}
           </div>
+
+          {/* Assignees */}
+          {members.length > 0 && (
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Assign to
+              </Label>
+
+              {/* Selected assignees */}
+              {selectedAssigneeIds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedAssigneeIds.map((userId) => {
+                    const member = members.find((m) => m.user_id === userId);
+                    if (!member) return null;
+                    return (
+                      <Badge
+                        key={userId}
+                        variant="outline"
+                        className="gap-1.5 pr-1 cursor-pointer"
+                        onClick={() => handleAssigneeToggle(userId)}
+                      >
+                        <Avatar className="h-4 w-4">
+                          {member.profile.avatar_url && (
+                            <AvatarImage src={member.profile.avatar_url} />
+                          )}
+                          <AvatarFallback className="text-[8px] bg-accent/10 text-accent">
+                            {member.profile.full_name
+                              ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                              : member.profile.email.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {member.profile.full_name || member.profile.email.split("@")[0]}
+                        <X className="w-3 h-3" />
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Available members */}
+              {members.filter((m) => !selectedAssigneeIds.includes(m.user_id)).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {members
+                    .filter((m) => !selectedAssigneeIds.includes(m.user_id))
+                    .map((member) => (
+                      <Badge
+                        key={member.user_id}
+                        variant="secondary"
+                        className="gap-1.5 cursor-pointer hover:bg-bg-2"
+                        onClick={() => handleAssigneeToggle(member.user_id)}
+                      >
+                        <Avatar className="h-4 w-4">
+                          {member.profile.avatar_url && (
+                            <AvatarImage src={member.profile.avatar_url} />
+                          )}
+                          <AvatarFallback className="text-[8px] bg-accent/10 text-accent">
+                            {member.profile.full_name
+                              ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                              : member.profile.email.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        {member.profile.full_name || member.profile.email.split("@")[0]}
+                      </Badge>
+                    ))}
+                </div>
+              )}
+
+              {selectedAssigneeIds.length === 0 && (
+                <p className="text-xs text-text-subtle">
+                  Click to assign team members to this task
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Tags */}
           <div className="space-y-3">

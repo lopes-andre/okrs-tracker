@@ -83,12 +83,13 @@ export const queryKeys = {
   // Tasks
   tasks: {
     all: ["tasks"] as const,
-    list: (planId: string, filters?: object) => 
+    list: (planId: string, filters?: object) =>
       [...queryKeys.tasks.all, "list", planId, filters] as const,
     detail: (taskId: string) => [...queryKeys.tasks.all, "detail", taskId] as const,
     byObjective: (objectiveId: string) => [...queryKeys.tasks.all, "byObjective", objectiveId] as const,
-    byQuarterTarget: (quarterTargetId: string) => 
+    byQuarterTarget: (quarterTargetId: string) =>
       [...queryKeys.tasks.all, "byQuarterTarget", quarterTargetId] as const,
+    assignees: (taskId: string) => [...queryKeys.tasks.all, "assignees", taskId] as const,
   },
 
   // Check-ins

@@ -211,7 +211,8 @@ export async function getTasksWithDetails(
       annual_kr:annual_krs(id, name, kr_type, unit, target_value, current_value, objective_id, objective:objectives(id, code, name)),
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
-      task_tags(tag:tags(*))
+      task_tags(tag:tags(*)),
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
     `)
     .eq("plan_id", planId);
 
@@ -225,11 +226,13 @@ export async function getTasksWithDetails(
   const { data, error } = await query;
   if (error) throw error;
 
-  // Transform to extract tags
+  // Transform to extract tags and assignees
   return (data || []).map((task) => ({
     ...task,
     tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
+    assignees: task.task_assignees || [],
     task_tags: undefined,
+    task_assignees: undefined,
   })) as TaskWithDetails[];
 }
 
@@ -399,7 +402,8 @@ export async function getTasksPaginated(
       annual_kr:annual_krs(id, name, kr_type, unit),
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
-      task_tags(tag:tags(*))
+      task_tags(tag:tags(*)),
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
     `, { count: "exact" })
     .eq("plan_id", planId);
 
@@ -420,11 +424,13 @@ export async function getTasksPaginated(
   const { data, error, count } = await query;
   if (error) throw error;
 
-  // Transform to extract tags
+  // Transform to extract tags and assignees
   const tasks = (data || []).map((task) => ({
     ...task,
     tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
+    assignees: task.task_assignees || [],
     task_tags: undefined,
+    task_assignees: undefined,
   })) as TaskWithDetails[];
 
   return createPaginatedResult(tasks, count || 0, page, limit);
@@ -485,7 +491,8 @@ export async function getTaskWithDetails(taskId: string): Promise<TaskWithDetail
       annual_kr:annual_krs(id, name, kr_type, unit),
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
-      task_tags(tag:tags(*))
+      task_tags(tag:tags(*)),
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
     `)
     .eq("id", taskId)
     .single();
@@ -496,7 +503,9 @@ export async function getTaskWithDetails(taskId: string): Promise<TaskWithDetail
   return {
     ...data,
     tags: data.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
+    assignees: data.task_assignees || [],
     task_tags: undefined,
+    task_assignees: undefined,
   } as TaskWithDetails;
 }
 
@@ -757,7 +766,7 @@ export async function getTaskCounts(planId: string): Promise<{
   completed: number;
 }> {
   const grouped = await getTasksGrouped(planId);
-  
+
   return {
     total: grouped.counts.active + grouped.counts.completed,
     active: grouped.counts.active,
@@ -768,4 +777,92 @@ export async function getTaskCounts(planId: string): Promise<{
     backlog: grouped.counts.backlog,
     completed: grouped.counts.completed,
   };
+}
+
+// ============================================================================
+// TASK ASSIGNEES API
+// ============================================================================
+
+/**
+ * Get all assignees for a task
+ */
+export async function getTaskAssignees(taskId: string): Promise<string[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("task_assignees")
+    .select("user_id")
+    .eq("task_id", taskId);
+
+  if (error) throw error;
+  return (data || []).map((a) => a.user_id);
+}
+
+/**
+ * Set all assignees for a task (replace existing)
+ */
+export async function setTaskAssignees(taskId: string, userIds: string[]): Promise<void> {
+  const supabase = createClient();
+
+  // Get current user for assigned_by
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Delete existing assignees
+  await supabase
+    .from("task_assignees")
+    .delete()
+    .eq("task_id", taskId);
+
+  // Insert new assignees
+  if (userIds.length > 0) {
+    const { error } = await supabase
+      .from("task_assignees")
+      .insert(userIds.map((userId) => ({
+        task_id: taskId,
+        user_id: userId,
+        assigned_by: user?.id || null,
+      })));
+
+    if (error) throw error;
+  }
+
+  // Also update the legacy assigned_to field (for backwards compatibility)
+  // Set to the first assignee, or null if no assignees
+  await supabase
+    .from("tasks")
+    .update({ assigned_to: userIds.length > 0 ? userIds[0] : null })
+    .eq("id", taskId);
+}
+
+/**
+ * Add an assignee to a task
+ */
+export async function addTaskAssignee(taskId: string, userId: string): Promise<void> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from("task_assignees")
+    .insert({
+      task_id: taskId,
+      user_id: userId,
+      assigned_by: user?.id || null,
+    });
+
+  if (error) throw error;
+}
+
+/**
+ * Remove an assignee from a task
+ */
+export async function removeTaskAssignee(taskId: string, userId: string): Promise<void> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("task_assignees")
+    .delete()
+    .eq("task_id", taskId)
+    .eq("user_id", userId);
+
+  if (error) throw error;
 }

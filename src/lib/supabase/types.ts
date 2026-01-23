@@ -404,11 +404,21 @@ export interface AnnualKrWithDetails extends AnnualKr {
   progress?: number;
 }
 
+export interface TaskAssignee {
+  id: string;
+  task_id: string;
+  user_id: string;
+  assigned_at: string;
+  assigned_by: string | null;
+  user?: Profile;
+}
+
 export interface TaskWithDetails extends Task {
   objective?: Objective;
   annual_kr?: AnnualKr;
   quarter_target?: QuarterTarget;
   assigned_user?: Profile;
+  assignees?: TaskAssignee[];
   tags?: Tag[];
 }
 

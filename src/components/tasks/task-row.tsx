@@ -29,7 +29,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole } from "@/lib/supabase/types";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole, TaskAssignee } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 interface TaskRowProps {
@@ -43,6 +44,7 @@ interface TaskRowProps {
     } | null;
     quarter_target?: { quarter: number } | null;
     assigned_user?: { full_name: string | null; avatar_url: string | null } | null;
+    assignees?: TaskAssignee[];
     tags?: { id: string; name: string; color?: string | null }[];
   };
   role: OkrRole;
@@ -363,6 +365,43 @@ export function TaskRow({
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             {effortConfig[task.effort].tooltip}
+          </TooltipContent>
+        </Tooltip>
+      )}
+
+      {/* Assignees */}
+      {task.assignees && task.assignees.length > 0 && (
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <div className="flex -space-x-1.5 shrink-0">
+              {task.assignees.slice(0, 3).map((assignee) => (
+                <Avatar key={assignee.id} className="h-6 w-6 border-2 border-bg-0">
+                  {assignee.user?.avatar_url && (
+                    <AvatarImage src={assignee.user.avatar_url} />
+                  )}
+                  <AvatarFallback className="text-[10px] bg-accent/10 text-accent">
+                    {assignee.user?.full_name
+                      ? assignee.user.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                      : assignee.user?.email?.slice(0, 2).toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {task.assignees.length > 3 && (
+                <div className="h-6 w-6 rounded-full bg-bg-1 border-2 border-bg-0 flex items-center justify-center text-[10px] text-text-muted font-medium">
+                  +{task.assignees.length - 3}
+                </div>
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-medium">Assigned to:</span>
+              {task.assignees.map((assignee) => (
+                <span key={assignee.id}>
+                  {assignee.user?.full_name || assignee.user?.email || "Unknown user"}
+                </span>
+              ))}
+            </div>
           </TooltipContent>
         </Tooltip>
       )}

@@ -42,7 +42,8 @@ import {
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useTags, useCreateTag } from "@/features/tags/hooks";
-import { usePlanRole } from "@/features/plans/hooks";
+import { usePlanRole, usePlanMembers } from "@/features/plans/hooks";
+import { useSetTaskAssignees } from "@/features/tasks/hooks";
 import type {
   TaskStatus,
   TaskInsert,
@@ -70,6 +71,7 @@ export default function TasksPage({
   const { data: annualKrs = [] } = useAnnualKrs(planId);
   const { data: tags = [] } = useTags(planId);
   const { data: role } = usePlanRole(planId);
+  const { data: members = [] } = usePlanMembers(planId);
   const userRole: OkrRole = role || "viewer";
   const canEdit = userRole === "owner" || userRole === "editor";
 
@@ -78,6 +80,7 @@ export default function TasksPage({
   const updateTask = useUpdateTask(planId);
   const deleteTask = useDeleteTask(planId);
   const setTaskTags = useSetTaskTags(planId);
+  const setTaskAssignees = useSetTaskAssignees(planId);
   const createTag = useCreateTag(planId);
 
   // Bulk mutations
@@ -90,6 +93,7 @@ export default function TasksPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskWithDetails | null>(null);
   const [editingTaskTags, setEditingTaskTags] = useState<string[]>([]);
+  const [editingTaskAssignees, setEditingTaskAssignees] = useState<string[]>([]);
   const [editingObjectiveId, setEditingObjectiveId] = useState<string>("");
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
@@ -193,22 +197,26 @@ export default function TasksPage({
   // Handlers
   type TaskDialogData = Omit<TaskInsert, "plan_id"> | TaskUpdate;
 
-  async function handleCreate(data: TaskDialogData, tagIds: string[]) {
+  async function handleCreate(data: TaskDialogData, tagIds: string[], assigneeIds: string[]) {
     const newTask = await createTask.mutateAsync(
       data as Omit<TaskInsert, "plan_id">
     );
     if (tagIds.length > 0) {
       await setTaskTags.mutateAsync({ taskId: newTask.id, tagIds });
     }
+    if (assigneeIds.length > 0) {
+      await setTaskAssignees.mutateAsync({ taskId: newTask.id, userIds: assigneeIds });
+    }
   }
 
-  async function handleUpdate(data: TaskDialogData, tagIds: string[]) {
+  async function handleUpdate(data: TaskDialogData, tagIds: string[], assigneeIds: string[]) {
     if (!editingTask) return;
     await updateTask.mutateAsync({
       id: editingTask.id,
       data: data as TaskUpdate,
     });
     await setTaskTags.mutateAsync({ taskId: editingTask.id, tagIds });
+    await setTaskAssignees.mutateAsync({ taskId: editingTask.id, userIds: assigneeIds });
     setEditingTask(null);
   }
 
@@ -229,7 +237,8 @@ export default function TasksPage({
   function openEdit(task: TaskWithDetails) {
     setEditingTask(task);
     setEditingTaskTags(task.tags?.map((t) => t.id) || []);
-    
+    setEditingTaskAssignees(task.assignees?.map((a) => a.user_id) || []);
+
     // Fix: When task has annual_kr_id, find its objective
     if (task.annual_kr_id && !task.objective_id) {
       const kr = annualKrs.find((k) => k.id === task.annual_kr_id);
@@ -241,13 +250,14 @@ export default function TasksPage({
     } else {
       setEditingObjectiveId(task.objective_id || "");
     }
-    
+
     setDialogOpen(true);
   }
 
   function openCreate() {
     setEditingTask(null);
     setEditingTaskTags([]);
+    setEditingTaskAssignees([]);
     setEditingObjectiveId("");
     setDialogOpen(true);
   }
@@ -788,6 +798,8 @@ export default function TasksPage({
         tags={tags}
         selectedTags={editingTaskTags}
         initialObjectiveId={editingObjectiveId}
+        members={members}
+        selectedAssignees={editingTaskAssignees}
         onSubmit={editingTask ? handleUpdate : handleCreate}
         onCreateTag={handleCreateTag}
       />
