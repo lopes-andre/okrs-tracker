@@ -245,7 +245,7 @@ export interface TaskCommentCounts {
 
 /**
  * Get comment counts (total and unread) for multiple tasks at once
- * Used when rendering task list to show badges
+ * Uses a server-side SQL function for efficient aggregation
  */
 export async function getTasksCommentCounts(
   taskIds: string[],
@@ -255,43 +255,21 @@ export async function getTasksCommentCounts(
 
   const supabase = createClient();
 
-  // Get all last read timestamps for these tasks
-  const { data: reads, error: readsError } = await supabase
-    .from("comment_reads")
-    .select("task_id, last_read_at")
-    .eq("user_id", userId)
-    .in("task_id", taskIds);
+  // Call the server-side function that does efficient SQL aggregation
+  const { data, error } = await supabase.rpc("get_tasks_comment_counts", {
+    p_task_ids: taskIds,
+    p_user_id: userId,
+  });
 
-  if (readsError) throw readsError;
+  if (error) throw error;
 
-  const readMap = new Map(
-    (reads || []).map((r) => [r.task_id, r.last_read_at])
-  );
-
-  // Get all comments for these tasks
-  const { data: comments, error: commentsError } = await supabase
-    .from("comments")
-    .select("task_id, created_at")
-    .in("task_id", taskIds);
-
-  if (commentsError) throw commentsError;
-
-  // Calculate total and unread counts
+  // Convert array result to record keyed by task_id
   const counts: Record<string, TaskCommentCounts> = {};
-  for (const taskId of taskIds) {
-    counts[taskId] = { total: 0, unread: 0 };
-  }
-
-  for (const comment of comments || []) {
-    if (!counts[comment.task_id]) {
-      counts[comment.task_id] = { total: 0, unread: 0 };
-    }
-    counts[comment.task_id].total += 1;
-
-    const lastRead = readMap.get(comment.task_id);
-    if (!lastRead || new Date(comment.created_at) > new Date(lastRead)) {
-      counts[comment.task_id].unread += 1;
-    }
+  for (const row of data || []) {
+    counts[row.task_id] = {
+      total: Number(row.total_count),
+      unread: Number(row.unread_count),
+    };
   }
 
   return counts;
