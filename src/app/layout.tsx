@@ -26,6 +26,20 @@ export const metadata: Metadata = {
   description:
     "A premium personal OKR tracking app. Manage annual objectives, quarterly key results, and track your progress with beautiful analytics.",
   keywords: ["OKR", "objectives", "key results", "goal tracking", "productivity"],
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+  themeColor: "#2563EB",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "OKRs Tracker",
+  },
 };
 
 export default function RootLayout({
