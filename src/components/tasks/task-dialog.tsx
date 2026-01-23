@@ -14,6 +14,8 @@ import {
   Bell,
   BellOff,
   Users,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +37,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type {
   Task,
@@ -589,76 +596,109 @@ export function TaskDialog({
 
           {/* Assignees */}
           {members.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Assign to
               </Label>
 
-              {/* Selected assignees */}
-              {selectedAssigneeIds.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {selectedAssigneeIds.map((userId) => {
-                    const member = members.find((m) => m.user_id === userId);
-                    if (!member) return null;
-                    return (
-                      <Badge
-                        key={userId}
-                        variant="outline"
-                        className="gap-1.5 pr-1 cursor-pointer"
-                        onClick={() => handleAssigneeToggle(userId)}
-                      >
-                        <Avatar className="h-4 w-4">
-                          {member.profile.avatar_url && (
-                            <AvatarImage src={member.profile.avatar_url} />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between h-auto min-h-[40px] px-3 py-2"
+                  >
+                    {selectedAssigneeIds.length > 0 ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex -space-x-1">
+                          {selectedAssigneeIds.slice(0, 3).map((userId) => {
+                            const member = members.find((m) => m.user_id === userId);
+                            if (!member) return null;
+                            return (
+                              <Avatar key={userId} className="h-6 w-6 border-2 border-bg-0">
+                                {member.profile.avatar_url && (
+                                  <AvatarImage src={member.profile.avatar_url} />
+                                )}
+                                <AvatarFallback className="text-[9px] bg-accent/10 text-accent">
+                                  {member.profile.full_name
+                                    ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                                    : member.profile.email.slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                            );
+                          })}
+                        </div>
+                        <span className="text-sm text-text-strong">
+                          {selectedAssigneeIds.length === 1
+                            ? members.find((m) => m.user_id === selectedAssigneeIds[0])?.profile.full_name ||
+                              members.find((m) => m.user_id === selectedAssigneeIds[0])?.profile.email.split("@")[0]
+                            : `${selectedAssigneeIds.length} people assigned`}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-text-muted">Select team members...</span>
+                    )}
+                    <ChevronDown className="w-4 h-4 text-text-muted shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[300px] p-0" align="start">
+                  <div className="p-2 border-b border-border-soft">
+                    <p className="text-xs text-text-muted font-medium">Team Members</p>
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto p-1">
+                    {members.map((member) => {
+                      const isSelected = selectedAssigneeIds.includes(member.user_id);
+                      return (
+                        <button
+                          key={member.user_id}
+                          type="button"
+                          onClick={() => handleAssigneeToggle(member.user_id)}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-2 py-2 rounded-button text-left transition-colors",
+                            isSelected ? "bg-accent/10" : "hover:bg-bg-1"
                           )}
-                          <AvatarFallback className="text-[8px] bg-accent/10 text-accent">
-                            {member.profile.full_name
-                              ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                              : member.profile.email.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {member.profile.full_name || member.profile.email.split("@")[0]}
-                        <X className="w-3 h-3" />
-                      </Badge>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Available members */}
-              {members.filter((m) => !selectedAssigneeIds.includes(m.user_id)).length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {members
-                    .filter((m) => !selectedAssigneeIds.includes(m.user_id))
-                    .map((member) => (
-                      <Badge
-                        key={member.user_id}
-                        variant="secondary"
-                        className="gap-1.5 cursor-pointer hover:bg-bg-2"
-                        onClick={() => handleAssigneeToggle(member.user_id)}
-                      >
-                        <Avatar className="h-4 w-4">
-                          {member.profile.avatar_url && (
-                            <AvatarImage src={member.profile.avatar_url} />
+                        >
+                          <Avatar className="h-8 w-8">
+                            {member.profile.avatar_url && (
+                              <AvatarImage src={member.profile.avatar_url} />
+                            )}
+                            <AvatarFallback className="text-xs bg-accent/10 text-accent">
+                              {member.profile.full_name
+                                ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                                : member.profile.email.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-text-strong truncate">
+                              {member.profile.full_name || member.profile.email.split("@")[0]}
+                            </p>
+                            <p className="text-xs text-text-muted truncate">
+                              {member.profile.email}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-accent shrink-0" />
                           )}
-                          <AvatarFallback className="text-[8px] bg-accent/10 text-accent">
-                            {member.profile.full_name
-                              ? member.profile.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-                              : member.profile.email.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        {member.profile.full_name || member.profile.email.split("@")[0]}
-                      </Badge>
-                    ))}
-                </div>
-              )}
-
-              {selectedAssigneeIds.length === 0 && (
-                <p className="text-xs text-text-subtle">
-                  Click to assign team members to this task
-                </p>
-              )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedAssigneeIds.length > 0 && (
+                    <div className="p-2 border-t border-border-soft">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-text-muted"
+                        onClick={() => setSelectedAssigneeIds([])}
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
           )}
 

@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Square,
   User,
+  Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -415,16 +416,6 @@ export default function TasksPage({
             Logbook
           </Button>
         </Link>
-        {members.length > 1 && (
-          <Button
-            variant={showMyTasksOnly ? "default" : "outline"}
-            onClick={() => setShowMyTasksOnly(!showMyTasksOnly)}
-            className="gap-2"
-          >
-            <User className="w-4 h-4" />
-            {showMyTasksOnly ? "My Tasks" : "All Tasks"}
-          </Button>
-        )}
         {canEdit && (
           <>
             <Button
@@ -573,16 +564,46 @@ export default function TasksPage({
         onValueChange={(v) => setActiveView(v as "list" | "grouped")}
         className="space-y-4"
       >
-        <TabsList>
-          <TabsTrigger value="list" className="gap-2">
-            <LayoutList className="w-4 h-4" />
-            Timeline View
-          </TabsTrigger>
-          <TabsTrigger value="grouped" className="gap-2">
-            <Layers className="w-4 h-4" />
-            By OKR
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="list" className="gap-2">
+              <LayoutList className="w-4 h-4" />
+              Timeline View
+            </TabsTrigger>
+            <TabsTrigger value="grouped" className="gap-2">
+              <Layers className="w-4 h-4" />
+              By OKR
+            </TabsTrigger>
+          </TabsList>
+
+          {/* My Tasks / All Tasks Filter */}
+          <div className="inline-flex h-9 items-center justify-center rounded-lg bg-bg-1 p-1 text-text-muted">
+            <button
+              onClick={() => setShowMyTasksOnly(false)}
+              className={cn(
+                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
+                !showMyTasksOnly
+                  ? "bg-white text-text-strong shadow"
+                  : "hover:bg-white/50 hover:text-text-strong"
+              )}
+            >
+              <Users className="w-4 h-4" />
+              All Tasks
+            </button>
+            <button
+              onClick={() => setShowMyTasksOnly(true)}
+              className={cn(
+                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
+                showMyTasksOnly
+                  ? "bg-white text-text-strong shadow"
+                  : "hover:bg-white/50 hover:text-text-strong"
+              )}
+            >
+              <User className="w-4 h-4" />
+              My Tasks
+            </button>
+          </div>
+        </div>
 
         {/* Timeline (List) View */}
         <TabsContent value="list" className="space-y-4">

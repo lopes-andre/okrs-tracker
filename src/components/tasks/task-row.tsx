@@ -385,7 +385,7 @@ export function TaskRow({
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <div className="flex -space-x-1.5 shrink-0">
-              {task.assignees.slice(0, 3).map((assignee) => (
+              {task.assignees.slice(0, 2).map((assignee) => (
                 <Avatar key={assignee.id} className="h-6 w-6 border-2 border-bg-0">
                   {assignee.user?.avatar_url && (
                     <AvatarImage src={assignee.user.avatar_url} />
@@ -397,9 +397,9 @@ export function TaskRow({
                   </AvatarFallback>
                 </Avatar>
               ))}
-              {task.assignees.length > 3 && (
+              {task.assignees.length > 2 && (
                 <div className="h-6 w-6 rounded-full bg-bg-1 border-2 border-bg-0 flex items-center justify-center text-[10px] text-text-muted font-medium">
-                  +{task.assignees.length - 3}
+                  +{task.assignees.length - 2}
                 </div>
               )}
             </div>
