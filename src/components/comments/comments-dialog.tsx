@@ -81,7 +81,8 @@ export function CommentsDialog({
   const extractMentions = useCallback(
     (content: string): string[] => {
       const mentioned: string[] = [];
-      const mentionRegex = /@(\w+(?:\s+\w+)?)/g;
+      // Use Unicode-aware pattern to support accented characters (é, ã, ç, etc.)
+      const mentionRegex = /@([\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)?)/gu;
       let match;
 
       while ((match = mentionRegex.exec(content)) !== null) {

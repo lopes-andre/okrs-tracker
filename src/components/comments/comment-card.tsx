@@ -46,10 +46,10 @@ function renderContentWithMentions(
   });
 
   // Find all @mentions in the content and highlight them
-  // Pattern: @Name or @name (assumes names don't have special chars)
+  // Unicode-aware pattern to support accented characters (é, ã, ç, etc.)
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
-  const mentionRegex = /@(\w+(?:\s+\w+)?)/g;
+  const mentionRegex = /@([\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)?)/gu;
   let match;
 
   while ((match = mentionRegex.exec(content)) !== null) {
