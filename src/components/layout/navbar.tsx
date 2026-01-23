@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PresenceIndicator } from "./presence-indicator";
 import { signOut } from "@/app/(auth)/actions";
 
 interface NavbarProps {
@@ -82,8 +83,11 @@ export function Navbar({ showPlanSwitcher = true, user }: NavbarProps) {
           )}
         </div>
 
-        {/* Right side: User Menu */}
-        <div className="flex items-center gap-2">
+        {/* Right side: Presence + User Menu */}
+        <div className="flex items-center gap-3">
+          {/* Real-time presence indicator */}
+          <PresenceIndicator />
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
