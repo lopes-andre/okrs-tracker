@@ -272,6 +272,7 @@ export function ObjectiveCard({
                     checkIns={checkInsByKr[kr.id] || []}
                     planYear={planYear}
                     progressResult={krProgressResults[kr.id]}
+                    owner={kr.owner}
                   />
                 ))}
               </>

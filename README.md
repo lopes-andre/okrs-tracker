@@ -447,9 +447,43 @@ Full data portability with JSON export/import, Markdown export, and cloud backup
 - Export schema v1.0 with `_exportId` cross-references
 - Drag-drop file upload with preview
 
-### 🔜 Coming Next
-- [ ] Real-time updates (WebSocket/Supabase Realtime)
-- [ ] Task reminders (using due time)
+### ✅ Real-time Collaboration Infrastructure (Complete)
+- [x] Supabase Realtime integration for live data sync
+- [x] Presence tracking (see who's online)
+- [x] Automatic React Query cache invalidation on remote changes
+- [x] Connection status indicator in navbar
+- [x] Task reminders with browser notifications
+
+### 🔜 Phase 1: Collaboration Foundation (In Progress)
+Core features for team-based OKR tracking:
+
+- [ ] **KR Owners** - Assign responsible person(s) for each Key Result
+- [ ] **Multi-user Task Assignment** - Assign tasks to one or more plan members
+- [ ] **Accountability Views** - "My KRs" / "My Tasks" filter toggles
+- [ ] **Editing Indicators** - Show when someone is editing an item
+
+### 📋 Phase 2: Communication (Planned)
+Enable team discussion and coordination:
+
+- [ ] **Comments System** - Discuss objectives, KRs, tasks, check-ins
+- [ ] **@Mentions** - Tag team members in comments
+- [ ] **In-App Notifications** - Bell icon with notification center
+- [ ] **Assignment Notifications** - Alerts for task/KR assignments
+
+### 📋 Phase 3: Team Visibility (Planned)
+Team transparency and workload management:
+
+- [ ] **Workload Dashboard** - Visualize task distribution per member
+- [ ] **Team Member Cards** - Per-person OKR/task views
+- [ ] **Contribution Analytics** - Activity insights per member
+
+### 📋 Phase 4: Advanced Collaboration (Future)
+Enterprise and advanced features:
+
+- [ ] **Email Digests** - Daily/weekly summary emails
+- [ ] **Collaborative Weekly Reviews** - Team reviews with shared reflections
+- [ ] **Approval Workflows** - KR targets require manager approval
+- [ ] **Guest Access** - View-only links for stakeholders
 
 ## License
 

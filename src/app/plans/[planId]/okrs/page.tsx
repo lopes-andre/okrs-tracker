@@ -19,6 +19,7 @@ import {
   usePlan,
   usePlanRole,
   usePlanStats,
+  usePlanMembers,
   useObjectivesWithKrs,
   useCreateObjective,
   useUpdateObjective,
@@ -93,6 +94,7 @@ export default function OKRsPage({
   const { data: groups = [] } = useKrGroups(planId);
   const { data: tags = [] } = useTags(planId);
   const { data: checkIns = [] } = useCheckIns(planId);
+  const { data: members = [] } = usePlanMembers(planId);
   
   // Organize check-ins by KR ID
   const checkInsByKr = useMemo(() => {
@@ -417,6 +419,7 @@ export default function OKRsPage({
         kr={editingKr}
         groups={groups}
         tags={tags}
+        members={members}
         selectedTags={krSelectedTags}
         onSubmit={handleKrSubmit}
       />

@@ -100,18 +100,20 @@ export async function getAnnualKrWithDetails(krId: string): Promise<AnnualKrWith
       *,
       objective:objectives(*),
       group:kr_groups(*),
+      owner:profiles(*),
       quarter_targets(*),
       annual_kr_tags(tag:tags(*))
     `)
     .eq("id", krId)
-    .single() as { 
-      data: (AnnualKr & { 
-        objective?: unknown; 
-        group?: unknown; 
-        quarter_targets?: unknown[]; 
-        annual_kr_tags?: { tag: Tag }[] 
-      }) | null; 
-      error: { code: string; message: string } | null 
+    .single() as {
+      data: (AnnualKr & {
+        objective?: unknown;
+        group?: unknown;
+        owner?: unknown;
+        quarter_targets?: unknown[];
+        annual_kr_tags?: { tag: Tag }[]
+      }) | null;
+      error: { code: string; message: string } | null
     };
 
   if (error && error.code !== "PGRST116") throw error;

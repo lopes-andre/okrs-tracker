@@ -45,6 +45,7 @@ import type {
   KrAggregation,
   KrGroup,
   Tag,
+  PlanMemberWithProfile,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,7 @@ interface AnnualKrDialogProps {
   kr?: AnnualKr | null;
   groups: KrGroup[];
   tags: Tag[];
+  members?: PlanMemberWithProfile[];
   selectedTags?: string[];
   onSubmit: (data: AnnualKrInsert | AnnualKrUpdate, tagIds: string[]) => Promise<void>;
 }
@@ -200,6 +202,7 @@ export function AnnualKrDialog({
   kr,
   groups,
   tags,
+  members = [],
   selectedTags: initialSelectedTags = [],
   onSubmit,
 }: AnnualKrDialogProps) {
@@ -216,6 +219,7 @@ export function AnnualKrDialog({
   const [startValue, setStartValue] = useState("0");
   const [targetValue, setTargetValue] = useState("");
   const [groupId, setGroupId] = useState<string>("");
+  const [ownerId, setOwnerId] = useState<string>("");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   const config = krTypeConfig[krType];
@@ -233,6 +237,7 @@ export function AnnualKrDialog({
         setStartValue(String(kr.start_value));
         setTargetValue(String(kr.target_value));
         setGroupId(kr.group_id || "");
+        setOwnerId(kr.owner_id || "");
         setSelectedTagIds(initialSelectedTags);
       } else {
         setName("");
@@ -244,6 +249,7 @@ export function AnnualKrDialog({
         setStartValue("0");
         setTargetValue("");
         setGroupId("");
+        setOwnerId("");
         setSelectedTagIds([]);
       }
     }
@@ -314,6 +320,7 @@ export function AnnualKrDialog({
             start_value: values.startValue,
             target_value: values.targetValue,
             group_id: groupId || null,
+            owner_id: ownerId || null,
           }
         : {
             objective_id: objectiveId,
@@ -327,6 +334,7 @@ export function AnnualKrDialog({
             target_value: values.targetValue,
             current_value: values.startValue,
             group_id: groupId || null,
+            owner_id: ownerId || null,
             sort_order: 0,
           };
 
@@ -600,25 +608,61 @@ export function AnnualKrDialog({
             </div>
           )}
 
-          {/* Group Selection */}
-          {groups.length > 0 && (
-            <div className="space-y-2">
-              <Label>Group (optional)</Label>
-              <Select value={groupId} onValueChange={setGroupId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a group" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">No group</SelectItem>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {/* Group & Owner Row */}
+          <div className={cn(
+            "grid gap-4",
+            groups.length > 0 && members.length > 0 ? "grid-cols-2" : "grid-cols-1"
+          )}>
+            {/* Group Selection */}
+            {groups.length > 0 && (
+              <div className="space-y-2">
+                <Label>Group (optional)</Label>
+                <Select value={groupId} onValueChange={setGroupId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No group</SelectItem>
+                    {groups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Owner Selection */}
+            {members.length > 0 && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  Owner
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="w-3.5 h-3.5 text-text-subtle" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Person responsible for this KR</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </Label>
+                <Select value={ownerId} onValueChange={setOwnerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign an owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No owner</SelectItem>
+                    {members.map((m) => (
+                      <SelectItem key={m.user_id} value={m.user_id}>
+                        {m.profile.full_name || m.profile.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
 
           {/* Tags */}
           {tags.length > 0 && (

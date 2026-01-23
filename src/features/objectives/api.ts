@@ -27,7 +27,7 @@ export async function getObjectives(planId: string): Promise<Objective[]> {
 }
 
 /**
- * Get objectives with their annual KRs and quarter targets
+ * Get objectives with their annual KRs, quarter targets, and owners
  */
 export async function getObjectivesWithKrs(planId: string): Promise<ObjectiveWithKrs[]> {
   const supabase = createClient();
@@ -38,6 +38,7 @@ export async function getObjectivesWithKrs(planId: string): Promise<ObjectiveWit
       *,
       annual_krs(
         *,
+        owner:profiles(*),
         quarter_targets(*)
       )
     `)

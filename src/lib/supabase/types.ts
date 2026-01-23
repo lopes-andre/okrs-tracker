@@ -84,6 +84,7 @@ export interface AnnualKr {
   id: string;
   objective_id: string;
   group_id: string | null;
+  owner_id: string | null;
   name: string;
   description: string | null;
   kr_type: KrType;
@@ -384,14 +385,20 @@ export interface PlanMemberWithProfile extends PlanMember {
   profile: Profile;
 }
 
+export interface AnnualKrWithOwner extends AnnualKr {
+  owner?: Profile | null;
+  quarter_targets?: QuarterTarget[];
+}
+
 export interface ObjectiveWithKrs extends Objective {
-  annual_krs: AnnualKr[];
+  annual_krs: AnnualKrWithOwner[];
   progress?: number;
 }
 
 export interface AnnualKrWithDetails extends AnnualKr {
   objective?: Objective;
   group?: KrGroup;
+  owner?: Profile;
   quarter_targets?: QuarterTarget[];
   tags?: Tag[];
   progress?: number;

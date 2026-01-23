@@ -37,7 +37,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { PaceBadge } from "./pace-badge";
-import type { AnnualKr, OkrRole, QuarterTarget, CheckIn } from "@/lib/supabase/types";
+import type { AnnualKr, OkrRole, QuarterTarget, CheckIn, Profile } from "@/lib/supabase/types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ProgressResult } from "@/lib/progress-engine";
 import { 
   formatValueWithUnit, 
@@ -64,6 +65,8 @@ interface AnnualKrCardProps {
   planYear?: number;
   /** Last check-in for display */
   lastCheckIn?: CheckIn;
+  /** KR owner profile (if assigned) */
+  owner?: Profile | null;
 }
 
 // KR type labels (kept for future use)
@@ -169,17 +172,18 @@ function SimplePaceIndicator({ paceStatus, expectedValue, currentValue, unit }: 
   );
 }
 
-export function AnnualKrCard({ 
-  kr, 
-  role, 
-  onEdit, 
-  onDelete, 
-  onEditQuarterTargets, 
-  onCheckIn, 
+export function AnnualKrCard({
+  kr,
+  role,
+  onEdit,
+  onDelete,
+  onEditQuarterTargets,
+  onCheckIn,
   progressResult,
   checkIns = [],
   planYear = new Date().getFullYear(),
   lastCheckIn,
+  owner,
 }: AnnualKrCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const canEdit = role === "owner" || role === "editor";
@@ -282,6 +286,24 @@ export function AnnualKrCard({
             {getCollapsedValueDisplay()}
           </p>
         </div>
+
+        {/* Owner Avatar */}
+        {owner && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarFallback className="text-[10px] bg-accent/10 text-accent">
+                  {owner.full_name
+                    ? owner.full_name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+                    : owner.email.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">Owner: {owner.full_name || owner.email}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         {/* Progress - Different display for milestone vs others */}
         <div className="flex items-center gap-3 shrink-0">
