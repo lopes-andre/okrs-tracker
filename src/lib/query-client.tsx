@@ -145,4 +145,18 @@ export const queryKeys = {
     current: ["profile", "current"] as const,
     byId: (userId: string) => ["profile", userId] as const,
   },
+
+  // Comments
+  comments: {
+    all: ["comments"] as const,
+    byTask: (taskId: string) => [...queryKeys.comments.all, "byTask", taskId] as const,
+    count: (taskId: string) => [...queryKeys.comments.all, "count", taskId] as const,
+  },
+
+  // Notifications
+  notifications: {
+    all: ["notifications"] as const,
+    list: (userId: string) => [...queryKeys.notifications.all, "list", userId] as const,
+    unreadCount: (userId: string) => [...queryKeys.notifications.all, "unreadCount", userId] as const,
+  },
 } as const;

@@ -11,9 +11,10 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEffort = 'light' | 'moderate' | 'heavy';
 export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
-export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review';
+export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review' | 'comment';
 export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed' | 'started';
 export type WeeklyReviewStatus = 'open' | 'pending' | 'late' | 'complete';
+export type NotificationType = 'mentioned' | 'comment' | 'assigned' | 'unassigned' | 'task_completed' | 'task_updated';
 
 // ============================================================================
 // TABLE TYPES
@@ -217,6 +218,39 @@ export interface ActivityEvent {
 }
 
 // ============================================================================
+// COMMENTS AND NOTIFICATIONS TYPES
+// ============================================================================
+
+export interface Comment {
+  id: string;
+  plan_id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommentMention {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  plan_id: string;
+  task_id: string | null;
+  comment_id: string | null;
+  actor_id: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+// ============================================================================
 // WEEKLY REVIEW TYPES
 // ============================================================================
 
@@ -372,6 +406,14 @@ export type TaskReminderSettingsUpdate = Partial<Omit<TaskReminderSettings, 'id'
 export type WeeklyReviewKrUpdateInsert = Omit<WeeklyReviewKrUpdate, 'id' | 'created_at'>;
 export type WeeklyReviewTaskInsert = Omit<WeeklyReviewTask, 'id' | 'created_at'>;
 
+// Comment Insert/Update Types
+export type CommentInsert = Omit<Comment, 'id' | 'created_at' | 'updated_at'>;
+export type CommentUpdate = Partial<Pick<Comment, 'content'>>;
+
+// Notification Insert/Update Types
+export type NotificationInsert = Omit<Notification, 'id' | 'created_at'>;
+export type NotificationUpdate = Partial<Pick<Notification, 'read'>>;
+
 // ============================================================================
 // EXTENDED TYPES (with joined data)
 // ============================================================================
@@ -453,6 +495,23 @@ export interface PlanReviewStats {
   pending: number;
   avg_rating: number | null;
   current_streak: number;
+}
+
+// Comment Extended Types
+export interface CommentWithUser extends Comment {
+  user: Profile;
+  mentions?: CommentMentionWithUser[];
+}
+
+export interface CommentMentionWithUser extends CommentMention {
+  user: Profile;
+}
+
+// Notification Extended Types
+export interface NotificationWithDetails extends Notification {
+  actor?: Profile | null;
+  task?: Task | null;
+  comment?: Comment | null;
 }
 
 // ============================================================================
@@ -613,6 +672,21 @@ export interface Database {
         Insert: WeeklyReviewTaskInsert;
         Update: never;
       };
+      comments: {
+        Row: Comment;
+        Insert: CommentInsert;
+        Update: CommentUpdate;
+      };
+      comment_mentions: {
+        Row: CommentMention;
+        Insert: Omit<CommentMention, 'id' | 'created_at'>;
+        Update: never;
+      };
+      notifications: {
+        Row: Notification;
+        Insert: NotificationInsert;
+        Update: NotificationUpdate;
+      };
     };
     Views: {
       v_plan_timeline: {
@@ -675,6 +749,7 @@ export interface Database {
       event_entity_type: EventEntityType;
       event_type: EventType;
       weekly_review_status: WeeklyReviewStatus;
+      notification_type: NotificationType;
     };
   };
 }
