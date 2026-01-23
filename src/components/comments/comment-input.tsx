@@ -236,6 +236,7 @@ export function CommentInput({
             onClick={handleSubmit}
             disabled={!content.trim() || isSubmitting}
             className="absolute right-1 top-1 h-8 w-8"
+            aria-label={isSubmitting ? "Sending comment" : "Send comment"}
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />

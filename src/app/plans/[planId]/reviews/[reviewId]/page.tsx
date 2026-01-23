@@ -622,6 +622,7 @@ export default function ReviewWizardPage({
           onClick={() => router.push(`/plans/${planId}/reviews`)}
           className="shrink-0 mt-1"
           title="Close and return to Reviews"
+          aria-label="Close review"
         >
           <X className="w-5 h-5" />
         </Button>

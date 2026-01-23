@@ -64,6 +64,7 @@ export function NotificationBell({ userId, planId }: NotificationBellProps) {
           variant="ghost"
           size="icon"
           className="relative h-9 w-9"
+          aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"}
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (

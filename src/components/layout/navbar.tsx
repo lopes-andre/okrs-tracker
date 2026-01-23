@@ -99,7 +99,7 @@ export function Navbar({ showPlanSwitcher = true, user, planId }: NavbarProps) {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="User menu">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.avatarUrl || ""} alt={user.fullName || user.email} />
                     <AvatarFallback>{getInitials(user.fullName, user.email)}</AvatarFallback>

@@ -501,6 +501,7 @@ export function TaskRow({
               variant="ghost"
               size="icon"
               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              aria-label="Task actions"
             >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
