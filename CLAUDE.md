@@ -312,6 +312,114 @@ supabase db reset    # Reset and re-run migrations
 supabase migration new <name>  # Create new migration
 ```
 
+## Branch Management Workflow
+
+For all development work, follow this branch-based workflow:
+
+### Before Starting Work
+1. **Pull latest main**: `git pull origin main`
+2. **Create a feature branch** with a descriptive name:
+   - `feature/` - New features (e.g., `feature/recurring-tasks`)
+   - `fix/` - Bug fixes (e.g., `fix/task-deletion-bug`)
+   - `refactor/` - Code refactoring (e.g., `refactor/task-model`)
+   - `chore/` - Maintenance tasks (e.g., `chore/update-dependencies`)
+
+```bash
+git checkout main
+git pull origin main
+git checkout -b feature/my-feature-name
+```
+
+### During Development
+- Make **atomic, logical commits** with clear messages
+- Commit in small chunks as you progress (not everything at the end)
+- Use conventional commit format: `type(scope): description`
+
+```bash
+git add <files>
+git commit -m "feat(tasks): add recurring task scheduling"
+```
+
+### After Completing Work
+1. Ensure all changes are committed to the feature branch
+2. Switch to `main` and merge the feature branch
+3. Push to remote
+4. Delete the feature branch (local cleanup)
+
+```bash
+git checkout main
+git merge feature/my-feature-name
+git push origin main
+git branch -d feature/my-feature-name
+```
+
+## End-of-Cycle Deliverables
+
+At the end of every development cycle, provide the following documentation:
+
+### 1. Summary of Changes
+Brief bullet points of what was implemented or modified:
+```
+- Added recurring task scheduling with daily/weekly/monthly options
+- Created new RecurringTaskDialog component
+- Added database migration for recurrence fields
+```
+
+### 2. How to Test
+Step-by-step manual testing instructions:
+```
+1. Navigate to Tasks page (/plans/[planId]/tasks)
+2. Click "New Task" button
+3. Enable "Recurring" toggle
+4. Select frequency (daily/weekly/monthly)
+5. Save the task
+6. Verify the recurrence icon appears on the task card
+```
+
+### 3. Test Scenarios
+Specific examples as a checklist, including happy path and edge cases:
+```
+- [ ] Create a daily recurring task → Should show "Repeats daily" badge
+- [ ] Create weekly task on Monday → Should show "Repeats weekly on Mon"
+- [ ] Edit recurring task to remove recurrence → Badge should disappear
+- [ ] Delete a recurring task → Should ask about deleting all occurrences
+- [ ] Edge case: Create task with past start date → Should start from today
+```
+
+### 4. Known Limitations / TODOs
+Anything incomplete or to be aware of:
+```
+- Recurring tasks don't yet support "end after X occurrences"
+- No bulk edit for recurring task series
+- Mobile: recurrence picker needs responsive styling
+```
+
+### Template Example
+
+```markdown
+## Summary of Changes
+- Added X feature with Y and Z capabilities
+- Modified existing A component to support B
+- Created database migration for new fields
+
+## How to Test
+1. Navigate to [page/route]
+2. Perform [action]
+3. Verify [expected behavior]
+4. Check [secondary behavior]
+
+## Test Scenarios
+- [ ] Happy path: [description] → [expected result]
+- [ ] Happy path: [description] → [expected result]
+- [ ] Edge case: [description] → [expected result]
+- [ ] Edge case: [description] → [expected result]
+
+## Known Limitations
+- [Limitation 1]
+- [Limitation 2]
+- TODO: [Future improvement]
+```
+
 ## Key Conventions
 
 ### File Naming
