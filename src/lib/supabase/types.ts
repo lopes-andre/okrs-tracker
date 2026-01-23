@@ -15,6 +15,8 @@ export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'an
 export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed' | 'started';
 export type WeeklyReviewStatus = 'open' | 'pending' | 'late' | 'complete';
 export type NotificationType = 'mentioned' | 'comment' | 'assigned' | 'unassigned' | 'task_completed' | 'task_updated';
+export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+export type RecurrenceEndType = 'never' | 'count' | 'until';
 
 // ============================================================================
 // TABLE TYPES
@@ -128,8 +130,41 @@ export interface Task {
   assigned_to: string | null;
   reminder_enabled: boolean;
   sort_order: number;
+  is_recurring: boolean;
+  recurring_master_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TaskRecurrenceRule {
+  id: string;
+  task_id: string;
+  rrule: string;
+  frequency: RecurrenceFrequency;
+  interval_value: number;
+  days_of_week: number[] | null;
+  day_of_month: number | null;
+  week_of_month: number | null;
+  day_of_week_for_month: number | null;
+  month_of_year: number | null;
+  end_type: RecurrenceEndType;
+  end_count: number | null;
+  end_date: string | null;
+  timezone: string;
+  last_generated_date: string | null;
+  generation_limit: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskRecurrenceInstance {
+  id: string;
+  recurrence_rule_id: string;
+  task_id: string;
+  original_date: string;
+  is_exception: boolean;
+  is_deleted: boolean;
+  created_at: string;
 }
 
 export interface CheckIn {
@@ -371,8 +406,17 @@ export type AnnualKrUpdate = Partial<Omit<AnnualKr, 'id' | 'objective_id' | 'cre
 export type QuarterTargetInsert = Omit<QuarterTarget, 'id' | 'created_at' | 'updated_at'>;
 export type QuarterTargetUpdate = Partial<Omit<QuarterTarget, 'id' | 'annual_kr_id' | 'quarter' | 'created_at' | 'updated_at'>>;
 
-export type TaskInsert = Omit<Task, 'id' | 'completed_at' | 'created_at' | 'updated_at'>;
+export type TaskInsert = Omit<Task, 'id' | 'completed_at' | 'created_at' | 'updated_at' | 'is_recurring' | 'recurring_master_id'> & {
+  is_recurring?: boolean;
+  recurring_master_id?: string | null;
+};
 export type TaskUpdate = Partial<Omit<Task, 'id' | 'plan_id' | 'completed_at' | 'created_at' | 'updated_at'>>;
+
+export type TaskRecurrenceRuleInsert = Omit<TaskRecurrenceRule, 'id' | 'last_generated_date' | 'created_at' | 'updated_at'>;
+export type TaskRecurrenceRuleUpdate = Partial<Omit<TaskRecurrenceRule, 'id' | 'task_id' | 'created_at' | 'updated_at'>>;
+
+export type TaskRecurrenceInstanceInsert = Omit<TaskRecurrenceInstance, 'id' | 'created_at'>;
+export type TaskRecurrenceInstanceUpdate = Partial<Pick<TaskRecurrenceInstance, 'is_exception' | 'is_deleted'>>;
 
 export type CheckInInsert = Omit<CheckIn, 'id' | 'previous_value' | 'created_at'>;
 export type CheckInUpdate = Partial<Pick<CheckIn, 'note' | 'evidence_url'>>;
@@ -469,6 +513,26 @@ export interface TaskWithDetails extends Task {
   assigned_user?: Profile;
   assignees?: TaskAssignee[];
   tags?: Tag[];
+  recurrence_rule?: TaskRecurrenceRule;
+  recurrence_instance?: TaskRecurrenceInstance;
+}
+
+// Extended recurrence types
+export interface TaskRecurrenceRuleWithInstances extends TaskRecurrenceRule {
+  instances?: TaskRecurrenceInstance[];
+  master_task?: Task;
+}
+
+export interface RecurrenceInfo {
+  is_recurring: boolean;
+  is_instance: boolean;
+  master_task_id: string;
+  recurrence_rule_id: string | null;
+  rrule: string | null;
+  frequency: RecurrenceFrequency | null;
+  end_type: RecurrenceEndType | null;
+  instance_date: string | null;
+  is_exception: boolean;
 }
 
 export interface CheckInWithDetails extends CheckIn {
