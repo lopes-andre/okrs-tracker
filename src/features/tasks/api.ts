@@ -212,7 +212,7 @@ export async function getTasksWithDetails(
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*)),
-      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url))
     `)
     .eq("plan_id", planId);
 
@@ -403,7 +403,7 @@ export async function getTasksPaginated(
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*)),
-      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url))
     `, { count: "exact" })
     .eq("plan_id", planId);
 
@@ -492,7 +492,7 @@ export async function getTaskWithDetails(taskId: string): Promise<TaskWithDetail
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*)),
-      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles(id, full_name, email, avatar_url))
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url))
     `)
     .eq("id", taskId)
     .single();
