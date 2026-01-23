@@ -77,6 +77,14 @@ export default function TasksPage({
   const { data: currentUserId } = useCurrentUserId();
   const userRole: OkrRole = role || "viewer";
   const canEdit = userRole === "owner" || userRole === "editor";
+  const isOwner = userRole === "owner";
+
+  // Get current user profile from members list
+  const currentUserProfile = useMemo(() => {
+    if (!currentUserId || !members.length) return null;
+    const member = members.find((m) => m.user_id === currentUserId);
+    return member?.profile || null;
+  }, [currentUserId, members]);
 
   // Mutations
   const createTask = useCreateTask(planId);
@@ -886,6 +894,9 @@ export default function TasksPage({
         initialObjectiveId={editingObjectiveId}
         members={members}
         selectedAssignees={editingTaskAssignees}
+        currentUserId={currentUserId ?? undefined}
+        currentUserProfile={currentUserProfile}
+        isOwner={isOwner}
         onSubmit={editingTask ? handleUpdate : handleCreate}
         onCreateTag={handleCreateTag}
       />
