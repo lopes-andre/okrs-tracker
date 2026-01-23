@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -34,7 +34,7 @@ export function useRealtimeSync({
   userId,
   userEmail,
   userFullName,
-  tables = DEFAULT_REALTIME_TABLES,
+  tables,
   enabled = true,
   onEvent,
   onConnectionChange,
@@ -45,40 +45,25 @@ export function useRealtimeSync({
   const [onlineUsers, setOnlineUsers] = useState<PresenceState[]>([]);
   const currentPageRef = useRef<string | undefined>(undefined);
 
-  // Handle incoming database changes
-  const handleDatabaseChange = useCallback(
-    (
-      table: RealtimeTable,
-      payload: RealtimePostgresChangesPayload<Record<string, unknown>>
-    ) => {
-      const eventType = payload.eventType as "INSERT" | "UPDATE" | "DELETE";
+  // Use refs for callbacks to avoid dependency changes
+  const onEventRef = useRef(onEvent);
+  const onConnectionChangeRef = useRef(onConnectionChange);
 
-      // Get query keys to invalidate
-      const queryKeysToInvalidate = getQueryKeysToInvalidate(
-        table,
-        eventType,
-        payload,
-        planId
-      );
+  // Update refs when callbacks change
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
-      // Invalidate each query key
-      queryKeysToInvalidate.forEach((queryKey) => {
-        queryClient.invalidateQueries({ queryKey: queryKey as unknown[] });
-      });
+  useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange;
+  }, [onConnectionChange]);
 
-      // Call custom event handler if provided
-      if (onEvent) {
-        onEvent({
-          table,
-          eventType,
-          new: payload.new as Record<string, unknown> | null,
-          old: payload.old as Record<string, unknown> | null,
-          schema: payload.schema,
-          commit_timestamp: payload.commit_timestamp,
-        });
-      }
-    },
-    [planId, queryClient, onEvent]
+  // Memoize tables to prevent re-subscriptions
+  const tablesToSubscribe = useMemo(
+    () => tables || DEFAULT_REALTIME_TABLES,
+    // Only recreate if tables array reference changes and it's provided
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tables ? tables.join(",") : "default"]
   );
 
   // Track user presence on a specific page
@@ -108,6 +93,39 @@ export function useRealtimeSync({
     const supabase = createClient();
     const channelName = `plan:${planId}`;
 
+    // Handle incoming database changes - defined inside useEffect to use current refs
+    const handleDatabaseChange = (
+      table: RealtimeTable,
+      payload: RealtimePostgresChangesPayload<Record<string, unknown>>
+    ) => {
+      const eventType = payload.eventType as "INSERT" | "UPDATE" | "DELETE";
+
+      // Get query keys to invalidate
+      const queryKeysToInvalidate = getQueryKeysToInvalidate(
+        table,
+        eventType,
+        payload,
+        planId
+      );
+
+      // Invalidate each query key
+      queryKeysToInvalidate.forEach((queryKey) => {
+        queryClient.invalidateQueries({ queryKey: queryKey as unknown[] });
+      });
+
+      // Call custom event handler if provided (using ref)
+      if (onEventRef.current) {
+        onEventRef.current({
+          table,
+          eventType,
+          new: payload.new as Record<string, unknown> | null,
+          old: payload.old as Record<string, unknown> | null,
+          schema: payload.schema,
+          commit_timestamp: payload.commit_timestamp,
+        });
+      }
+    };
+
     // Create the channel
     const channel = supabase.channel(channelName, {
       config: {
@@ -118,7 +136,7 @@ export function useRealtimeSync({
     });
 
     // Subscribe to postgres changes for each table
-    tables.forEach((table) => {
+    tablesToSubscribe.forEach((table) => {
       // For tables with plan_id column, filter by plan_id
       const tablesWithPlanId = [
         "objectives",
@@ -144,7 +162,6 @@ export function useRealtimeSync({
       } else {
         // For tables without plan_id (annual_krs, quarter_targets, check_ins, dashboard_widgets)
         // We subscribe to all changes and filter client-side based on related data
-        // This is less efficient but necessary due to schema design
         channel.on(
           "postgres_changes",
           {
@@ -152,11 +169,7 @@ export function useRealtimeSync({
             schema: "public",
             table,
           },
-          (payload) => {
-            // For these tables, we still process all events for now
-            // In a production app, you might use database functions to filter
-            handleDatabaseChange(table, payload);
-          }
+          (payload) => handleDatabaseChange(table, payload)
         );
       }
     });
@@ -192,7 +205,7 @@ export function useRealtimeSync({
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         setConnectionStatus("connected");
-        onConnectionChange?.("connected");
+        onConnectionChangeRef.current?.("connected");
 
         // Track presence after subscription
         if (userId) {
@@ -207,10 +220,10 @@ export function useRealtimeSync({
         }
       } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
         setConnectionStatus("disconnected");
-        onConnectionChange?.("disconnected");
+        onConnectionChangeRef.current?.("disconnected");
       } else if (status === "TIMED_OUT") {
         setConnectionStatus("reconnecting");
-        onConnectionChange?.("reconnecting");
+        onConnectionChangeRef.current?.("reconnecting");
       }
     });
 
@@ -218,23 +231,15 @@ export function useRealtimeSync({
 
     // Cleanup on unmount
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+      const currentChannel = channelRef.current;
+      if (currentChannel) {
+        supabase.removeChannel(currentChannel);
         channelRef.current = null;
       }
       setConnectionStatus("disconnected");
       setOnlineUsers([]);
     };
-  }, [
-    planId,
-    userId,
-    userEmail,
-    userFullName,
-    tables,
-    enabled,
-    handleDatabaseChange,
-    onConnectionChange,
-  ]);
+  }, [planId, userId, userEmail, userFullName, tablesToSubscribe, enabled, queryClient]);
 
   return {
     isConnected: connectionStatus === "connected",

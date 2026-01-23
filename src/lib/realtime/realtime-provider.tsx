@@ -5,6 +5,8 @@ import {
   useContext,
   useEffect,
   useState,
+  useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { useRealtimeSync } from "./use-realtime-sync";
@@ -44,6 +46,15 @@ export function RealtimeProvider({
 }: RealtimeProviderProps) {
   const [showReconnecting, setShowReconnecting] = useState(false);
 
+  // Stable callback for connection status changes
+  const handleConnectionChange = useCallback((status: "connected" | "disconnected" | "reconnecting") => {
+    if (status === "reconnecting") {
+      setShowReconnecting(true);
+    } else {
+      setShowReconnecting(false);
+    }
+  }, []);
+
   const {
     isConnected,
     connectionStatus,
@@ -56,25 +67,22 @@ export function RealtimeProvider({
     userFullName,
     enabled,
     onEvent,
-    onConnectionChange: (status) => {
-      // Show reconnecting indicator after a short delay
-      if (status === "reconnecting") {
-        setShowReconnecting(true);
-      } else {
-        setShowReconnecting(false);
-      }
-    },
+    onConnectionChange: handleConnectionChange,
   });
 
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(
+    () => ({
+      isConnected,
+      connectionStatus,
+      onlineUsers,
+      trackPresence,
+    }),
+    [isConnected, connectionStatus, onlineUsers, trackPresence]
+  );
+
   return (
-    <RealtimeContext.Provider
-      value={{
-        isConnected,
-        connectionStatus,
-        onlineUsers,
-        trackPresence,
-      }}
-    >
+    <RealtimeContext.Provider value={contextValue}>
       {children}
       {/* Connection status indicator */}
       {showReconnecting && (
