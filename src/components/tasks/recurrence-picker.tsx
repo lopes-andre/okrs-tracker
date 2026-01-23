@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Repeat, Calendar, ChevronDown } from "lucide-react";
+import { Repeat, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +17,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import {
   type RecurrenceConfig,
   getRecurrenceSummary,
@@ -66,14 +65,11 @@ export function RecurrencePicker({
 }: RecurrencePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<RecurrenceConfig | null>(value);
-  const [endDateOpen, setEndDateOpen] = useState(false);
 
   // Sync internal state with external value
   useEffect(() => {
     setConfig(value);
   }, [value]);
-
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const handleFrequencyChange = useCallback((frequency: RecurrenceFrequency) => {
     const dayOfWeek = startDate.getDay();
@@ -424,35 +420,14 @@ export function RecurrencePicker({
                     />
                     <Label htmlFor="end-until" className="flex items-center gap-2">
                       On
-                      <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8"
-                            disabled={config.endType !== "until"}
-                          >
-                            <Calendar className="mr-2 h-3 w-3" />
-                            {config.endDate
-                              ? format(parseISO(config.endDate), "MMM d, yyyy")
-                              : "Pick date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <CalendarComponent
-                            mode="single"
-                            selected={config.endDate ? parseISO(config.endDate) : undefined}
-                            onSelect={(date) => {
-                              if (date) {
-                                setConfig({ ...config, endDate: format(date, "yyyy-MM-dd") });
-                              }
-                              setEndDateOpen(false);
-                            }}
-                            disabled={(date) => date < startDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <Input
+                        type="date"
+                        value={config.endDate || ""}
+                        onChange={(e) => setConfig({ ...config, endDate: e.target.value })}
+                        disabled={config.endType !== "until"}
+                        min={format(startDate, "yyyy-MM-dd")}
+                        className="w-36 h-8"
+                      />
                     </Label>
                   </div>
                 </div>

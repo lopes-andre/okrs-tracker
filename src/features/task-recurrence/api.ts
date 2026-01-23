@@ -6,11 +6,10 @@
 
 import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import { handleSupabaseError } from "@/lib/api-utils";
-import { format, parseISO, addDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   getNextOccurrences,
   configToRuleInsert,
-  ruleToConfig,
   type RecurrenceConfig,
 } from "@/lib/recurrence-engine";
 import type {

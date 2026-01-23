@@ -7,3 +7,5 @@ export { CollapsibleTaskList } from "./collapsible-task-list";
 export { BulkActionsToolbar } from "./bulk-actions-toolbar";
 export { TaskReminderSettings } from "./task-reminder-settings";
 export { ReminderProvider } from "./reminder-provider";
+export { RecurrencePicker, RecurrenceBadge } from "./recurrence-picker";
+export { RecurrenceEditDialog, type RecurrenceEditScope } from "./recurrence-edit-dialog";

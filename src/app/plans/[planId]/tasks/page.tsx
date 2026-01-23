@@ -42,6 +42,8 @@ import {
   useBulkAddTagToTasks,
   useBulkRemoveTagFromTasks,
 } from "@/features/tasks/hooks";
+import { useCreateRecurringTask } from "@/features/task-recurrence/hooks";
+import type { RecurrenceConfig } from "@/lib/recurrence-engine";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useTags, useCreateTag } from "@/features/tags/hooks";
@@ -90,6 +92,7 @@ export default function TasksPage({
 
   // Mutations
   const createTask = useCreateTask(planId);
+  const createRecurringTask = useCreateRecurringTask(planId);
   const updateTask = useUpdateTask(planId);
   const deleteTask = useDeleteTask(planId);
   const setTaskTags = useSetTaskTags(planId);
@@ -290,24 +293,49 @@ export default function TasksPage({
   // Handlers
   type TaskDialogData = Omit<TaskInsert, "plan_id"> | TaskUpdate;
 
-  async function handleCreate(data: TaskDialogData, tagIds: string[], assigneeIds: string[]) {
-    const newTask = await createTask.mutateAsync(
-      data as Omit<TaskInsert, "plan_id">
-    );
-    if (tagIds.length > 0) {
-      await setTaskTags.mutateAsync({ taskId: newTask.id, tagIds });
-    }
-    if (assigneeIds.length > 0) {
-      await setTaskAssignees.mutateAsync({
-        taskId: newTask.id,
-        userIds: assigneeIds,
-        actorId: currentUserId || undefined,
-        previousAssigneeIds: [],
+  async function handleCreate(
+    data: TaskDialogData,
+    tagIds: string[],
+    assigneeIds: string[],
+    recurrenceConfig?: RecurrenceConfig | null
+  ) {
+    // If recurrence is configured, create a recurring task
+    if (recurrenceConfig) {
+      const taskData = {
+        ...(data as Omit<TaskInsert, "plan_id">),
+        plan_id: planId,
+      };
+      await createRecurringTask.mutateAsync({
+        task: taskData,
+        config: recurrenceConfig,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
+        assigneeIds: assigneeIds.length > 0 ? assigneeIds : undefined,
       });
+    } else {
+      // Regular task creation
+      const newTask = await createTask.mutateAsync(
+        data as Omit<TaskInsert, "plan_id">
+      );
+      if (tagIds.length > 0) {
+        await setTaskTags.mutateAsync({ taskId: newTask.id, tagIds });
+      }
+      if (assigneeIds.length > 0) {
+        await setTaskAssignees.mutateAsync({
+          taskId: newTask.id,
+          userIds: assigneeIds,
+          actorId: currentUserId || undefined,
+          previousAssigneeIds: [],
+        });
+      }
     }
   }
 
-  async function handleUpdate(data: TaskDialogData, tagIds: string[], assigneeIds: string[]) {
+  async function handleUpdate(
+    data: TaskDialogData,
+    tagIds: string[],
+    assigneeIds: string[],
+    _recurrenceConfig?: RecurrenceConfig | null
+  ) {
     if (!editingTask) return;
     await updateTask.mutateAsync({
       id: editingTask.id,

@@ -59,6 +59,8 @@ import { cn } from "@/lib/utils";
 import { useEditingTracker } from "@/lib/realtime";
 import { EditingIndicator } from "@/components/layout/editing-indicator";
 import type { Profile } from "@/lib/supabase/types";
+import { RecurrencePicker } from "./recurrence-picker";
+import type { RecurrenceConfig } from "@/lib/recurrence-engine";
 
 // Type for creating - without plan_id since the hook adds it
 type TaskCreateData = Omit<TaskInsert, "plan_id">;
@@ -78,7 +80,12 @@ interface TaskDialogProps {
   currentUserId?: string; // For editing indicator
   currentUserProfile?: Profile | null; // For comments avatar
   isOwner?: boolean; // For comment deletion permissions
-  onSubmit: (data: TaskCreateData | TaskUpdate, tagIds: string[], assigneeIds: string[]) => Promise<void>;
+  onSubmit: (
+    data: TaskCreateData | TaskUpdate,
+    tagIds: string[],
+    assigneeIds: string[],
+    recurrenceConfig?: RecurrenceConfig | null
+  ) => Promise<void>;
   onCreateTag?: (name: string) => Promise<Tag>;
 }
 
@@ -157,6 +164,7 @@ export function TaskDialog({
   const [isCreatingTag, setIsCreatingTag] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
+  const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(null);
 
   // Filter KRs based on selected objective
   const filteredKrs = useMemo(() => {
@@ -205,6 +213,7 @@ export function TaskDialog({
         setSelectedTagIds(initialSelectedTags);
         setReminderEnabled(task.reminder_enabled ?? true);
         setSelectedAssigneeIds(initialSelectedAssignees);
+        setRecurrenceConfig(null); // Don't show recurrence picker when editing
       } else {
         setTitle("");
         setDescription("");
@@ -219,6 +228,7 @@ export function TaskDialog({
         setSelectedTagIds([]);
         setReminderEnabled(true);
         setSelectedAssigneeIds([]);
+        setRecurrenceConfig(null);
       }
       setNewTagName("");
     }
@@ -302,7 +312,7 @@ export function TaskDialog({
             reminder_enabled: reminderEnabled,
           };
 
-      await onSubmit(data, selectedTagIds, selectedAssigneeIds);
+      await onSubmit(data, selectedTagIds, selectedAssigneeIds, recurrenceConfig);
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
@@ -530,6 +540,24 @@ export function TaskDialog({
                   </p>
                 </div>
               </Label>
+            </div>
+          )}
+
+          {/* Recurrence - only show when creating new task (not editing) */}
+          {!isEditing && dueDate && (
+            <div className="space-y-2">
+              <Label>Repeat</Label>
+              <RecurrencePicker
+                value={recurrenceConfig}
+                onChange={setRecurrenceConfig}
+                startDate={dueDate ? new Date(dueDate + "T00:00:00") : new Date()}
+                disabled={!dueDate}
+              />
+              {recurrenceConfig && (
+                <p className="text-xs text-text-muted">
+                  This will create the task and automatically generate recurring instances.
+                </p>
+              )}
             </div>
           )}
 

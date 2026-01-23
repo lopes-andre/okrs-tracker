@@ -187,13 +187,16 @@ export function parseRRule(rruleString: string, timezone: string): RecurrenceCon
 
     for (const wd of options.byweekday) {
       if (typeof wd === "number") {
-        // Simple weekday number
-        const dayIndex = [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA].indexOf(wd);
-        if (dayIndex >= 0) days.push(dayIndex);
+        // Simple weekday number - convert from rrule (0=Monday) to JS Date (0=Sunday)
+        // rrule: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat, 6=Sun
+        // JS Date: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+        const jsDayOfWeek = (wd + 1) % 7;
+        days.push(jsDayOfWeek);
       } else if (wd && typeof wd === "object" && "weekday" in wd) {
         // Weekday with nth
         const weekdayObj = wd as Weekday;
-        dayOfWeekForMonth = weekdayObj.weekday;
+        // Convert from rrule weekday to JS Date day
+        dayOfWeekForMonth = (weekdayObj.weekday + 1) % 7;
         weekOfMonth = weekdayObj.n || 1;
       }
     }

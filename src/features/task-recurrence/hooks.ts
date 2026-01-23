@@ -9,8 +9,6 @@ import type { RecurrenceConfig } from "@/lib/recurrence-engine";
 import type {
   Task,
   TaskInsert,
-  TaskRecurrenceRule,
-  RecurrenceInfo,
 } from "@/lib/supabase/types";
 
 // ============================================================================

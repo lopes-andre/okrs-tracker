@@ -31,9 +31,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole, TaskAssignee } from "@/lib/supabase/types";
+import type { Task, TaskStatus, TaskPriority, TaskEffort, OkrRole, TaskAssignee, RecurrenceFrequency } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import { EditingDot } from "@/components/layout/editing-indicator";
+import { RecurrenceBadge } from "./recurrence-picker";
 
 interface TaskRowProps {
   task: Task & {
@@ -48,6 +49,9 @@ interface TaskRowProps {
     assigned_user?: { full_name: string | null; avatar_url: string | null } | null;
     assignees?: TaskAssignee[];
     tags?: { id: string; name: string; color?: string | null }[];
+    // Recurrence fields
+    recurrence_frequency?: RecurrenceFrequency | null;
+    recurrence_rrule?: string | null;
   };
   role: OkrRole;
   onStatusChange: (status: TaskStatus) => void;
@@ -346,6 +350,15 @@ export function TaskRow({
         <Badge variant="secondary" className="shrink-0">
           Q{task.quarter_target.quarter}
         </Badge>
+      )}
+
+      {/* Recurrence Badge */}
+      {(task.is_recurring || task.recurring_master_id || task.recurrence_frequency) && (
+        <RecurrenceBadge
+          frequency={task.recurrence_frequency}
+          rrule={task.recurrence_rrule}
+          className="shrink-0"
+        />
       )}
 
       {/* Priority Badge - Filled, dominant, alert-style */}
