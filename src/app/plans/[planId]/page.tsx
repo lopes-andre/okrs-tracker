@@ -110,7 +110,6 @@ export default function PlanOverviewPage({
     <>
       <DashboardHeader
         plan={plan}
-        dashboard={defaultDashboard}
         isEditing={isEditing}
         onToggleEdit={() => setIsEditing(!isEditing)}
         onAddWidget={() => setAddWidgetOpen(true)}

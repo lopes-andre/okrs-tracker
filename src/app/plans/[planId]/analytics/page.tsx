@@ -232,7 +232,6 @@ export default function AnalyticsPage({
                     <CheckInVelocityChart
                       checkIns={allCheckIns}
                       krs={krPerformanceData}
-                      year={planYear}
                     />
                   </div>
                 </>
@@ -257,8 +256,8 @@ export default function AnalyticsPage({
             <div className="space-y-6">
               {/* Velocity & Burndown Row */}
               <div className="grid lg:grid-cols-2 gap-6">
-                <VelocityChart tasks={tasks} year={planYear} />
-                <PriorityBurndownChart tasks={tasks} year={planYear} />
+                <VelocityChart tasks={tasks} />
+                <PriorityBurndownChart tasks={tasks} />
               </div>
 
               {/* Task Completion Analysis */}

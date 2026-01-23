@@ -124,7 +124,6 @@ const effortOptions: {
 export function TaskDialog({
   open,
   onOpenChange,
-  planId: _planId,
   task,
   objectives = [],
   annualKrs = [],
@@ -134,8 +133,6 @@ export function TaskDialog({
   members = [],
   selectedAssignees: initialSelectedAssignees = [],
   currentUserId,
-  currentUserProfile: _currentUserProfile,
-  isOwner: _isOwner = false,
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {

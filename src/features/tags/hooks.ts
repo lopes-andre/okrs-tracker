@@ -100,8 +100,8 @@ export function useDeleteTag() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ tagId, planId }: { tagId: string; planId: string }) =>
-      api.deleteTag(tagId),
+    mutationFn: (params: { tagId: string; planId: string }) =>
+      api.deleteTag(params.tagId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(planId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.tags.withUsage(planId) });
@@ -181,8 +181,8 @@ export function useDeleteKrGroup() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ groupId, planId }: { groupId: string; planId: string }) =>
-      api.deleteKrGroup(groupId),
+    mutationFn: (params: { groupId: string; planId: string }) =>
+      api.deleteKrGroup(params.groupId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.groups.list(planId) });
       toast(successMessages.groupDeleted);

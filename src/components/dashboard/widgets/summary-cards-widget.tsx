@@ -72,7 +72,7 @@ function StatCard({ title, value, subtitle, icon: Icon, variant = "default" }: S
   );
 }
 
-export const SummaryCardsWidget = memo(function SummaryCardsWidget({ config: _config }: SummaryCardsWidgetProps) {
+export const SummaryCardsWidget = memo<SummaryCardsWidgetProps>(function SummaryCardsWidget() {
   const { objectives, annualKrs, checkIns, tasks, year, overallProgress, atRiskKrs } = useDashboardData();
 
   // Calculate objectives status

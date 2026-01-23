@@ -178,7 +178,7 @@ export function useDeleteRecurringTask(planId: string) {
 /**
  * Update recurrence pattern
  */
-export function useUpdateRecurrencePattern(planId: string) {
+export function useUpdateRecurrencePattern() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -207,7 +207,7 @@ export function useUpdateRecurrencePattern(planId: string) {
 /**
  * Generate more instances for a recurring task
  */
-export function useGenerateInstances(planId: string) {
+export function useGenerateInstances() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 

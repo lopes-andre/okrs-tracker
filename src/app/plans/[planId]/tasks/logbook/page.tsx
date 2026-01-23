@@ -40,7 +40,7 @@ import type {
   TaskFilters,
   OkrRole,
 } from "@/lib/supabase/types";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 
 export default function TasksLogbookPage({
   params,
@@ -66,26 +66,8 @@ export default function TasksLogbookPage({
     filters.objective_id = objectiveFilter;
   }
 
-  // Calculate date range (used for display, future backend filtering)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let _completedFrom: string | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let _completedTo: string | undefined;
-
-  if (dateRange === "7d") {
-    _completedFrom = format(subDays(new Date(), 7), "yyyy-MM-dd");
-  } else if (dateRange === "30d") {
-    _completedFrom = format(subDays(new Date(), 30), "yyyy-MM-dd");
-  } else if (dateRange === "month") {
-    _completedFrom = format(startOfMonth(new Date()), "yyyy-MM-dd");
-    _completedTo = format(endOfMonth(new Date()), "yyyy-MM-dd");
-  } else if (dateFrom) {
-    _completedFrom = dateFrom;
-  }
-
-  if (dateTo) {
-    _completedTo = dateTo;
-  }
+  // Note: Date range filters are applied client-side via the filters object
+  // Future enhancement: Add completed_at filter support to backend
 
   // Add date filters (these filter by due_date, but we'll filter by completed_at in display)
   // For proper backend filtering, we'd need to add completed_at filter support

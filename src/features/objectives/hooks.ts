@@ -113,8 +113,8 @@ export function useDeleteObjective() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ objectiveId, planId }: { objectiveId: string; planId: string }) =>
-      api.deleteObjective(objectiveId),
+    mutationFn: (params: { objectiveId: string; planId: string }) =>
+      api.deleteObjective(params.objectiveId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.list(planId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.withKrs(planId) });

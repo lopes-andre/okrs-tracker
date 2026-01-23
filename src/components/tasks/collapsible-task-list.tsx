@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { TaskWithDetails, TaskStatus, OkrRole } from "@/lib/supabase/types";
+import type { TaskWithDetails, TaskStatus } from "@/lib/supabase/types";
 
 interface CollapsibleTaskListProps {
   title: string;
@@ -21,7 +21,6 @@ interface CollapsibleTaskListProps {
   currentPage?: number;
   onPageChange?: (page: number) => void;
   isLoading?: boolean;
-  role: OkrRole;
   onStatusChange: (task: TaskWithDetails, status: TaskStatus) => void;
   onEdit: (task: TaskWithDetails) => void;
   onDelete: (task: TaskWithDetails) => void;
@@ -89,7 +88,6 @@ export function CollapsibleTaskList({
   currentPage = 1,
   onPageChange,
   isLoading = false,
-  role: _role,
   onStatusChange,
   onEdit,
   onDelete,

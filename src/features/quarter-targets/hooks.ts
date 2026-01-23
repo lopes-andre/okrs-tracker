@@ -135,8 +135,8 @@ export function useDeleteQuarterTarget() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ targetId, annualKrId }: { targetId: string; annualKrId: string }) =>
-      api.deleteQuarterTarget(targetId),
+    mutationFn: (params: { targetId: string; annualKrId: string }) =>
+      api.deleteQuarterTarget(params.targetId),
     onSuccess: (_, { annualKrId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quarterTargets.byKr(annualKrId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.quarterTargets.all });

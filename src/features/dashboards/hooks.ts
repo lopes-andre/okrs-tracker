@@ -135,8 +135,8 @@ export function useDeleteDashboard() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ dashboardId, planId }: { dashboardId: string; planId: string }) =>
-      api.deleteDashboard(dashboardId),
+    mutationFn: (params: { dashboardId: string; planId: string }) =>
+      api.deleteDashboard(params.dashboardId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.list(planId) });
       toast(successMessages.dashboardDeleted);
@@ -193,10 +193,10 @@ export function useUpdateWidgetPositions() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ dashboardId, widgets }: { 
-      dashboardId: string; 
-      widgets: { id: string; position_x: number; position_y: number; width?: number; height?: number }[] 
-    }) => api.updateWidgetPositions(widgets),
+    mutationFn: (params: {
+      dashboardId: string;
+      widgets: { id: string; position_x: number; position_y: number; width?: number; height?: number }[]
+    }) => api.updateWidgetPositions(params.widgets),
     onSuccess: (_, { dashboardId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.widgets(dashboardId) });
     },
@@ -211,8 +211,8 @@ export function useDeleteDashboardWidget() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ widgetId, dashboardId }: { widgetId: string; dashboardId: string }) =>
-      api.deleteDashboardWidget(widgetId),
+    mutationFn: (params: { widgetId: string; dashboardId: string }) =>
+      api.deleteDashboardWidget(params.widgetId),
     onSuccess: (_, { dashboardId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.widgets(dashboardId) });
       toast(successMessages.widgetRemoved);

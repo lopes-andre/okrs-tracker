@@ -339,16 +339,13 @@ export function useRecordTaskSnapshots() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      reviewId,
-      snapshots,
-    }: {
+    mutationFn: (params: {
       reviewId: string;
       snapshots: WeeklyReviewTaskInsert[];
-    }) => createWeeklyReviewTaskSnapshots(snapshots),
-    onSuccess: (_, variables) => {
+    }) => createWeeklyReviewTaskSnapshots(params.snapshots),
+    onSuccess: (_, { reviewId }) => {
       queryClient.invalidateQueries({ 
-        queryKey: weeklyReviewKeys.tasks(variables.reviewId) 
+        queryKey: weeklyReviewKeys.tasks(reviewId) 
       });
     },
   });

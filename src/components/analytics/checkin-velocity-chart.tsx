@@ -35,10 +35,9 @@ import type { KrPerformanceRow } from "@/features/analytics/api";
 interface CheckInVelocityChartProps {
   checkIns: CheckIn[];
   krs: KrPerformanceRow[];
-  year?: number;
 }
 
-export function CheckInVelocityChart({ checkIns, krs, year }: CheckInVelocityChartProps) {
+export function CheckInVelocityChart({ checkIns, krs }: CheckInVelocityChartProps) {
   const [weeksToShow, setWeeksToShow] = useState<string>("12");
   const [metric, setMetric] = useState<"count" | "progress">("count");
 

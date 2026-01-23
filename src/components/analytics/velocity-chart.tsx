@@ -35,12 +35,11 @@ import type { Task } from "@/lib/supabase/types";
 
 interface VelocityChartProps {
   tasks: Task[];
-  year?: number;
 }
 
 type ChartType = "line" | "area";
 
-export function VelocityChart({ tasks, year }: VelocityChartProps) {
+export function VelocityChart({ tasks }: VelocityChartProps) {
   const [weeksToShow, setWeeksToShow] = useState<string>("12");
   const [chartType, setChartType] = useState<ChartType>("area");
 

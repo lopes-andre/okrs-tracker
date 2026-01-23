@@ -14,8 +14,6 @@
 
 import { describe, it, expect } from "vitest";
 import {
-  getISOWeekNumber,
-  getISOWeekYear,
   getWeekNumber,
   getWeekYear,
   getWeekStart,

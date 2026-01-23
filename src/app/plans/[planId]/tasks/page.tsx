@@ -341,8 +341,7 @@ export default function TasksPage({
   async function handleUpdate(
     data: TaskDialogData,
     tagIds: string[],
-    assigneeIds: string[],
-    _recurrenceConfig?: RecurrenceConfig | null
+    assigneeIds: string[]
   ) {
     if (!editingTask) return;
     await updateTask.mutateAsync({
@@ -728,7 +727,6 @@ export default function TasksPage({
                   icon={<Calendar className="w-4 h-4 text-status-info" />}
                   variant="accent"
                   defaultExpanded={true}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -746,7 +744,6 @@ export default function TasksPage({
                   icon={<AlertTriangle className="w-4 h-4 text-status-danger" />}
                   variant="danger"
                   defaultExpanded={true}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -764,7 +761,6 @@ export default function TasksPage({
                   icon={<Clock className="w-4 h-4 text-status-warning" />}
                   variant="warning"
                   defaultExpanded={true}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -782,7 +778,6 @@ export default function TasksPage({
                   icon={<CalendarDays className="w-4 h-4 text-text-muted" />}
                   variant="default"
                   defaultExpanded={false}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -800,7 +795,6 @@ export default function TasksPage({
                   icon={<Lightbulb className="w-4 h-4 text-text-subtle" />}
                   variant="muted"
                   defaultExpanded={false}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -828,7 +822,6 @@ export default function TasksPage({
                   variant="muted"
                   defaultExpanded={false}
                   isLoading={isLoadingFuture}
-                  role={userRole}
                   onStatusChange={handleStatusChange}
                   onEdit={openEdit}
                   onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -950,7 +943,6 @@ export default function TasksPage({
                             icon={<Layers className="w-4 h-4 text-text-muted" />}
                             variant="default"
                             defaultExpanded={true}
-                            role={userRole}
                             onStatusChange={handleStatusChange}
                             onEdit={openEdit}
                             onDelete={(task) => setDeleteDialog({ open: true, task })}
@@ -967,7 +959,6 @@ export default function TasksPage({
                           icon={<ListTodo className="w-4 h-4 text-text-subtle" />}
                           variant="muted"
                           defaultExpanded={true}
-                          role={userRole}
                           onStatusChange={handleStatusChange}
                           onEdit={openEdit}
                           onDelete={(task) => setDeleteDialog({ open: true, task })}

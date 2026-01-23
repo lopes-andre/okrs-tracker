@@ -57,7 +57,6 @@ export function CommentsDialog({
   const [editContent, setEditContent] = useState("");
   const [showMentionPicker, setShowMentionPicker] = useState(false);
   const [mentionQuery, setMentionQuery] = useState("");
-  const [_mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
 
   // Mark comments as read when dialog opens
   useEffect(() => {
@@ -73,7 +72,6 @@ export function CommentsDialog({
       setNewComment("");
       setEditingComment(null);
       setEditContent("");
-      setMentionedUserIds([]);
     }
   }, [open]);
 
@@ -150,7 +148,6 @@ export function CommentsDialog({
     try {
       await createComment.mutateAsync({ data, mentionedUserIds: mentions });
       setNewComment("");
-      setMentionedUserIds([]);
       toast({ title: "Comment added", variant: "default" });
     } catch (error) {
       toast(formatErrorMessage(error));

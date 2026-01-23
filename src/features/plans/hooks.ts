@@ -228,8 +228,8 @@ export function useDeletePlanInvite() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ inviteId, planId }: { inviteId: string; planId: string }) =>
-      api.deletePlanInvite(inviteId),
+    mutationFn: (params: { inviteId: string; planId: string }) =>
+      api.deletePlanInvite(params.inviteId),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.plans.invites(planId) });
     },

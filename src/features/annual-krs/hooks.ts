@@ -136,8 +136,8 @@ export function useDeleteAnnualKr() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ krId, objectiveId }: { krId: string; objectiveId: string }) =>
-      api.deleteAnnualKr(krId),
+    mutationFn: (params: { krId: string; objectiveId: string }) =>
+      api.deleteAnnualKr(params.krId),
     onSuccess: (_, { objectiveId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.annualKrs.byObjective(objectiveId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.objectives.all });

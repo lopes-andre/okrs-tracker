@@ -41,7 +41,7 @@ import {
   formatDelta,
 } from "./progress-engine";
 
-import type { AnnualKr, QuarterTarget, CheckIn, Task, Objective } from "./supabase/types";
+import type { AnnualKr, CheckIn, Objective } from "./supabase/types";
 
 // ============================================================================
 // TEST UTILITIES
@@ -77,27 +77,6 @@ const createMockCheckIn = (overrides: Partial<CheckIn> = {}): CheckIn => ({
   recorded_at: "2026-06-15T12:00:00Z",
   recorded_by: "user-1",
   created_at: "2026-06-15T12:00:00Z",
-  ...overrides,
-});
-
-const createMockTask = (overrides: Partial<Task> = {}): Task => ({
-  id: "task-1",
-  plan_id: "plan-1",
-  objective_id: null,
-  annual_kr_id: "kr-1",
-  quarter_target_id: null,
-  title: "Test Task",
-  description: null,
-  status: "completed",
-  priority: "medium",
-  effort: "moderate",
-  due_date: null,
-  due_time: null,
-  completed_at: "2026-06-15T12:00:00Z",
-  assigned_to: null,
-  sort_order: 1,
-  created_at: "2026-01-01T00:00:00Z",
-  updated_at: "2026-01-01T00:00:00Z",
   ...overrides,
 });
 

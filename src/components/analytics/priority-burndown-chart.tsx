@@ -32,7 +32,6 @@ import type { Task } from "@/lib/supabase/types";
 
 interface PriorityBurndownChartProps {
   tasks: Task[];
-  year?: number;
 }
 
 type ViewMode = "stacked" | "separate";
@@ -45,7 +44,7 @@ const PRIORITY_COLORS = {
 
 const PRIORITY_ORDER = ["high", "medium", "low"] as const;
 
-export function PriorityBurndownChart({ tasks, year }: PriorityBurndownChartProps) {
+export function PriorityBurndownChart({ tasks }: PriorityBurndownChartProps) {
   const [weeksToShow, setWeeksToShow] = useState<string>("12");
   const [viewMode, setViewMode] = useState<ViewMode>("stacked");
 

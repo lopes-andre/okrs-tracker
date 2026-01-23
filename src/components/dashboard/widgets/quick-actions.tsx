@@ -26,7 +26,7 @@ const actions = [
   { label: "Settings", icon: Settings, href: (planId: string) => `/plans/${planId}/settings` },
 ];
 
-export const QuickActionsWidget = memo(function QuickActionsWidget({ config: _config }: QuickActionsWidgetProps) {
+export const QuickActionsWidget = memo<QuickActionsWidgetProps>(function QuickActionsWidget() {
   const { planId } = useDashboardData();
 
   return (

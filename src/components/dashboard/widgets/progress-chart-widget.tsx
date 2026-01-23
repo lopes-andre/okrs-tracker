@@ -28,7 +28,7 @@ const CHART_COLORS = [
   "#8b5cf6", // violet
 ];
 
-export const ProgressChartWidget = memo(function ProgressChartWidget({ config: _config }: ProgressChartWidgetProps) {
+export const ProgressChartWidget = memo<ProgressChartWidgetProps>(function ProgressChartWidget() {
   const { annualKrs, checkIns, year } = useDashboardData();
 
   // Filter to chartable KRs (metric/count)

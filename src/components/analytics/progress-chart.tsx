@@ -111,7 +111,7 @@ export function ProgressChart({ krs, checkIns, year }: ProgressChartProps) {
         label: isShortRange ? format(date, "MMM d") : format(date, "MMM d"),
       };
 
-      selectedKrs.forEach((kr, index) => {
+      selectedKrs.forEach((kr) => {
         // Find the latest check-in on or before this date
         const krCheckIns = relevantCheckIns
           .filter((ci) => ci.annual_kr_id === kr.id)

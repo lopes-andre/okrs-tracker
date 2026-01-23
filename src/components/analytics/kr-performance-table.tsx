@@ -41,7 +41,6 @@ import type { KrPerformanceRow } from "@/features/analytics/api";
 
 interface KrPerformanceTableProps {
   data: KrPerformanceRow[];
-  onRecordCheckIn?: (krId: string) => void;
 }
 
 type SortField = "name" | "progress" | "paceStatus" | "currentValue" | "targetValue" | "forecast" | "lastCheckInDate";
@@ -78,7 +77,7 @@ const TrendIcon = ({ trend }: { trend: "up" | "down" | "stable" }) => {
   }
 };
 
-export function KrPerformanceTable({ data, onRecordCheckIn: _onRecordCheckIn }: KrPerformanceTableProps) {
+export function KrPerformanceTable({ data }: KrPerformanceTableProps) {
   const [sortField, setSortField] = useState<SortField>("progress");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [groupBy, setGroupBy] = useState<GroupBy>("none");

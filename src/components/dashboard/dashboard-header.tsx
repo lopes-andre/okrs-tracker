@@ -3,11 +3,10 @@
 import { Edit2, Plus, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import type { Dashboard, Plan } from "@/lib/supabase/types";
+import type { Plan } from "@/lib/supabase/types";
 
 interface DashboardHeaderProps {
   plan?: Plan | null;
-  dashboard?: Dashboard | null;
   isEditing: boolean;
   onToggleEdit: () => void;
   onAddWidget: () => void;
@@ -16,7 +15,6 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({
   plan,
-  dashboard: _dashboard,
   isEditing,
   onToggleEdit,
   onAddWidget,
