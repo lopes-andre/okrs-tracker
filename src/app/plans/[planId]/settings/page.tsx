@@ -15,7 +15,6 @@ import {
   CalendarCheck,
   Tag,
   HardDrive,
-  Bell,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/layout/empty-state";
@@ -92,13 +91,13 @@ export default function SettingsPage({
   const [showWeeklyReview, setShowWeeklyReview] = useState(false);
   const [logPage, setLogPage] = useState(1);
   const PAGE_SIZE = 25;
-  
+
   // Reset to page 1 when filters change
   const handleFiltersChange = (newFilters: ActivityFiltersState) => {
     setActivityFilters(newFilters);
     setLogPage(1);
   };
-  
+
   // Convert UI filters to API filters
   const apiFilters: TimelineFilters | undefined = useMemo(() => {
     const filters: TimelineFilters = {};
@@ -108,19 +107,19 @@ export default function SettingsPage({
     if (activityFilters.eventTypes.length > 0) filters.event_type = activityFilters.eventTypes;
     return Object.keys(filters).length > 0 ? filters : undefined;
   }, [activityFilters]);
-  
+
   // Use paginated query for the activity log
-  const { 
-    data: logData, 
+  const {
+    data: logData,
     isLoading: isLoadingLog,
     isFetching: isFetchingLog,
   } = useTimelinePaginated(planId, logPage, PAGE_SIZE, apiFilters);
-  
+
   const logEvents = logData?.data || [];
   const totalEvents = logData?.count || 0;
   const totalPages = Math.ceil(totalEvents / PAGE_SIZE);
   const hasMore = logPage < totalPages;
-  
+
   // Weekly review data - always fetch this week's data
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
   const weekEnd = endOfWeek(new Date(), { weekStartsOn: 0 });
@@ -217,10 +216,6 @@ export default function SettingsPage({
             <CalendarCheck className="w-4 h-4" />
             Weekly Reviews
           </TabsTrigger>
-          <TabsTrigger value="reminders" className="gap-2">
-            <Bell className="w-4 h-4" />
-            Reminders
-          </TabsTrigger>
           <TabsTrigger value="tags" className="gap-2">
             <Tag className="w-4 h-4" />
             Tags
@@ -233,10 +228,6 @@ export default function SettingsPage({
             <Users className="w-4 h-4" />
             Members
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="gap-2">
-            <Shield className="w-4 h-4" />
-            Permissions
-          </TabsTrigger>
           <TabsTrigger value="activity" className="gap-2">
             <History className="w-4 h-4" />
             Activity Log
@@ -246,6 +237,7 @@ export default function SettingsPage({
         {/* General Settings */}
         <TabsContent value="general">
           <div className="space-y-6">
+            {/* Plan Details */}
             <Card>
               <CardHeader>
                 <CardTitle>Plan Details</CardTitle>
@@ -310,6 +302,9 @@ export default function SettingsPage({
               </CardContent>
             </Card>
 
+            {/* Task Reminders - Now part of General */}
+            <TaskReminderSettings planId={planId} isOwner={isOwner} />
+
             {/* Danger Zone */}
             {isOwner && (
               <Card className="border-status-danger/20">
@@ -360,11 +355,6 @@ export default function SettingsPage({
           <ReviewSettings planId={planId} isOwner={isOwner} />
         </TabsContent>
 
-        {/* Task Reminders */}
-        <TabsContent value="reminders">
-          <TaskReminderSettings planId={planId} isOwner={isOwner} />
-        </TabsContent>
-
         {/* Tags */}
         <TabsContent value="tags">
           <TagsSettings planId={planId} isOwner={isOwner} />
@@ -375,268 +365,272 @@ export default function SettingsPage({
           <ImportExportSettings planId={planId} isOwner={isOwner} />
         </TabsContent>
 
-        {/* Members */}
+        {/* Members & Permissions */}
         <TabsContent value="members">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Team Members</CardTitle>
-                  <CardDescription>
-                    Manage who has access to this plan
-                  </CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Invite Form - only for owner */}
-              {isOwner && (
-                <div className="flex gap-3 mb-6 p-4 rounded-card bg-bg-1/50 border border-border-soft">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="Enter email address"
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                    />
+          <div className="space-y-6">
+            {/* Team Members Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Team Members</CardTitle>
+                    <CardDescription>
+                      Manage who has access to this plan
+                    </CardDescription>
                   </div>
-                  <Select
-                    value={inviteRole}
-                    onValueChange={(v) => setInviteRole(v as OkrRole)}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="viewer">Viewer</SelectItem>
-                      <SelectItem value="editor">Editor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={handleSendInvite}
-                    disabled={!inviteEmail.trim() || createInvite.isPending}
-                  >
-                    {createInvite.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Mail className="w-4 h-4 mr-2" />
-                        Send Invite
-                      </>
-                    )}
-                  </Button>
                 </div>
-              )}
+              </CardHeader>
+              <CardContent>
+                {/* Invite Form - only for owner */}
+                {isOwner && (
+                  <div className="flex gap-3 mb-6 p-4 rounded-card bg-bg-1/50 border border-border-soft">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Enter email address"
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                      />
+                    </div>
+                    <Select
+                      value={inviteRole}
+                      onValueChange={(v) => setInviteRole(v as OkrRole)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleSendInvite}
+                      disabled={!inviteEmail.trim() || createInvite.isPending}
+                    >
+                      {createInvite.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Invite
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
 
-              {/* Pending Invites */}
-              {invites.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-body-sm font-medium text-text-muted mb-3">
-                    Pending Invites
-                  </h4>
-                  <div className="space-y-2">
-                    {invites.map((invite) => (
+                {/* Pending Invites */}
+                {invites.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-body-sm font-medium text-text-muted mb-3">
+                      Pending Invites
+                    </h4>
+                    <div className="space-y-2">
+                      {invites.map((invite) => (
+                        <div
+                          key={invite.id}
+                          className="flex items-center justify-between p-3 rounded-card bg-bg-1/30 border border-border-soft"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-bg-1 flex items-center justify-center">
+                              <Mail className="w-4 h-4 text-text-muted" />
+                            </div>
+                            <div>
+                              <p className="text-body-sm">{invite.email}</p>
+                              <p className="text-small text-text-muted">
+                                Invited as {invite.role}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">Pending</Badge>
+                            {isOwner && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCancelInvite(invite.id)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Members List */}
+                {isLoadingMembers ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {members.map((member) => (
                       <div
-                        key={invite.id}
-                        className="flex items-center justify-between p-3 rounded-card bg-bg-1/30 border border-border-soft"
+                        key={member.user_id}
+                        className="flex items-center justify-between p-4 rounded-card bg-bg-1/30 border border-border-soft"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-bg-1 flex items-center justify-center">
-                            <Mail className="w-4 h-4 text-text-muted" />
-                          </div>
+                          <Avatar>
+                            <AvatarImage src={member.profile?.avatar_url || ""} />
+                            <AvatarFallback>
+                              {member.profile?.full_name
+                                ?.split(" ")
+                                .map((n) => n[0])
+                                .join("") || "?"}
+                            </AvatarFallback>
+                          </Avatar>
                           <div>
-                            <p className="text-body-sm">{invite.email}</p>
+                            <p className="font-medium text-body-sm">
+                              {member.profile?.full_name || "Unknown"}
+                            </p>
                             <p className="text-small text-text-muted">
-                              Invited as {invite.role}
+                              {member.profile?.email || ""}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">Pending</Badge>
-                          {isOwner && (
+                        <div className="flex items-center gap-3">
+                          {member.role === "owner" || !isOwner ? (
+                            <Badge
+                              variant={member.role === "owner" ? "default" : "outline"}
+                            >
+                              {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                            </Badge>
+                          ) : (
+                            <Select
+                              value={member.role}
+                              onValueChange={(newRole) =>
+                                updateRole.mutate({
+                                  planId,
+                                  userId: member.user_id,
+                                  role: newRole as OkrRole,
+                                })
+                              }
+                            >
+                              <SelectTrigger className="w-24 h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="viewer">Viewer</SelectItem>
+                                <SelectItem value="editor">Editor</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {isOwner && member.role !== "owner" && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleCancelInvite(invite.id)}
+                              className="text-text-muted hover:text-status-danger"
+                              onClick={() =>
+                                handleRemoveMember(
+                                  member.user_id,
+                                  member.profile?.full_name || "this member"
+                                )
+                              }
                             >
-                              <X className="w-4 h-4" />
+                              Remove
                             </Button>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </CardContent>
+            </Card>
 
-              {/* Members List */}
-              {isLoadingMembers ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {members.map((member) => (
-                    <div
-                      key={member.user_id}
-                      className="flex items-center justify-between p-4 rounded-card bg-bg-1/30 border border-border-soft"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarImage src={member.profile?.avatar_url || ""} />
-                          <AvatarFallback>
-                            {member.profile?.full_name
-                              ?.split(" ")
-                              .map((n) => n[0])
-                              .join("") || "?"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium text-body-sm">
-                            {member.profile?.full_name || "Unknown"}
-                          </p>
-                          <p className="text-small text-text-muted">
-                            {member.profile?.email || ""}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {member.role === "owner" || !isOwner ? (
-                          <Badge
-                            variant={member.role === "owner" ? "default" : "outline"}
-                          >
-                            {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                          </Badge>
-                        ) : (
-                          <Select
-                            value={member.role}
-                            onValueChange={(newRole) =>
-                              updateRole.mutate({
-                                planId,
-                                userId: member.user_id,
-                                role: newRole as OkrRole,
-                              })
-                            }
-                          >
-                            <SelectTrigger className="w-24 h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="viewer">Viewer</SelectItem>
-                              <SelectItem value="editor">Editor</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                        {isOwner && member.role !== "owner" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-text-muted hover:text-status-danger"
-                            onClick={() =>
-                              handleRemoveMember(
-                                member.user_id,
-                                member.profile?.full_name || "this member"
-                              )
-                            }
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            {/* Role Permissions Card - Now part of Members tab */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Role Permissions
+                </CardTitle>
+                <CardDescription>
+                  What each role can do in this plan
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-3 gap-6">
+                  {/* Owner */}
+                  <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
+                    <Badge className="mb-3">Owner</Badge>
+                    <ul className="space-y-2 text-body-sm">
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Full access to all features
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Manage team members
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Delete plan
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Transfer ownership
+                      </li>
+                    </ul>
+                  </div>
 
-        {/* Permissions */}
-        <TabsContent value="permissions">
-          <Card>
-            <CardHeader>
-              <CardTitle>Role Permissions</CardTitle>
-              <CardDescription>
-                Understanding what each role can do in this plan
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-6">
-                {/* Owner */}
-                <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
-                  <Badge className="mb-3">Owner</Badge>
-                  <ul className="space-y-2 text-body-sm">
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Full access to all features
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Manage team members
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Delete plan
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Transfer ownership
-                    </li>
-                  </ul>
-                </div>
+                  {/* Editor */}
+                  <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
+                    <Badge variant="outline" className="mb-3">
+                      Editor
+                    </Badge>
+                    <ul className="space-y-2 text-body-sm">
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Create and edit OKRs
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        Add check-ins
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        View analytics
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-border" />
+                        Cannot manage members
+                      </li>
+                    </ul>
+                  </div>
 
-                {/* Editor */}
-                <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
-                  <Badge variant="outline" className="mb-3">
-                    Editor
-                  </Badge>
-                  <ul className="space-y-2 text-body-sm">
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Create and edit OKRs
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      Add check-ins
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      View analytics
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-border" />
-                      Cannot manage members
-                    </li>
-                  </ul>
+                  {/* Viewer */}
+                  <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
+                    <Badge variant="outline" className="mb-3">
+                      Viewer
+                    </Badge>
+                    <ul className="space-y-2 text-body-sm">
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        View all OKRs
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                        View analytics
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-border" />
+                        Cannot edit OKRs
+                      </li>
+                      <li className="flex items-center gap-2 text-text-muted">
+                        <span className="w-1.5 h-1.5 rounded-full bg-border" />
+                        Cannot add check-ins
+                      </li>
+                    </ul>
+                  </div>
                 </div>
-
-                {/* Viewer */}
-                <div className="p-4 rounded-card bg-bg-1/30 border border-border-soft">
-                  <Badge variant="outline" className="mb-3">
-                    Viewer
-                  </Badge>
-                  <ul className="space-y-2 text-body-sm">
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      View all OKRs
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                      View analytics
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-border" />
-                      Cannot edit OKRs
-                    </li>
-                    <li className="flex items-center gap-2 text-text-muted">
-                      <span className="w-1.5 h-1.5 rounded-full bg-border" />
-                      Cannot add check-ins
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Activity Log */}
@@ -663,14 +657,14 @@ export default function SettingsPage({
 
             {/* Weekly Review Panel */}
             {showWeeklyReview && (
-              <WeeklyReviewPanel 
-                events={weeklyEvents} 
+              <WeeklyReviewPanel
+                events={weeklyEvents}
                 dateRange={{ from: weekStart, to: weekEnd }}
               />
             )}
 
             {/* Filters */}
-            <ActivityFilters 
+            <ActivityFilters
               filters={activityFilters}
               onFiltersChange={handleFiltersChange}
             />
@@ -705,8 +699,8 @@ export default function SettingsPage({
                     icon={History}
                     title="No activity found"
                     description={
-                      activityFilters.datePreset !== "all" || 
-                      activityFilters.entityTypes.length > 0 || 
+                      activityFilters.datePreset !== "all" ||
+                      activityFilters.entityTypes.length > 0 ||
                       activityFilters.eventTypes.length > 0
                         ? "Try adjusting your filters to see more activity."
                         : "Activity will appear here as you make changes to your plan."
@@ -719,7 +713,7 @@ export default function SettingsPage({
                         <ActivityEventCard key={event.id} event={event} />
                       ))}
                     </div>
-                    
+
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
                       <div className="mt-6 pt-4 border-t border-border-soft">
@@ -728,7 +722,7 @@ export default function SettingsPage({
                           <span className="text-small text-text-muted">
                             Page {logPage} of {totalPages}
                           </span>
-                          
+
                           {/* Navigation */}
                           <div className="flex items-center gap-2">
                             <Button
