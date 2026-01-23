@@ -13,15 +13,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PresenceIndicator } from "./presence-indicator";
+import { NotificationBell } from "@/components/notifications";
 import { signOut } from "@/app/(auth)/actions";
 
 interface NavbarProps {
   showPlanSwitcher?: boolean;
   user?: {
+    id?: string;
     email: string;
     fullName: string | null;
     avatarUrl: string | null;
   } | null;
+  planId?: string;
 }
 
 function getInitials(name: string | null, email: string): string {
@@ -36,7 +39,7 @@ function getInitials(name: string | null, email: string): string {
   return email.slice(0, 2).toUpperCase();
 }
 
-export function Navbar({ showPlanSwitcher = true, user }: NavbarProps) {
+export function Navbar({ showPlanSwitcher = true, user, planId }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border-soft bg-bg-0/95 backdrop-blur supports-[backdrop-filter]:bg-bg-0/80">
       <div className="container-main flex h-16 items-center justify-between">
@@ -83,10 +86,15 @@ export function Navbar({ showPlanSwitcher = true, user }: NavbarProps) {
           )}
         </div>
 
-        {/* Right side: Presence + User Menu */}
+        {/* Right side: Presence + Notifications + User Menu */}
         <div className="flex items-center gap-3">
           {/* Real-time presence indicator */}
           <PresenceIndicator />
+
+          {/* Notifications */}
+          {user && planId && (
+            <NotificationBell userId={user.id || null} planId={planId} />
+          )}
 
           {user ? (
             <DropdownMenu>

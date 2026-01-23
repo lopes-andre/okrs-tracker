@@ -12,7 +12,7 @@ import {
   useDeleteComment,
 } from "@/features/comments/hooks";
 import { useToast } from "@/components/ui/use-toast";
-import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
+import { formatErrorMessage } from "@/lib/toast-utils";
 
 interface CommentListProps {
   taskId: string;
@@ -33,7 +33,7 @@ export function CommentList({
 }: CommentListProps) {
   const { toast } = useToast();
   const { data: comments = [], isLoading } = useTaskComments(taskId);
-  const createComment = useCreateComment(taskId);
+  const createComment = useCreateComment(taskId, planId);
   const updateComment = useUpdateComment(taskId);
   const deleteComment = useDeleteComment(taskId);
 

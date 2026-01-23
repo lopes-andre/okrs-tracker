@@ -5,7 +5,8 @@ import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage, successMessages } from "@/lib/toast-utils";
 import * as api from "./api";
-import type { Task, TaskInsert, TaskUpdate, TaskFilters, TaskStatus } from "@/lib/supabase/types";
+import * as notificationApi from "@/features/notifications/api";
+import type { Task, TaskInsert, TaskUpdate, TaskFilters, TaskStatus, NotificationInsert } from "@/lib/supabase/types";
 
 // ============================================================================
 // QUERIES
@@ -527,14 +528,62 @@ export function useTaskAssignees(taskId: string | null) {
 
 /**
  * Set assignees for a task
+ * Also creates notifications for newly assigned/unassigned users
  */
 export function useSetTaskAssignees(planId: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ taskId, userIds }: { taskId: string; userIds: string[] }) =>
-      api.setTaskAssignees(taskId, userIds),
+    mutationFn: async ({
+      taskId,
+      userIds,
+      actorId,
+      previousAssigneeIds = [],
+    }: {
+      taskId: string;
+      userIds: string[];
+      actorId?: string;
+      previousAssigneeIds?: string[];
+    }) => {
+      // Update assignees
+      await api.setTaskAssignees(taskId, userIds);
+
+      // Create notifications if we have an actor
+      if (actorId) {
+        const newlyAssigned = userIds.filter(
+          (id) => !previousAssigneeIds.includes(id) && id !== actorId
+        );
+        const newlyUnassigned = previousAssigneeIds.filter(
+          (id) => !userIds.includes(id) && id !== actorId
+        );
+
+        const notifications: NotificationInsert[] = [
+          ...newlyAssigned.map((userId) => ({
+            user_id: userId,
+            type: "assigned" as const,
+            plan_id: planId,
+            task_id: taskId,
+            comment_id: null,
+            actor_id: actorId,
+            read: false,
+          })),
+          ...newlyUnassigned.map((userId) => ({
+            user_id: userId,
+            type: "unassigned" as const,
+            plan_id: planId,
+            task_id: taskId,
+            comment_id: null,
+            actor_id: actorId,
+            read: false,
+          })),
+        ];
+
+        if (notifications.length > 0) {
+          await notificationApi.createNotifications(notifications);
+        }
+      }
+    },
     onSuccess: (_, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assignees(taskId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) });

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-client";
 import * as api from "./api";
-import type { CommentInsert, CommentUpdate } from "@/lib/supabase/types";
+import * as notificationApi from "@/features/notifications/api";
+import type { CommentInsert, CommentUpdate, NotificationInsert } from "@/lib/supabase/types";
 
 /**
  * Hook to fetch comments for a task
@@ -27,18 +28,41 @@ export function useTaskCommentCount(taskId: string | null) {
 
 /**
  * Hook to create a comment
+ * Also creates notifications for mentioned users
  */
-export function useCreateComment(taskId: string) {
+export function useCreateComment(taskId: string, planId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       data,
       mentionedUserIds = [],
     }: {
       data: CommentInsert;
       mentionedUserIds?: string[];
-    }) => api.createComment(data, mentionedUserIds),
+    }) => {
+      // Create the comment first
+      const comment = await api.createComment(data, mentionedUserIds);
+
+      // Create notifications for mentioned users (excluding the commenter)
+      const notificationsToCreate: NotificationInsert[] = mentionedUserIds
+        .filter((userId) => userId !== data.user_id)
+        .map((userId) => ({
+          user_id: userId,
+          type: "mentioned" as const,
+          plan_id: planId,
+          task_id: taskId,
+          comment_id: comment.id,
+          actor_id: data.user_id,
+          read: false,
+        }));
+
+      if (notificationsToCreate.length > 0) {
+        await notificationApi.createNotifications(notificationsToCreate);
+      }
+
+      return comment;
+    },
     onSuccess: () => {
       // Invalidate comments list and count
       queryClient.invalidateQueries({

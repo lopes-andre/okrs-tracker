@@ -35,6 +35,7 @@ export default async function PlanLayout({
   }
 
   const userData = user ? {
+    id: user.id,
     email: user.email!,
     fullName,
     avatarUrl,
@@ -48,7 +49,7 @@ export default async function PlanLayout({
       userFullName={fullName}
     >
       <div className="min-h-screen bg-bg-1">
-        <Navbar user={userData} />
+        <Navbar user={userData} planId={planId} />
         <PlanNav planId={planId} />
         <ReminderProvider planId={planId}>
           <main className="container-main py-8">{children}</main>

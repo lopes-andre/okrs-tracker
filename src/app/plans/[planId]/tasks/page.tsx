@@ -269,7 +269,12 @@ export default function TasksPage({
       await setTaskTags.mutateAsync({ taskId: newTask.id, tagIds });
     }
     if (assigneeIds.length > 0) {
-      await setTaskAssignees.mutateAsync({ taskId: newTask.id, userIds: assigneeIds });
+      await setTaskAssignees.mutateAsync({
+        taskId: newTask.id,
+        userIds: assigneeIds,
+        actorId: currentUserId || undefined,
+        previousAssigneeIds: [],
+      });
     }
   }
 
@@ -280,7 +285,12 @@ export default function TasksPage({
       data: data as TaskUpdate,
     });
     await setTaskTags.mutateAsync({ taskId: editingTask.id, tagIds });
-    await setTaskAssignees.mutateAsync({ taskId: editingTask.id, userIds: assigneeIds });
+    await setTaskAssignees.mutateAsync({
+      taskId: editingTask.id,
+      userIds: assigneeIds,
+      actorId: currentUserId || undefined,
+      previousAssigneeIds: editingTaskAssignees,
+    });
     setEditingTask(null);
   }
 
