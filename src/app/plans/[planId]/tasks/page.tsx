@@ -973,21 +973,22 @@ export default function TasksPage({
         isProcessing={isBulkProcessing}
       />
 
-      {/* Comments Dialog */}
-      {commentsDialog.task && (
-        <CommentsDialog
-          open={commentsDialog.open}
-          onOpenChange={(open) =>
-            setCommentsDialog({ ...commentsDialog, open })
+      {/* Comments Dialog - always render to prevent unmount issues */}
+      <CommentsDialog
+        open={commentsDialog.open && !!commentsDialog.task}
+        onOpenChange={(open) => {
+          if (!open) {
+            // Close dialog but keep task reference until fully closed
+            setCommentsDialog((prev) => ({ ...prev, open: false }));
           }
-          task={commentsDialog.task}
-          planId={planId}
-          members={memberProfiles}
-          currentUser={currentUserProfile}
-          currentUserId={currentUserId ?? undefined}
-          isOwner={isOwner}
-        />
-      )}
+        }}
+        task={commentsDialog.task}
+        planId={planId}
+        members={memberProfiles}
+        currentUser={currentUserProfile}
+        currentUserId={currentUserId ?? undefined}
+        isOwner={isOwner}
+      />
     </>
   );
 }

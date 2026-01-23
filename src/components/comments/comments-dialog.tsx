@@ -26,7 +26,7 @@ import type { CommentWithUser, CommentInsert, Profile, TaskWithDetails } from "@
 interface CommentsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: TaskWithDetails;
+  task: TaskWithDetails | null;
   planId: string;
   members: Profile[];
   currentUser?: Profile | null;
@@ -45,10 +45,11 @@ export function CommentsDialog({
   isOwner = false,
 }: CommentsDialogProps) {
   const { toast } = useToast();
-  const { data: comments = [], isLoading } = useTaskComments(task.id);
-  const createComment = useCreateComment(task.id, planId);
-  const updateComment = useUpdateComment(task.id);
-  const deleteComment = useDeleteComment(task.id);
+  const taskId = task?.id ?? null;
+  const { data: comments = [], isLoading } = useTaskComments(taskId);
+  const createComment = useCreateComment(taskId ?? "", planId);
+  const updateComment = useUpdateComment(taskId ?? "");
+  const deleteComment = useDeleteComment(taskId ?? "");
   const markAsRead = useMarkTaskCommentsAsRead();
 
   const [newComment, setNewComment] = useState("");
@@ -60,10 +61,11 @@ export function CommentsDialog({
 
   // Mark comments as read when dialog opens
   useEffect(() => {
-    if (open && currentUserId && task.id) {
-      markAsRead.mutate({ taskId: task.id, userId: currentUserId });
+    if (open && currentUserId && taskId) {
+      markAsRead.mutate({ taskId, userId: currentUserId });
     }
-  }, [open, currentUserId, task.id, markAsRead]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, currentUserId, taskId]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -134,12 +136,12 @@ export function CommentsDialog({
 
   // Handle create comment
   const handleCreate = async () => {
-    if (!currentUserId || !newComment.trim()) return;
+    if (!currentUserId || !taskId || !newComment.trim()) return;
 
     const mentions = extractMentions(newComment);
     const data: CommentInsert = {
       plan_id: planId,
-      task_id: task.id,
+      task_id: taskId,
       user_id: currentUserId,
       content: newComment.trim(),
     };
@@ -205,7 +207,7 @@ export function CommentsDialog({
         <DialogHeader className="px-6 py-4 border-b border-border-soft">
           <DialogTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Comments on &ldquo;{task.title}&rdquo;
+            Comments on &ldquo;{task?.title ?? "Task"}&rdquo;
           </DialogTitle>
         </DialogHeader>
 
