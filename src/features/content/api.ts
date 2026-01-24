@@ -849,33 +849,57 @@ export async function uploadMediaFile(
   planId: string,
   postId: string,
   file: File
-): Promise<{ path: string; url: string }> {
+): Promise<ContentPostMedia> {
   const supabase = createClient();
 
   // Generate path
   const ext = file.name.split(".").pop();
   const fileName = `${Date.now()}.${ext}`;
-  const path = `${planId}/${postId}/${fileName}`;
+  const storagePath = `${planId}/${postId}/${fileName}`;
 
-  // Upload file
+  // Upload file to storage
   const { data, error } = await supabase.storage
     .from("content-media")
-    .upload(path, file, {
+    .upload(storagePath, file, {
       contentType: file.type,
       upsert: false,
     });
 
   if (error) throw error;
 
-  // Get signed URL
-  const { data: urlData } = await supabase.storage
-    .from("content-media")
-    .createSignedUrl(data.path, 60 * 60 * 24); // 24 hours
+  // Get current max sort_order for this post
+  const { data: existingMedia } = await supabase
+    .from("content_post_media")
+    .select("sort_order")
+    .eq("post_id", postId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
 
-  return {
-    path: data.path,
-    url: urlData?.signedUrl || "",
-  };
+  const nextSortOrder = existingMedia && existingMedia.length > 0
+    ? (existingMedia[0].sort_order || 0) + 1
+    : 0;
+
+  // Create database record
+  const { data: mediaRecord, error: insertError } = await supabase
+    .from("content_post_media")
+    .insert({
+      post_id: postId,
+      storage_path: data.path,
+      file_name: file.name,
+      file_type: file.type,
+      file_size: file.size,
+      sort_order: nextSortOrder,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    // Try to cleanup the uploaded file
+    await supabase.storage.from("content-media").remove([data.path]);
+    throw insertError;
+  }
+
+  return mediaRecord;
 }
 
 /**
@@ -892,13 +916,32 @@ export async function getMediaSignedUrl(path: string): Promise<string> {
 }
 
 /**
- * Delete a media file from storage
+ * Delete a media file from storage and database
  */
-export async function deleteMediaFile(path: string): Promise<void> {
+export async function deleteMediaFile(mediaId: string): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.storage
-    .from("content-media")
-    .remove([path]);
 
-  if (error) throw error;
+  // Get the media record first to get the storage path
+  const { data: mediaRecord, error: fetchError } = await supabase
+    .from("content_post_media")
+    .select("storage_path")
+    .eq("id", mediaId)
+    .single();
+
+  if (fetchError) throw fetchError;
+
+  // Delete from storage
+  if (mediaRecord?.storage_path) {
+    await supabase.storage
+      .from("content-media")
+      .remove([mediaRecord.storage_path]);
+  }
+
+  // Delete the database record
+  const { error: deleteError } = await supabase
+    .from("content_post_media")
+    .delete()
+    .eq("id", mediaId);
+
+  if (deleteError) throw deleteError;
 }

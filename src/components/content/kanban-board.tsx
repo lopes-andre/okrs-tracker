@@ -24,9 +24,10 @@ import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanColumn } from "./kanban-column";
 import { PostCard } from "./post-card";
-import { PostDialog } from "./post-dialog";
+import { PostDetailModal } from "./post-detail-modal";
 import { QuickCapture } from "./quick-capture";
-import { usePostsWithDetails, useCreatePost, useUpdatePost, useReorderPosts } from "@/features/content/hooks";
+import { KanbanFilters, defaultFilters, type KanbanFilters as KanbanFiltersType } from "./kanban-filters";
+import { usePostsWithDetails, useCreatePost, useUpdatePost, useReorderPosts, useAccountsWithPlatform } from "@/features/content/hooks";
 import type { ContentPostWithDetails, ContentPostStatus, ContentGoal } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -77,19 +78,61 @@ const COLUMNS: Column[] = [
 
 export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   const { data: posts, isLoading } = usePostsWithDetails(planId);
+  const { data: accounts = [] } = useAccountsWithPlatform(planId);
   const createPost = useCreatePost(planId);
   const updatePost = useUpdatePost(planId);
   const reorderPosts = useReorderPosts(planId);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState<ContentPostWithDetails | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [initialStatus, setInitialStatus] = useState<ContentPostStatus>("backlog");
+
+  // Filter state
+  const [filters, setFilters] = useState<KanbanFiltersType>(defaultFilters);
 
   // Drag state
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
-  // Organize posts by status
+  // Filter posts based on current filters
+  const filteredPosts = useMemo(() => {
+    if (!posts) return [];
+
+    return posts.filter((post) => {
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const titleMatch = post.title.toLowerCase().includes(searchLower);
+        const descMatch = post.description?.toLowerCase().includes(searchLower);
+        if (!titleMatch && !descMatch) return false;
+      }
+
+      // Goal filter
+      if (filters.goalIds.length > 0) {
+        const postGoalIds = post.goals?.map((g) => g.id) || [];
+        const hasMatchingGoal = filters.goalIds.some((id) => postGoalIds.includes(id));
+        if (!hasMatchingGoal) return false;
+      }
+
+      // Account filter (based on distributions)
+      if (filters.accountIds.length > 0) {
+        const postAccountIds = post.distributions?.map((d) => d.account_id) || [];
+        const hasMatchingAccount = filters.accountIds.some((id) => postAccountIds.includes(id));
+        if (!hasMatchingAccount) return false;
+      }
+
+      // Has distributions filter
+      if (filters.hasDistributions !== null) {
+        const distributionCount = post.distribution_count || 0;
+        if (filters.hasDistributions && distributionCount === 0) return false;
+        if (!filters.hasDistributions && distributionCount > 0) return false;
+      }
+
+      return true;
+    });
+  }, [posts, filters]);
+
+  // Organize filtered posts by status
   const postsByStatus = useMemo(() => {
     const grouped: Record<ContentPostStatus, ContentPostWithDetails[]> = {
       backlog: [],
@@ -98,21 +141,19 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
       complete: [],
     };
 
-    if (posts) {
-      posts.forEach((post) => {
-        grouped[post.status].push(post);
-      });
+    filteredPosts.forEach((post) => {
+      grouped[post.status].push(post);
+    });
 
-      // Sort each column by display_order
-      Object.keys(grouped).forEach((status) => {
-        grouped[status as ContentPostStatus].sort(
-          (a, b) => a.display_order - b.display_order
-        );
-      });
-    }
+    // Sort each column by display_order
+    Object.keys(grouped).forEach((status) => {
+      grouped[status as ContentPostStatus].sort(
+        (a, b) => a.display_order - b.display_order
+      );
+    });
 
     return grouped;
-  }, [posts]);
+  }, [filteredPosts]);
 
   // Get the active post being dragged
   const activePost = useMemo(() => {
@@ -132,14 +173,14 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
 
   // Handle creating a new post
   const handleNewPost = useCallback((status: ContentPostStatus = "backlog") => {
-    setSelectedPost(null);
+    setSelectedPostId(null);
     setInitialStatus(status);
     setDialogOpen(true);
   }, []);
 
   // Handle editing a post
   const handleEditPost = useCallback((post: ContentPostWithDetails) => {
-    setSelectedPost(post);
+    setSelectedPostId(post.id);
     setDialogOpen(true);
   }, []);
 
@@ -241,7 +282,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold">Content Pipeline</h2>
           <p className="text-small text-text-muted">
@@ -252,6 +293,15 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
           <Plus className="w-4 h-4 mr-2" />
           New Post
         </Button>
+      </div>
+
+      <div className="mb-6">
+        <KanbanFilters
+          goals={goals}
+          accounts={accounts}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
       </div>
 
       <DndContext
@@ -309,12 +359,13 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         </DragOverlay>
       </DndContext>
 
-      <PostDialog
+      <PostDetailModal
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         planId={planId}
-        post={selectedPost}
+        postId={selectedPostId}
         goals={goals}
+        accounts={accounts}
         initialStatus={initialStatus}
       />
     </>

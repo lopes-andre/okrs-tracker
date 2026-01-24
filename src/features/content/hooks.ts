@@ -765,6 +765,7 @@ export function useUploadMedia(planId: string) {
       api.uploadMediaFile(planId, postId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
       toast(successMessages.mediaUploaded);
     },
     onError: (error) => {
@@ -781,9 +782,10 @@ export function useDeleteMedia(planId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (path: string) => api.deleteMediaFile(path),
+    mutationFn: (mediaId: string) => api.deleteMediaFile(mediaId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
       toast(successMessages.mediaDeleted);
     },
     onError: (error) => {

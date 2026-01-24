@@ -492,6 +492,7 @@ export interface ContentDistribution {
   scheduled_at: string | null;
   posted_at: string | null;
   platform_post_url: string | null;
+  platform_specific_data: Record<string, unknown>;
   notes: string | null;
   created_at: string;
   updated_at: string;
