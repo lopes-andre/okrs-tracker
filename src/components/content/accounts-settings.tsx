@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link } from "lucide-react";
+import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link, User, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -185,8 +185,12 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className={`font-medium ${colors.text}`}>{account.account_name}</span>
-            <Badge variant="outline" className="text-[10px]">
-              {account.account_type}
+            <Badge variant="outline" className="px-1.5 py-0.5" title={account.account_type === "personal" ? "Personal account" : "Business account"}>
+              {account.account_type === "personal" ? (
+                <User className="w-3 h-3" />
+              ) : (
+                <Briefcase className="w-3 h-3" />
+              )}
             </Badge>
             {!account.is_active && (
               <Badge variant="secondary" className="text-[10px]">

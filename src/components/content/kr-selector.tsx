@@ -103,7 +103,7 @@ export function KrSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0" align="start">
-        <Command>
+        <Command shouldFilter={true}>
           <CommandInput placeholder="Search Key Results..." />
           <CommandList>
             <CommandEmpty>No Key Results found.</CommandEmpty>
@@ -124,16 +124,16 @@ export function KrSelector({
                     key={kr.id}
                     value={`${objective.code} ${objective.name} ${kr.name}`}
                     onSelect={() => handleSelect(kr.id)}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 cursor-pointer"
                   >
                     <Check
                       className={cn(
-                        "w-4 h-4 shrink-0",
+                        "w-4 h-4 shrink-0 text-accent",
                         value === kr.id ? "opacity-100" : "opacity-0"
                       )}
                     />
                     <div className="flex flex-col min-w-0 flex-1">
-                      <span className="truncate">{kr.name}</span>
+                      <span className="truncate text-text">{kr.name}</span>
                       <span className="text-[10px] text-text-muted">
                         {kr.kr_type} · {kr.direction} · Target: {kr.target_value}
                         {kr.unit ? ` ${kr.unit}` : ""}
