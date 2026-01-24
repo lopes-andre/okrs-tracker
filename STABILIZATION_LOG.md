@@ -123,7 +123,48 @@
 
 ## Phase 3: CI/CD Pipeline Hardening
 
-**Status:** Pending
+**Status:** Complete
+**Started:** 2026-01-24
+**Completed:** 2026-01-24
+
+### Tasks
+- [x] Document deployment workflow
+- [x] Document environment configuration
+- [x] Create pre-deployment checklist
+- [x] Document rollback procedures
+- [x] Create pre-commit validation script
+- [x] Document recommended GitHub Actions workflows
+
+### Progress Notes
+
+#### CI/CD Guide (`docs/ci-cd-guide.md`)
+- Local development setup instructions
+- Pre-deployment checklist for regular and major releases
+- Deployment workflow (Vercel integration)
+- Environment variable configuration
+- Database migration procedures
+- Rollback procedures (Vercel and database)
+- Branch protection recommendations
+- Deployment monitoring and verification
+
+#### Pre-Commit Script (`scripts/pre-commit-check.sh`)
+- Runs lint, test, and build in sequence
+- Color-coded output for easy reading
+- Reports duration and clear pass/fail status
+- Exit codes for CI integration
+
+#### GitHub Actions Recommendations
+- CI workflow (lint, test, build, coverage)
+- Preview deployment workflow
+- Production deployment workflow
+- Required secrets documented
+
+#### Files Created
+- `docs/ci-cd-guide.md` - Comprehensive CI/CD documentation
+- `scripts/pre-commit-check.sh` - Local validation script
+
+#### Commit
+`docs: add CI/CD pipeline guide and pre-deployment checklist`
 
 ---
 
