@@ -90,13 +90,20 @@ export function KrSelector({
           )}
           <div className="flex items-center gap-1 shrink-0">
             {value && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={handleClear}
-                className="p-0.5 rounded hover:bg-bg-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleClear(e as unknown as React.MouseEvent);
+                  }
+                }}
+                className="p-0.5 rounded hover:bg-bg-1 cursor-pointer"
               >
                 <X className="w-4 h-4 text-text-muted" />
-              </button>
+              </span>
             )}
             <ChevronsUpDown className="w-4 h-4 text-text-muted" />
           </div>
