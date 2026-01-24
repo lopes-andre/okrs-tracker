@@ -212,6 +212,9 @@ export function PostDetailModal({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[900px] max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Loading Post</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
           </div>
