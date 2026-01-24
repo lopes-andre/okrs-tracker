@@ -44,11 +44,15 @@ CREATE OR REPLACE FUNCTION log_activity_event(
   p_new_data JSONB DEFAULT NULL,
   p_metadata JSONB DEFAULT NULL
 )
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_event_id UUID;
 BEGIN
-  INSERT INTO activity_events (
+  INSERT INTO public.activity_events (
     plan_id, user_id, entity_type, entity_id,
     event_type, old_data, new_data, metadata
   )
@@ -60,14 +64,18 @@ BEGIN
 
   RETURN v_event_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ============================================================================
 -- TRIGGER: Tasks activity events
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION tasks_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_old_data JSONB;
   v_new_data JSONB;
@@ -86,7 +94,7 @@ BEGIN
       'quarter_target_id', NEW.quarter_target_id
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       NEW.plan_id, 'task'::event_entity_type, NEW.id,
       'created'::event_type, NULL, v_new_data
     );
@@ -125,7 +133,7 @@ BEGIN
       v_event_type := 'updated'::event_type;
     END IF;
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       NEW.plan_id, 'task'::event_entity_type, NEW.id,
       v_event_type, v_old_data, v_new_data
     );
@@ -141,7 +149,7 @@ BEGIN
       'quarter_target_id', OLD.quarter_target_id
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       OLD.plan_id, 'task'::event_entity_type, OLD.id,
       'deleted'::event_type, v_old_data, NULL
     );
@@ -150,7 +158,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER tasks_activity_events_trigger
   AFTER INSERT OR UPDATE OR DELETE ON tasks
@@ -162,15 +170,19 @@ CREATE TRIGGER tasks_activity_events_trigger
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION checkins_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_plan_id UUID;
   v_kr_name TEXT;
   v_new_data JSONB;
 BEGIN
   SELECT o.plan_id, ak.name INTO v_plan_id, v_kr_name
-  FROM annual_krs ak
-  JOIN objectives o ON o.id = ak.objective_id
+  FROM public.annual_krs ak
+  JOIN public.objectives o ON o.id = ak.objective_id
   WHERE ak.id = NEW.annual_kr_id;
 
   v_new_data := jsonb_build_object(
@@ -180,14 +192,14 @@ BEGIN
     'note', NEW.note
   );
 
-  PERFORM log_activity_event(
+  PERFORM public.log_activity_event(
     v_plan_id, 'check_in'::event_entity_type, NEW.id,
     'created'::event_type, NULL, v_new_data
   );
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER checkins_activity_events_trigger
   AFTER INSERT ON check_ins
@@ -199,28 +211,32 @@ CREATE TRIGGER checkins_activity_events_trigger
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION plan_members_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_user_name TEXT;
   v_new_data JSONB;
   v_old_data JSONB;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    SELECT full_name INTO v_user_name FROM profiles WHERE id = NEW.user_id;
+    SELECT full_name INTO v_user_name FROM public.profiles WHERE id = NEW.user_id;
 
     v_new_data := jsonb_build_object(
       'role', NEW.role,
       'user_name', v_user_name
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       NEW.plan_id, 'member'::event_entity_type, NEW.user_id,
       'joined'::event_type, NULL, v_new_data
     );
 
   ELSIF TG_OP = 'UPDATE' THEN
     IF OLD.role != NEW.role THEN
-      SELECT full_name INTO v_user_name FROM profiles WHERE id = NEW.user_id;
+      SELECT full_name INTO v_user_name FROM public.profiles WHERE id = NEW.user_id;
 
       v_old_data := jsonb_build_object('role', OLD.role);
       v_new_data := jsonb_build_object(
@@ -228,21 +244,21 @@ BEGIN
         'user_name', v_user_name
       );
 
-      PERFORM log_activity_event(
+      PERFORM public.log_activity_event(
         NEW.plan_id, 'member'::event_entity_type, NEW.user_id,
         'role_changed'::event_type, v_old_data, v_new_data
       );
     END IF;
 
   ELSIF TG_OP = 'DELETE' THEN
-    SELECT full_name INTO v_user_name FROM profiles WHERE id = OLD.user_id;
+    SELECT full_name INTO v_user_name FROM public.profiles WHERE id = OLD.user_id;
 
     v_old_data := jsonb_build_object(
       'role', OLD.role,
       'user_name', v_user_name
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       OLD.plan_id, 'member'::event_entity_type, OLD.user_id,
       'left'::event_type, v_old_data, NULL
     );
@@ -251,7 +267,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER plan_members_activity_events_trigger
   AFTER INSERT OR UPDATE OR DELETE ON plan_members
@@ -263,7 +279,11 @@ CREATE TRIGGER plan_members_activity_events_trigger
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION objectives_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_new_data JSONB;
   v_old_data JSONB;
@@ -274,7 +294,7 @@ BEGIN
       'name', NEW.name
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       NEW.plan_id, 'objective'::event_entity_type, NEW.id,
       'created'::event_type, NULL, v_new_data
     );
@@ -284,7 +304,7 @@ BEGIN
       v_old_data := jsonb_build_object('code', OLD.code, 'name', OLD.name);
       v_new_data := jsonb_build_object('code', NEW.code, 'name', NEW.name);
 
-      PERFORM log_activity_event(
+      PERFORM public.log_activity_event(
         NEW.plan_id, 'objective'::event_entity_type, NEW.id,
         'updated'::event_type, v_old_data, v_new_data
       );
@@ -293,7 +313,7 @@ BEGIN
   ELSIF TG_OP = 'DELETE' THEN
     v_old_data := jsonb_build_object('code', OLD.code, 'name', OLD.name);
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       OLD.plan_id, 'objective'::event_entity_type, OLD.id,
       'deleted'::event_type, v_old_data, NULL
     );
@@ -302,7 +322,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER objectives_activity_events_trigger
   AFTER INSERT OR UPDATE OR DELETE ON objectives
@@ -314,14 +334,18 @@ CREATE TRIGGER objectives_activity_events_trigger
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION annual_krs_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_plan_id UUID;
   v_new_data JSONB;
   v_old_data JSONB;
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    SELECT plan_id INTO v_plan_id FROM objectives WHERE id = NEW.objective_id;
+    SELECT plan_id INTO v_plan_id FROM public.objectives WHERE id = NEW.objective_id;
 
     v_new_data := jsonb_build_object(
       'name', NEW.name,
@@ -329,13 +353,13 @@ BEGIN
       'unit', NEW.unit
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       v_plan_id, 'annual_kr'::event_entity_type, NEW.id,
       'created'::event_type, NULL, v_new_data
     );
 
   ELSIF TG_OP = 'UPDATE' THEN
-    SELECT plan_id INTO v_plan_id FROM objectives WHERE id = NEW.objective_id;
+    SELECT plan_id INTO v_plan_id FROM public.objectives WHERE id = NEW.objective_id;
 
     IF OLD.name != NEW.name OR OLD.target_value != NEW.target_value OR OLD.description IS DISTINCT FROM NEW.description THEN
       v_old_data := jsonb_build_object(
@@ -347,18 +371,18 @@ BEGIN
         'target_value', NEW.target_value
       );
 
-      PERFORM log_activity_event(
+      PERFORM public.log_activity_event(
         v_plan_id, 'annual_kr'::event_entity_type, NEW.id,
         'updated'::event_type, v_old_data, v_new_data
       );
     END IF;
 
   ELSIF TG_OP = 'DELETE' THEN
-    SELECT plan_id INTO v_plan_id FROM objectives WHERE id = OLD.objective_id;
+    SELECT plan_id INTO v_plan_id FROM public.objectives WHERE id = OLD.objective_id;
 
     v_old_data := jsonb_build_object('name', OLD.name);
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       v_plan_id, 'annual_kr'::event_entity_type, OLD.id,
       'deleted'::event_type, v_old_data, NULL
     );
@@ -367,7 +391,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER annual_krs_activity_events_trigger
   AFTER INSERT OR UPDATE OR DELETE ON annual_krs

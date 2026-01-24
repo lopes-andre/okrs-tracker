@@ -194,7 +194,10 @@ COMMENT ON TABLE tasks IS 'Tasks linked to objectives or quarter targets';
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION tasks_set_completed_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   IF NEW.status = 'completed' AND OLD.status != 'completed' THEN
     NEW.completed_at = NOW();
@@ -203,7 +206,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER tasks_set_completed_at_trigger
   BEFORE UPDATE ON tasks
@@ -215,26 +218,38 @@ CREATE TRIGGER tasks_set_completed_at_trigger
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION get_plan_id_from_objective(p_objective_id UUID)
-RETURNS UUID AS $$
-  SELECT plan_id FROM objectives WHERE id = p_objective_id;
-$$ LANGUAGE sql STABLE;
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
+  SELECT plan_id FROM public.objectives WHERE id = p_objective_id;
+$$;
 
 CREATE OR REPLACE FUNCTION get_plan_id_from_annual_kr(p_annual_kr_id UUID)
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
   SELECT o.plan_id
-  FROM annual_krs ak
-  JOIN objectives o ON o.id = ak.objective_id
+  FROM public.annual_krs ak
+  JOIN public.objectives o ON o.id = ak.objective_id
   WHERE ak.id = p_annual_kr_id;
-$$ LANGUAGE sql STABLE;
+$$;
 
 CREATE OR REPLACE FUNCTION get_plan_id_from_quarter_target(p_quarter_target_id UUID)
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE sql
+STABLE
+SET search_path = ''
+AS $$
   SELECT o.plan_id
-  FROM quarter_targets qt
-  JOIN annual_krs ak ON ak.id = qt.annual_kr_id
-  JOIN objectives o ON o.id = ak.objective_id
+  FROM public.quarter_targets qt
+  JOIN public.annual_krs ak ON ak.id = qt.annual_kr_id
+  JOIN public.objectives o ON o.id = ak.objective_id
   WHERE qt.id = p_quarter_target_id;
-$$ LANGUAGE sql STABLE;
+$$;
 
 COMMENT ON FUNCTION get_plan_id_from_objective IS 'Get plan_id from an objective ID';
 COMMENT ON FUNCTION get_plan_id_from_annual_kr IS 'Get plan_id from an annual KR ID';

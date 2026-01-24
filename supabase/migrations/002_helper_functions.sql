@@ -10,12 +10,15 @@
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 COMMENT ON FUNCTION set_updated_at IS 'Trigger function to automatically set updated_at timestamp';
 
@@ -24,7 +27,11 @@ COMMENT ON FUNCTION set_updated_at IS 'Trigger function to automatically set upd
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION okr_role_rank(role okr_role)
-RETURNS INT AS $$
+RETURNS INT
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = ''
+AS $$
 BEGIN
   RETURN CASE role
     WHEN 'owner' THEN 3
@@ -33,7 +40,7 @@ BEGIN
     ELSE 0
   END;
 END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+$$;
 
 COMMENT ON FUNCTION okr_role_rank IS 'Returns numeric rank for role comparison (owner=3, editor=2, viewer=1)';
 
@@ -42,10 +49,15 @@ COMMENT ON FUNCTION okr_role_rank IS 'Returns numeric rank for role comparison (
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION request_user_id()
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 BEGIN
   RETURN auth.uid();
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
 
 COMMENT ON FUNCTION request_user_id IS 'Returns the current authenticated user ID';

@@ -119,7 +119,11 @@ COMMENT ON TABLE weekly_review_tasks IS 'Snapshot of task states during weekly r
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION weekly_reviews_activity_events()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   v_new_data JSONB;
   v_old_data JSONB;
@@ -133,7 +137,7 @@ BEGIN
       'week_end', NEW.week_end
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       NEW.plan_id, 'weekly_review'::event_entity_type, NEW.id,
       'created'::event_type, NULL, v_new_data
     );
@@ -154,7 +158,7 @@ BEGIN
         'stats_objectives_at_risk', NEW.stats_objectives_at_risk
       );
 
-      PERFORM log_activity_event(
+      PERFORM public.log_activity_event(
         NEW.plan_id, 'weekly_review'::event_entity_type, NEW.id,
         'completed'::event_type, v_old_data, v_new_data
       );
@@ -166,7 +170,7 @@ BEGIN
         'status', NEW.status
       );
 
-      PERFORM log_activity_event(
+      PERFORM public.log_activity_event(
         NEW.plan_id, 'weekly_review'::event_entity_type, NEW.id,
         'started'::event_type, NULL, v_new_data,
         jsonb_build_object('action', 'started')
@@ -180,7 +184,7 @@ BEGIN
       'status', OLD.status
     );
 
-    PERFORM log_activity_event(
+    PERFORM public.log_activity_event(
       OLD.plan_id, 'weekly_review'::event_entity_type, OLD.id,
       'deleted'::event_type, v_old_data, NULL
     );
@@ -189,7 +193,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 CREATE TRIGGER weekly_reviews_activity_events_trigger
   AFTER INSERT OR UPDATE OR DELETE ON weekly_reviews

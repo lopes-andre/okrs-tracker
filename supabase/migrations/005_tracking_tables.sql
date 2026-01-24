@@ -35,28 +35,31 @@ COMMENT ON COLUMN check_ins.evidence_url IS 'Optional link to proof (screenshot,
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION update_kr_on_checkin()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   -- Store the previous value
   SELECT current_value INTO NEW.previous_value
-  FROM annual_krs
+  FROM public.annual_krs
   WHERE id = NEW.annual_kr_id;
 
   -- Update annual KR current value
-  UPDATE annual_krs
+  UPDATE public.annual_krs
   SET current_value = NEW.value
   WHERE id = NEW.annual_kr_id;
 
   -- Update quarter target if specified
   IF NEW.quarter_target_id IS NOT NULL THEN
-    UPDATE quarter_targets
+    UPDATE public.quarter_targets
     SET current_value = NEW.value
     WHERE id = NEW.quarter_target_id;
   END IF;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE TRIGGER check_ins_update_kr_trigger
   BEFORE INSERT ON check_ins

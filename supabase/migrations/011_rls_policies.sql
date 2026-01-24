@@ -76,7 +76,7 @@ CREATE POLICY "Plans are viewable by members"
 CREATE POLICY "Authenticated users can create plans"
   ON plans FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  WITH CHECK (created_by = auth.uid());
 
 CREATE POLICY "Owners can update plans"
   ON plans FOR UPDATE

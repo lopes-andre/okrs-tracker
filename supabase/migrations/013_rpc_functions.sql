@@ -20,6 +20,7 @@ RETURNS TABLE (
 )
 LANGUAGE SQL
 STABLE
+SET search_path = ''
 AS $$
   SELECT
     c.task_id,
@@ -28,8 +29,8 @@ AS $$
       WHERE cr.last_read_at IS NULL
       OR c.created_at > cr.last_read_at
     ) AS unread_count
-  FROM comments c
-  LEFT JOIN comment_reads cr
+  FROM public.comments c
+  LEFT JOIN public.comment_reads cr
     ON cr.task_id = c.task_id
     AND cr.user_id = p_user_id
   WHERE c.task_id = ANY(p_task_ids)
@@ -65,6 +66,7 @@ RETURNS TABLE (
 )
 LANGUAGE SQL
 STABLE
+SET search_path = ''
 AS $$
   WITH member_tasks AS (
     -- Get tasks assigned to each member (via task_assignees or assigned_to)
@@ -75,8 +77,8 @@ AS $$
       t.priority,
       t.effort,
       t.due_date
-    FROM tasks t
-    LEFT JOIN task_assignees ta ON ta.task_id = t.id
+    FROM public.tasks t
+    LEFT JOIN public.task_assignees ta ON ta.task_id = t.id
     WHERE t.plan_id = p_plan_id
       AND (ta.user_id IS NOT NULL OR t.assigned_to IS NOT NULL)
   ),
@@ -108,9 +110,9 @@ AS $$
     SELECT
       c.recorded_by AS member_id,
       COUNT(*) AS check_ins_made
-    FROM check_ins c
-    INNER JOIN annual_krs ak ON ak.id = c.annual_kr_id
-    INNER JOIN objectives o ON o.id = ak.objective_id
+    FROM public.check_ins c
+    INNER JOIN public.annual_krs ak ON ak.id = c.annual_kr_id
+    INNER JOIN public.objectives o ON o.id = ak.objective_id
     WHERE o.plan_id = p_plan_id
     GROUP BY c.recorded_by
   ),
@@ -118,8 +120,8 @@ AS $$
     SELECT
       ak.owner_id AS member_id,
       COUNT(*) AS krs_owned
-    FROM annual_krs ak
-    INNER JOIN objectives o ON o.id = ak.objective_id
+    FROM public.annual_krs ak
+    INNER JOIN public.objectives o ON o.id = ak.objective_id
     WHERE o.plan_id = p_plan_id
       AND ak.owner_id IS NOT NULL
     GROUP BY ak.owner_id
@@ -129,7 +131,7 @@ AS $$
       ae.user_id AS member_id,
       COUNT(*) AS activity_count,
       MAX(ae.created_at) AS last_activity_at
-    FROM activity_events ae
+    FROM public.activity_events ae
     WHERE ae.plan_id = p_plan_id
       AND ae.user_id IS NOT NULL
     GROUP BY ae.user_id
@@ -150,8 +152,8 @@ AS $$
     COALESCE(ko.krs_owned, 0) AS krs_owned,
     COALESCE(ast.activity_count, 0) AS activity_count,
     ast.last_activity_at
-  FROM plan_members pm
-  INNER JOIN profiles p ON p.id = pm.user_id
+  FROM public.plan_members pm
+  INNER JOIN public.profiles p ON p.id = pm.user_id
   LEFT JOIN task_stats ts ON ts.member_id = pm.user_id
   LEFT JOIN checkin_stats cs ON cs.member_id = pm.user_id
   LEFT JOIN kr_ownership ko ON ko.member_id = pm.user_id
@@ -184,6 +186,7 @@ RETURNS TABLE (
 )
 LANGUAGE SQL
 STABLE
+SET search_path = ''
 AS $$
   WITH date_range AS (
     SELECT
@@ -191,7 +194,7 @@ AS $$
       COALESCE(p_date_to, CURRENT_DATE) AS end_date
   ),
   members AS (
-    SELECT user_id FROM plan_members WHERE plan_id = p_plan_id
+    SELECT user_id FROM public.plan_members WHERE plan_id = p_plan_id
   ),
   dates AS (
     SELECT generate_series(
@@ -212,9 +215,9 @@ AS $$
       c.recorded_by AS user_id,
       c.recorded_at::DATE AS period_date,
       COUNT(*) AS count
-    FROM check_ins c
-    INNER JOIN annual_krs ak ON ak.id = c.annual_kr_id
-    INNER JOIN objectives o ON o.id = ak.objective_id
+    FROM public.check_ins c
+    INNER JOIN public.annual_krs ak ON ak.id = c.annual_kr_id
+    INNER JOIN public.objectives o ON o.id = ak.objective_id
     WHERE o.plan_id = p_plan_id
       AND c.recorded_at::DATE >= (SELECT start_date FROM date_range)
       AND c.recorded_at::DATE <= (SELECT end_date FROM date_range)
@@ -226,8 +229,8 @@ AS $$
       COALESCE(ta.user_id, t.assigned_to) AS user_id,
       t.completed_at::DATE AS period_date,
       COUNT(*) AS count
-    FROM tasks t
-    LEFT JOIN task_assignees ta ON ta.task_id = t.id
+    FROM public.tasks t
+    LEFT JOIN public.task_assignees ta ON ta.task_id = t.id
     WHERE t.plan_id = p_plan_id
       AND t.status = 'completed'
       AND t.completed_at IS NOT NULL
@@ -242,7 +245,7 @@ AS $$
       ae.user_id,
       ae.created_at::DATE AS period_date,
       COUNT(*) AS count
-    FROM activity_events ae
+    FROM public.activity_events ae
     WHERE ae.plan_id = p_plan_id
       AND ae.entity_type = 'task'
       AND ae.event_type = 'created'

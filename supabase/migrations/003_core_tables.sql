@@ -114,12 +114,17 @@ CREATE OR REPLACE FUNCTION has_plan_access(
   p_plan_id UUID,
   p_min_role okr_role DEFAULT 'viewer'
 )
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
 DECLARE
   user_role okr_role;
 BEGIN
   SELECT role INTO user_role
-  FROM plan_members
+  FROM public.plan_members
   WHERE plan_id = p_plan_id
     AND user_id = auth.uid();
 
@@ -127,9 +132,9 @@ BEGIN
     RETURN FALSE;
   END IF;
 
-  RETURN okr_role_rank(user_role) >= okr_role_rank(p_min_role);
+  RETURN public.okr_role_rank(user_role) >= public.okr_role_rank(p_min_role);
 END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+$$;
 
 COMMENT ON FUNCTION has_plan_access IS 'Check if current user has access to a plan with at least the specified role';
 
