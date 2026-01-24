@@ -14,6 +14,7 @@ import {
   Link2,
   Plus,
   ExternalLink,
+  TrendingUp,
 } from "lucide-react";
 import {
   Dialog,
@@ -54,6 +55,7 @@ import {
 import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
 import { PostDistributionsTab } from "./post-distributions-tab";
+import { PostMetricsTab } from "./post-metrics-tab";
 import { MediaUpload } from "./media-upload";
 import type {
   ContentPostWithDetails,
@@ -351,6 +353,18 @@ export function PostDetailModal({
                         {post.media.length}
                       </Badge>
                     )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="metrics"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
+                  >
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Metrics
+                    {post?.posted_count && post.posted_count > 0 ? (
+                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5">
+                        {post.posted_count}
+                      </Badge>
+                    ) : null}
                   </TabsTrigger>
                   <TabsTrigger
                     value="activity"
@@ -653,6 +667,13 @@ export function PostDetailModal({
                     planId={planId}
                     media={post.media || []}
                   />
+                </TabsContent>
+              )}
+
+              {/* Metrics Tab */}
+              {isEditing && post && (
+                <TabsContent value="metrics" className="p-6 m-0">
+                  <PostMetricsTab post={post} planId={planId} />
                 </TabsContent>
               )}
 

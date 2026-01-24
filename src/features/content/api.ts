@@ -27,6 +27,8 @@ import type {
   ContentCampaignUpdate,
   ContentCampaignCheckin,
   ContentCampaignCheckinInsert,
+  ContentCampaignStatus,
+  ContentCampaignObjective,
   ContentCalendarEntry,
   ContentPostFilters,
   ContentCampaignFilters,
@@ -732,15 +734,60 @@ export async function getCampaign(campaignId: string): Promise<ContentCampaign |
   );
 }
 
+export interface CreateCampaignData {
+  name: string;
+  description: string | null;
+  objective: ContentCampaignObjective;
+  status: ContentCampaignStatus;
+  start_date: string | null;
+  end_date: string | null;
+  budget_allocated: number | null;
+  platform_id?: string | null;
+}
+
 /**
  * Create a campaign
  */
-export async function createCampaign(campaign: ContentCampaignInsert): Promise<ContentCampaign> {
+export async function createCampaign(
+  planId: string,
+  campaignData: CreateCampaignData
+): Promise<ContentCampaign> {
   const supabase = createClient();
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Get a default platform if not specified (first platform available)
+  let platformId = campaignData.platform_id;
+  if (!platformId) {
+    const { data: platforms } = await supabase
+      .from("content_platforms")
+      .select("id")
+      .limit(1);
+    platformId = platforms?.[0]?.id || null;
+  }
+
+  if (!platformId) {
+    throw new Error("No platform available for campaign");
+  }
+
   return handleSupabaseError(
     supabase
       .from("content_campaigns")
-      .insert(campaign)
+      .insert({
+        plan_id: planId,
+        platform_id: platformId,
+        created_by: user.id,
+        name: campaignData.name,
+        description: campaignData.description,
+        objective: campaignData.objective,
+        status: campaignData.status,
+        start_date: campaignData.start_date,
+        end_date: campaignData.end_date,
+        budget_allocated: campaignData.budget_allocated,
+        budget_spent: 0,
+      })
       .select()
       .single()
   );
@@ -944,4 +991,195 @@ export async function deleteMediaFile(mediaId: string): Promise<void> {
     .eq("id", mediaId);
 
   if (deleteError) throw deleteError;
+}
+
+// ============================================================================
+// ANALYTICS API
+// ============================================================================
+
+export interface ContentAnalyticsData {
+  totalPosts: number;
+  postedCount: number;
+  totalDistributions: number;
+  postedDistributions: number;
+  platformMetrics: PlatformMetricsAggregate[];
+  topPosts: TopPostData[];
+  recentMetrics: DistributionMetricWithDetails[];
+}
+
+export interface PlatformMetricsAggregate {
+  platformId: string;
+  platformName: string;
+  postedCount: number;
+  totalImpressions: number;
+  totalEngagement: number;
+  avgEngagementRate: number;
+}
+
+export interface TopPostData {
+  postId: string;
+  postTitle: string;
+  totalImpressions: number;
+  totalEngagement: number;
+  distributionCount: number;
+}
+
+export interface DistributionMetricWithDetails {
+  id: string;
+  distribution_id: string;
+  metrics: Record<string, number>;
+  checked_at: string;
+  post_title: string;
+  platform_name: string;
+  account_name: string;
+}
+
+/**
+ * Get aggregated analytics data for content
+ */
+export async function getContentAnalytics(planId: string): Promise<ContentAnalyticsData> {
+  const supabase = createClient();
+
+  // Get all posts with distributions and metrics
+  const { data: posts, error: postsError } = await supabase
+    .from("content_posts")
+    .select(`
+      id,
+      title,
+      status,
+      distributions:content_distributions(
+        id,
+        status,
+        posted_at,
+        account:content_accounts(
+          id,
+          account_name,
+          platform:content_platforms(id, name)
+        ),
+        metrics:content_distribution_metrics(
+          id,
+          metrics,
+          checked_at
+        )
+      )
+    `)
+    .eq("plan_id", planId);
+
+  if (postsError) throw postsError;
+
+  // Aggregate data
+  const totalPosts = posts?.length || 0;
+  const postedCount = posts?.filter(p => p.status === "complete").length || 0;
+
+  let totalDistributions = 0;
+  let postedDistributions = 0;
+  const platformMap = new Map<string, PlatformMetricsAggregate>();
+  const postMetricsMap = new Map<string, { impressions: number; engagement: number; count: number }>();
+  const recentMetrics: DistributionMetricWithDetails[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  posts?.forEach((post: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    post.distributions?.forEach((dist: any) => {
+      totalDistributions++;
+      if (dist.status === "posted") {
+        postedDistributions++;
+      }
+
+      const platform = dist.account?.platform;
+      if (!platform) return;
+
+      // Initialize platform aggregate
+      if (!platformMap.has(platform.id)) {
+        platformMap.set(platform.id, {
+          platformId: platform.id,
+          platformName: platform.name,
+          postedCount: 0,
+          totalImpressions: 0,
+          totalEngagement: 0,
+          avgEngagementRate: 0,
+        });
+      }
+
+      if (dist.status === "posted") {
+        const platformAgg = platformMap.get(platform.id)!;
+        platformAgg.postedCount++;
+
+        // Get latest metrics for this distribution
+        const latestMetric = dist.metrics?.[0];
+        if (latestMetric?.metrics) {
+          const metrics = latestMetric.metrics;
+          const impressions = metrics.impressions || metrics.views || metrics.page_views || 0;
+          const engagement = calculateEngagement(metrics);
+
+          platformAgg.totalImpressions += impressions;
+          platformAgg.totalEngagement += engagement;
+
+          // Aggregate for top posts
+          if (!postMetricsMap.has(post.id)) {
+            postMetricsMap.set(post.id, { impressions: 0, engagement: 0, count: 0 });
+          }
+          const postAgg = postMetricsMap.get(post.id)!;
+          postAgg.impressions += impressions;
+          postAgg.engagement += engagement;
+          postAgg.count++;
+
+          // Add to recent metrics
+          recentMetrics.push({
+            id: latestMetric.id,
+            distribution_id: dist.id,
+            metrics: latestMetric.metrics,
+            checked_at: latestMetric.checked_at,
+            post_title: post.title,
+            platform_name: platform.name,
+            account_name: dist.account.account_name,
+          });
+        }
+      }
+    });
+  });
+
+  // Calculate engagement rates
+  platformMap.forEach(platformAgg => {
+    if (platformAgg.totalImpressions > 0) {
+      platformAgg.avgEngagementRate = (platformAgg.totalEngagement / platformAgg.totalImpressions) * 100;
+    }
+  });
+
+  // Build top posts list
+  const topPosts: TopPostData[] = [];
+  posts?.forEach(post => {
+    const postAgg = postMetricsMap.get(post.id);
+    if (postAgg && postAgg.count > 0) {
+      topPosts.push({
+        postId: post.id,
+        postTitle: post.title,
+        totalImpressions: postAgg.impressions,
+        totalEngagement: postAgg.engagement,
+        distributionCount: postAgg.count,
+      });
+    }
+  });
+
+  // Sort top posts by engagement
+  topPosts.sort((a, b) => b.totalEngagement - a.totalEngagement);
+
+  // Sort recent metrics by date
+  recentMetrics.sort((a, b) => new Date(b.checked_at).getTime() - new Date(a.checked_at).getTime());
+
+  return {
+    totalPosts,
+    postedCount,
+    totalDistributions,
+    postedDistributions,
+    platformMetrics: Array.from(platformMap.values()),
+    topPosts: topPosts.slice(0, 10),
+    recentMetrics: recentMetrics.slice(0, 20),
+  };
+}
+
+// Helper to calculate engagement from metrics
+function calculateEngagement(metrics: Record<string, number>): number {
+  const engagementKeys = ["likes", "comments", "shares", "saves", "reactions", "claps", "reposts"];
+  return engagementKeys.reduce((total, key) => total + (metrics[key] || 0), 0);
 }

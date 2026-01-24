@@ -6,15 +6,16 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  Construction,
   Loader2,
+  Megaphone,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentSettings } from "@/components/content/content-settings";
 import { KanbanBoard } from "@/components/content/kanban-board";
 import { ContentCalendar } from "@/components/content/content-calendar";
+import { CampaignsList } from "@/components/content/campaigns-list";
+import { ContentAnalytics } from "@/components/content/content-analytics";
 import { useGoals } from "@/features/content/hooks";
 
 export default function ContentPage({
@@ -42,6 +43,10 @@ export default function ContentPage({
             <Calendar className="w-4 h-4" />
             Calendar
           </TabsTrigger>
+          <TabsTrigger value="campaigns" className="gap-2">
+            <Megaphone className="w-4 h-4" />
+            Campaigns
+          </TabsTrigger>
           <TabsTrigger value="analytics" className="gap-2">
             <BarChart3 className="w-4 h-4" />
             Analytics
@@ -68,18 +73,14 @@ export default function ContentPage({
           <ContentCalendar planId={planId} />
         </TabsContent>
 
-        {/* Analytics - Coming Soon */}
+        {/* Campaigns */}
+        <TabsContent value="campaigns">
+          <CampaignsList planId={planId} />
+        </TabsContent>
+
+        {/* Analytics */}
         <TabsContent value="analytics">
-          <ComingSoonPlaceholder
-            title="Content Analytics"
-            description="Track performance of your content strategy. See how your posts contribute to your OKRs."
-            features={[
-              "Platform performance metrics",
-              "Content type analysis",
-              "OKR contribution tracking",
-              "Engagement trends",
-            ]}
-          />
+          <ContentAnalytics planId={planId} />
         </TabsContent>
 
         {/* Settings - Implemented */}
@@ -88,44 +89,5 @@ export default function ContentPage({
         </TabsContent>
       </Tabs>
     </>
-  );
-}
-
-interface ComingSoonPlaceholderProps {
-  title: string;
-  description: string;
-  features: string[];
-}
-
-function ComingSoonPlaceholder({
-  title,
-  description,
-  features,
-}: ComingSoonPlaceholderProps) {
-  return (
-    <Card className="border-dashed">
-      <CardHeader className="text-center pb-2">
-        <div className="mx-auto w-12 h-12 rounded-full bg-bg-1 flex items-center justify-center mb-4">
-          <Construction className="w-6 h-6 text-text-muted" />
-        </div>
-        <CardTitle className="text-xl">{title}</CardTitle>
-        <CardDescription className="max-w-md mx-auto">
-          {description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-center">
-          <p className="text-small text-text-muted mb-4">Coming soon:</p>
-          <ul className="inline-block text-left space-y-2">
-            {features.map((feature, index) => (
-              <li key={index} className="flex items-center gap-2 text-body-sm text-text-muted">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-                {feature}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
