@@ -83,12 +83,13 @@ export function AddDistributionDialog({
             post_id: postId,
             account_id: accountId,
             status: "draft",
-            notes: null,
-            format: "",
+            format: null,
+            caption: null,
             scheduled_at: null,
             posted_at: null,
             platform_post_url: null,
             platform_specific_data: {},
+            linked_task_id: null,
           })
         )
       );

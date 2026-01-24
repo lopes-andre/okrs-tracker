@@ -162,7 +162,7 @@ export function DistributionDetailDialog({
   const [caption, setCaption] = useState("");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
-  const [notes, setNotes] = useState(distribution.notes || "");
+  const [internalNotes, setInternalNotes] = useState("");
   const [platformData, setPlatformData] = useState<PlatformSpecificData>({});
   const [createReminderTask, setCreateReminderTask] = useState(false);
 
@@ -170,7 +170,9 @@ export function DistributionDetailDialog({
   useEffect(() => {
     if (open) {
       setFormat(distribution.format || "");
-      setNotes(distribution.notes || "");
+      // Internal notes stored in platform_specific_data
+      const existingNotes = (distribution.platform_specific_data as Record<string, unknown>)?.internal_notes;
+      setInternalNotes(typeof existingNotes === 'string' ? existingNotes : "");
       setCreateReminderTask(false);
 
       // Parse platform-specific data
@@ -200,10 +202,10 @@ export function DistributionDetailDialog({
         scheduled_at = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
       }
 
-      // Build platform-specific data
-      const newPlatformData: PlatformSpecificData = {
+      // Build platform-specific data (store extra fields like hashtags, internal notes)
+      const newPlatformData: PlatformSpecificData & { internal_notes?: string } = {
         ...platformData,
-        caption: caption || undefined,
+        internal_notes: internalNotes || undefined,
       };
 
       // Determine status based on scheduling
@@ -215,8 +217,8 @@ export function DistributionDetailDialog({
       await updateDistribution.mutateAsync({
         distributionId: distribution.id,
         updates: {
-          format: format || "",
-          notes: notes || undefined,
+          format: format || null,
+          caption: caption || null,
           scheduled_at,
           status,
           platform_specific_data: newPlatformData as Record<string, unknown>,
@@ -252,7 +254,7 @@ export function DistributionDetailDialog({
   }, [
     distribution,
     format,
-    notes,
+    internalNotes,
     caption,
     scheduledDate,
     scheduledTime,
@@ -556,8 +558,8 @@ export function DistributionDetailDialog({
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={internalNotes}
+              onChange={(e) => setInternalNotes(e.target.value)}
               placeholder="Internal notes..."
               rows={2}
             />

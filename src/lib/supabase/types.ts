@@ -487,13 +487,14 @@ export interface ContentDistribution {
   id: string;
   post_id: string;
   account_id: string;
-  format: string;
   status: ContentDistributionStatus;
+  format: string | null;
+  caption: string | null;
   scheduled_at: string | null;
   posted_at: string | null;
   platform_post_url: string | null;
   platform_specific_data: Record<string, unknown>;
-  notes: string | null;
+  linked_task_id: string | null;
   created_at: string;
   updated_at: string;
 }
