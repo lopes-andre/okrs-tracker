@@ -5,6 +5,7 @@ import { QueryProvider } from "@/lib/query-client";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { WebVitalsReporter } from "@/components/performance";
 
 // Load Plus Jakarta Sans for headings
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -61,6 +62,7 @@ export default function RootLayout({
             </ErrorBoundary>
           </TooltipProvider>
           <Toaster />
+          <WebVitalsReporter />
         </QueryProvider>
       </body>
     </html>
