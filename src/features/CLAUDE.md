@@ -158,6 +158,43 @@ interface ImportOptions {
 }
 ```
 
+### `content/`
+Content Planner for managing social media content with Kanban workflow.
+
+**Module Structure:**
+```
+src/features/content/
+├── api.ts            # Supabase queries for content
+├── hooks.ts          # React Query hooks
+├── content.test.ts   # Unit tests
+└── index.ts          # Re-exports
+```
+
+**Key exports:**
+- `usePlatforms()` - Available social platforms (read-only)
+- `useAccounts(planId)` - Social media accounts
+- `useGoals(planId)` - Content goals (Authority, Audience Growth, etc.)
+- `usePosts(planId, filters?)` - Content posts with Kanban status
+- `usePostsWithDetails(planId)` - Posts with goals and distribution counts
+- `usePost(postId)` - Single post with full details
+- `useDistributionsByPost(postId)` - Distribution schedule for a post
+- `useCalendarData(planId, startDate, endDate)` - Calendar view
+- `useCampaigns(planId, filters?)` - Ad campaigns
+- `useCreatePost()`, `useUpdatePost()`, `useDeletePost()`
+- `useCreateDistribution()`, `useMarkDistributionPosted()`
+- `useUploadMedia()`, `useDeleteMedia()` - Storage operations
+
+**Post Status Workflow:**
+- `backlog` - No distributions assigned
+- `tagged` - Has distributions in draft status
+- `ongoing` - Has scheduled or posted distributions (not all complete)
+- `complete` - All distributions posted
+
+**Distribution Status:**
+- `draft` - Created, not scheduled
+- `scheduled` - Scheduled for future posting
+- `posted` - Published to platform
+
 ## API Pattern
 
 ```typescript

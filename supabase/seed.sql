@@ -313,8 +313,93 @@ BEGIN
     v_user_id
   );
 
+  -- ============================================================================
+  -- CONTENT PLANNER: Goals
+  -- ============================================================================
+
+  DECLARE
+    v_goal_authority_id UUID;
+    v_goal_audience_id UUID;
+    v_goal_sales_id UUID;
+    v_goal_engagement_id UUID;
+    v_linkedin_platform_id UUID;
+    v_youtube_platform_id UUID;
+    v_newsletter_platform_id UUID;
+    v_linkedin_account_id UUID;
+    v_youtube_account_id UUID;
+    v_post1_id UUID;
+    v_post2_id UUID;
+    v_post3_id UUID;
+  BEGIN
+    -- Get platform IDs
+    SELECT id INTO v_linkedin_platform_id FROM content_platforms WHERE name = 'linkedin';
+    SELECT id INTO v_youtube_platform_id FROM content_platforms WHERE name = 'youtube';
+    SELECT id INTO v_newsletter_platform_id FROM content_platforms WHERE name = 'newsletter';
+
+    IF v_linkedin_platform_id IS NULL THEN
+      RAISE NOTICE 'Content platforms not found. Run migrations first.';
+    ELSE
+      -- Create content goals
+      INSERT INTO content_goals (plan_id, name, description, color, sort_order)
+      VALUES
+        (v_plan_id, 'Authority', 'Establish expertise and thought leadership', '#8B5CF6', 1),
+        (v_plan_id, 'Audience Growth', 'Expand reach and gain new followers', '#3B82F6', 2),
+        (v_plan_id, 'Sales', 'Drive conversions and revenue', '#10B981', 3),
+        (v_plan_id, 'Engagement', 'Build community and spark conversations', '#F59E0B', 4)
+      RETURNING id INTO v_goal_authority_id;
+
+      SELECT id INTO v_goal_audience_id FROM content_goals WHERE plan_id = v_plan_id AND name = 'Audience Growth';
+      SELECT id INTO v_goal_sales_id FROM content_goals WHERE plan_id = v_plan_id AND name = 'Sales';
+      SELECT id INTO v_goal_engagement_id FROM content_goals WHERE plan_id = v_plan_id AND name = 'Engagement';
+
+      -- Create content accounts (linked to KRs)
+      INSERT INTO content_accounts (plan_id, platform_id, account_name, account_handle, account_type, linked_kr_id, sort_order)
+      VALUES
+        (v_plan_id, v_linkedin_platform_id, 'Main LinkedIn', '@johndoe', 'personal', v_kr1_id, 1),
+        (v_plan_id, v_youtube_platform_id, 'Main YouTube', '@johndoe', 'personal', v_kr2_id, 2)
+      RETURNING id INTO v_linkedin_account_id;
+
+      SELECT id INTO v_youtube_account_id FROM content_accounts WHERE plan_id = v_plan_id AND platform_id = v_youtube_platform_id;
+
+      -- Create sample content posts
+      INSERT INTO content_posts (plan_id, title, description, status, created_by, display_order)
+      VALUES
+        (v_plan_id, '5 OKR Mistakes I Made (So You Don''t Have To)', 'Share lessons learned from personal OKR journey. Include specific examples and how I fixed them.', 'ongoing', v_user_id, 1),
+        (v_plan_id, 'How I Track 100+ KPIs in One Dashboard', 'Tutorial on building a comprehensive tracking system. Show the tech stack and process.', 'tagged', v_user_id, 2),
+        (v_plan_id, 'The 80/20 of Content Creation', 'Focus on what actually moves the needle. Debunk common myths about posting frequency.', 'backlog', v_user_id, 3)
+      RETURNING id INTO v_post1_id;
+
+      SELECT id INTO v_post2_id FROM content_posts WHERE plan_id = v_plan_id AND title LIKE 'How I Track%';
+      SELECT id INTO v_post3_id FROM content_posts WHERE plan_id = v_plan_id AND title LIKE 'The 80/20%';
+
+      -- Link posts to goals
+      INSERT INTO content_post_goals (post_id, goal_id)
+      VALUES
+        (v_post1_id, v_goal_authority_id),
+        (v_post1_id, v_goal_engagement_id),
+        (v_post2_id, v_goal_authority_id),
+        (v_post2_id, v_goal_audience_id),
+        (v_post3_id, v_goal_audience_id);
+
+      -- Create distributions for post 1 (ongoing)
+      INSERT INTO content_distributions (post_id, account_id, format, status, scheduled_at, posted_at, platform_post_url)
+      VALUES
+        (v_post1_id, v_linkedin_account_id, 'carousel', 'posted', '2026-01-20 09:00:00', '2026-01-20 09:05:00', 'https://linkedin.com/posts/example-okr-mistakes'),
+        (v_post1_id, v_youtube_account_id, 'short', 'scheduled', '2026-01-25 12:00:00', NULL, NULL);
+
+      -- Create distributions for post 2 (tagged, not yet scheduled)
+      INSERT INTO content_distributions (post_id, account_id, format, status, notes)
+      VALUES
+        (v_post2_id, v_linkedin_account_id, 'document', 'draft', 'Need to finalize slides'),
+        (v_post2_id, v_youtube_account_id, 'video', 'draft', 'Script in progress');
+
+      RAISE NOTICE 'Content Planner seed data created: 4 goals, 2 accounts, 3 posts, 4 distributions';
+    END IF;
+  END;
+
   RAISE NOTICE 'Seed completed successfully!';
   RAISE NOTICE 'Plan ID: %', v_plan_id;
   RAISE NOTICE 'Created: 3 objectives, 6 annual KRs, 20 quarter targets, 11 tasks, 14 check-ins';
-  
+  RAISE NOTICE 'Created: 4 content goals, 2 content accounts, 3 content posts';
+
 END $$;

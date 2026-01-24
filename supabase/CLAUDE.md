@@ -286,6 +286,45 @@ CREATE TABLE weekly_reviews (
 );
 ```
 
+### Content Planner
+
+Content planning and distribution management tables (migrations 015-017).
+
+**Enums:**
+```sql
+CREATE TYPE content_post_status AS ENUM ('backlog', 'tagged', 'ongoing', 'complete');
+CREATE TYPE content_distribution_status AS ENUM ('draft', 'scheduled', 'posted');
+CREATE TYPE content_campaign_status AS ENUM ('draft', 'active', 'paused', 'completed');
+CREATE TYPE content_campaign_objective AS ENUM ('awareness', 'traffic', 'engagement', 'conversions');
+CREATE TYPE content_account_type AS ENUM ('personal', 'business');
+```
+
+**Core Tables:**
+- `content_platforms` - Platform definitions (Instagram, LinkedIn, etc.) - read-only, seeded
+- `content_accounts` - User's social media accounts linked to plans
+- `content_goals` - Content goals per plan (Authority, Audience Growth, etc.)
+- `content_posts` - Content ideas/posts with Kanban workflow
+- `content_post_goals` - Many-to-many: posts to goals
+- `content_post_media` - Media files attached to posts
+- `content_post_links` - Links attached to posts
+- `content_distributions` - Distribution schedule for each post/account
+- `content_distribution_metrics` - Performance metrics check-ins
+- `content_campaigns` - Paid campaign tracking
+- `content_campaign_posts` - Many-to-many: campaigns to posts
+- `content_campaign_checkins` - Campaign performance check-ins
+
+**Key RPC Functions:**
+- `get_content_posts_with_details(plan_id)` - Posts with goals and distribution counts
+- `get_content_calendar(plan_id, start_date, end_date)` - Calendar view data
+- `reorder_content_posts(post_ids, status)` - Kanban reordering
+
+**Auto-status Trigger:**
+The `update_content_post_status()` trigger automatically updates post status based on distributions:
+- No distributions → `backlog`
+- Has distributions, none scheduled/posted → `tagged`
+- Any scheduled or posted → `ongoing`
+- All posted → `complete`
+
 ## Row Level Security
 
 All tables have RLS enabled with policies based on `plan_members`.
@@ -389,6 +428,32 @@ const { data } = await supabase.storage
 const { error } = await supabase.storage
   .from('plan-backups')
   .remove([filePath]);
+```
+
+### `content-media` Bucket
+
+Storage for content planner media files (images, PDFs).
+
+**Configuration:**
+- Private bucket (uses signed URLs)
+- File size limit: 10MB
+- Allowed MIME types: image/jpeg, image/png, image/webp, image/gif, application/pdf
+- Path pattern: `{planId}/{postId}/{filename}`
+
+**RLS Policies:**
+- Members can view files from their plans
+- Editors can upload/delete files in their plans
+
+**Usage (via `src/features/content/api.ts`):**
+```typescript
+// Upload media
+const { path, url } = await uploadMediaFile(planId, postId, file);
+
+// Get signed URL
+const signedUrl = await getMediaSignedUrl(path);
+
+// Delete media
+await deleteMediaFile(path);
 ```
 
 ## Local Development
