@@ -1,5 +1,5 @@
 import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
-import { handleSupabaseError, handleSupabaseQuery } from "@/lib/api-utils";
+import { handleSupabaseError, handleSupabaseQuery, handleSupabaseDelete } from "@/lib/api-utils";
 import type {
   ContentPlatform,
   ContentAccount,
@@ -151,11 +151,12 @@ export async function updateAccount(accountId: string, updates: ContentAccountUp
  */
 export async function deleteAccount(accountId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_accounts")
       .delete()
-      .eq("id", accountId)
+      .eq("id", accountId),
+    "deleteAccount"
   );
 }
 
@@ -211,11 +212,12 @@ export async function updateGoal(goalId: string, updates: ContentGoalUpdate): Pr
  */
 export async function deleteGoal(goalId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_goals")
       .delete()
-      .eq("id", goalId)
+      .eq("id", goalId),
+    "deleteGoal"
   );
 }
 
@@ -455,11 +457,12 @@ export async function updatePost(postId: string, updates: ContentPostUpdate, goa
  */
 export async function deletePost(postId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_posts")
       .delete()
-      .eq("id", postId)
+      .eq("id", postId),
+    "deletePost"
   );
 }
 
@@ -497,11 +500,12 @@ export async function addPostMedia(media: ContentPostMediaInsert): Promise<Conte
  */
 export async function deletePostMedia(mediaId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_post_media")
       .delete()
-      .eq("id", mediaId)
+      .eq("id", mediaId),
+    "deletePostMedia"
   );
 }
 
@@ -528,11 +532,12 @@ export async function addPostLink(link: ContentPostLinkInsert): Promise<ContentP
  */
 export async function deletePostLink(linkId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_post_links")
       .delete()
-      .eq("id", linkId)
+      .eq("id", linkId),
+    "deletePostLink"
   );
 }
 
@@ -616,11 +621,12 @@ export async function updateDistribution(
  */
 export async function deleteDistribution(distributionId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_distributions")
       .delete()
-      .eq("id", distributionId)
+      .eq("id", distributionId),
+    "deleteDistribution"
   );
 }
 
@@ -760,11 +766,12 @@ export async function updateCampaign(
  */
 export async function deleteCampaign(campaignId: string): Promise<void> {
   const supabase = createClient();
-  await handleSupabaseError(
+  await handleSupabaseDelete(
     supabase
       .from("content_campaigns")
       .delete()
-      .eq("id", campaignId)
+      .eq("id", campaignId),
+    "deleteCampaign"
   );
 }
 

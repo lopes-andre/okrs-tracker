@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link, User, Briefcase } from "lucide-react";
+import { Plus, Loader2, MoreVertical, Pencil, Trash2, Target, User, Briefcase, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,7 +105,7 @@ export function AccountsSettings({ planId }: AccountsSettingsProps) {
       {/* Accounts List */}
       {!accounts || accounts.length === 0 ? (
         <EmptyState
-          icon={Link}
+          icon={Link2}
           title="No accounts connected"
           description="Add your social media accounts to start tracking content distribution across platforms."
           action={{
@@ -176,41 +182,49 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
   const colors = getPlatformColors(account.platform.name);
 
   return (
-    <div
-      className={`flex items-center justify-between p-4 rounded-card border ${
-        account.is_active ? "border-border-soft" : "border-border-soft opacity-60"
-      } bg-bg-0 hover:border-border transition-colors`}
-    >
-      <div className="flex items-center gap-4">
-        <div className="flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className={`font-medium ${colors.text}`}>{account.account_name}</span>
-            <Badge variant="outline" className="px-1.5 py-0.5" title={account.account_type === "personal" ? "Personal account" : "Business account"}>
-              {account.account_type === "personal" ? (
-                <User className="w-3 h-3" />
-              ) : (
-                <Briefcase className="w-3 h-3" />
+    <TooltipProvider>
+      <div
+        className={`flex items-center justify-between p-4 rounded-card border ${
+          account.is_active ? "border-border-soft" : "border-border-soft opacity-60"
+        } bg-bg-0 hover:border-border transition-colors`}
+      >
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className={`font-medium ${colors.text}`}>{account.account_name}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="px-1.5 py-0.5 cursor-default">
+                    {account.account_type === "personal" ? (
+                      <User className="w-3 h-3" />
+                    ) : (
+                      <Briefcase className="w-3 h-3" />
+                    )}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{account.account_type === "personal" ? "Personal account" : "Business account"}</p>
+                </TooltipContent>
+              </Tooltip>
+              {!account.is_active && (
+                <Badge variant="secondary" className="text-[10px]">
+                  Inactive
+                </Badge>
               )}
-            </Badge>
-            {!account.is_active && (
-              <Badge variant="secondary" className="text-[10px]">
-                Inactive
-              </Badge>
+            </div>
+            {account.linked_kr && (
+              <div className="flex items-center gap-1 mt-1">
+                <Target className="w-3 h-3 text-text-muted shrink-0" />
+                <span className="text-small text-text-muted truncate max-w-[280px]">
+                  {account.linked_kr.name}
+                </span>
+              </div>
             )}
           </div>
-          {account.linked_kr && (
-            <div className="flex items-center gap-1 mt-1">
-              <Link className="w-3 h-3 text-text-muted" />
-              <span className="text-small text-text-muted">
-                Linked to: {account.linked_kr.name}
-              </span>
-            </div>
-          )}
         </div>
-      </div>
 
-      <div className="flex items-center gap-2">
-        <DropdownMenu>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <MoreVertical className="w-4 h-4" />
@@ -231,7 +245,8 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
