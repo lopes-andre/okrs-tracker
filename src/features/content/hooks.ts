@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage } from "@/lib/toast-utils";
+import { createClient } from "@/lib/supabase/client";
 import * as api from "./api";
 import type {
   ContentAccountInsert,
@@ -110,8 +111,14 @@ export function useCreateAccount(planId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (account: Omit<ContentAccountInsert, "plan_id">) =>
-      api.createAccount({ ...account, plan_id: planId }),
+    mutationFn: async (account: Omit<ContentAccountInsert, "plan_id" | "user_id">) => {
+      // Get current user ID
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      return api.createAccount({ ...account, plan_id: planId, user_id: user.id });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.accounts.list(planId) });
       toast(successMessages.accountCreated);

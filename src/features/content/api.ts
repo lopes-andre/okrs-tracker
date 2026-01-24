@@ -77,7 +77,7 @@ export async function getAccounts(planId: string): Promise<ContentAccount[]> {
       .from("content_accounts")
       .select("*")
       .eq("plan_id", planId)
-      .order("sort_order", { ascending: true })
+      .order("display_order", { ascending: true })
   );
 }
 
@@ -95,7 +95,7 @@ export async function getAccountsWithPlatform(planId: string): Promise<ContentAc
         linked_kr:annual_krs(*)
       `)
       .eq("plan_id", planId)
-      .order("sort_order", { ascending: true })
+      .order("display_order", { ascending: true })
   );
 }
 
@@ -173,7 +173,7 @@ export async function getGoals(planId: string): Promise<ContentGoal[]> {
       .from("content_goals")
       .select("*")
       .eq("plan_id", planId)
-      .order("sort_order", { ascending: true })
+      .order("display_order", { ascending: true })
   );
 }
 
@@ -225,11 +225,11 @@ export async function deleteGoal(goalId: string): Promise<void> {
 export async function reorderGoals(goalIds: string[]): Promise<void> {
   const supabase = createClient();
 
-  // Update each goal's sort_order based on its position in the array
+  // Update each goal's display_order based on its position in the array
   for (let i = 0; i < goalIds.length; i++) {
     await supabase
       .from("content_goals")
-      .update({ sort_order: i })
+      .update({ display_order: i })
       .eq("id", goalIds[i]);
   }
 }
@@ -289,7 +289,7 @@ export async function getPostsWithDetails(planId: string): Promise<ContentPostWi
       .from("content_post_media")
       .select("*")
       .eq("post_id", post.id)
-      .order("sort_order", { ascending: true });
+      .order("display_order", { ascending: true });
 
     // Get links
     const { data: links } = await supabase
@@ -356,7 +356,7 @@ export async function getPost(postId: string): Promise<ContentPostWithDetails | 
     .from("content_post_media")
     .select("*")
     .eq("post_id", postId)
-    .order("sort_order", { ascending: true });
+    .order("display_order", { ascending: true });
 
   // Get links
   const { data: links } = await supabase

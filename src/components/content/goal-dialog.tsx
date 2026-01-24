@@ -83,7 +83,8 @@ export function GoalDialog({
         name,
         description: description || null,
         color,
-        sort_order: 0, // Will be set by the API based on existing goals
+        display_order: 0, // Will be set by the API based on existing goals
+        is_active: true,
       });
     }
 

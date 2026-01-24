@@ -420,16 +420,15 @@ export interface ContentMetricDefinition {
 
 export interface ContentAccount {
   id: string;
+  user_id: string;
   plan_id: string;
   platform_id: string;
   account_name: string;
-  account_handle: string | null;
   account_type: ContentAccountType;
   linked_kr_id: string | null;
+  display_order: number;
   is_active: boolean;
-  profile_url: string | null;
-  avatar_url: string | null;
-  sort_order: number;
+  settings: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -438,9 +437,10 @@ export interface ContentGoal {
   id: string;
   plan_id: string;
   name: string;
-  description: string | null;
   color: string | null;
-  sort_order: number;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

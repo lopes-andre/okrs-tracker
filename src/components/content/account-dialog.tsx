@@ -47,9 +47,7 @@ export function AccountDialog({
 
   const [platformId, setPlatformId] = useState<string>("");
   const [accountName, setAccountName] = useState("");
-  const [accountHandle, setAccountHandle] = useState("");
   const [accountType, setAccountType] = useState<ContentAccountType>("personal");
-  const [profileUrl, setProfileUrl] = useState("");
   const [linkedKrId, setLinkedKrId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
 
@@ -59,17 +57,13 @@ export function AccountDialog({
       if (account) {
         setPlatformId(account.platform_id);
         setAccountName(account.account_name);
-        setAccountHandle(account.account_handle || "");
         setAccountType(account.account_type);
-        setProfileUrl(account.profile_url || "");
         setLinkedKrId(account.linked_kr_id);
         setIsActive(account.is_active);
       } else {
         setPlatformId(platforms[0]?.id || "");
         setAccountName("");
-        setAccountHandle("");
         setAccountType("personal");
-        setProfileUrl("");
         setLinkedKrId(null);
         setIsActive(true);
       }
@@ -86,9 +80,7 @@ export function AccountDialog({
         accountId: account.id,
         updates: {
           account_name: accountName,
-          account_handle: accountHandle || null,
           account_type: accountType,
-          profile_url: profileUrl || null,
           linked_kr_id: linkedKrId,
           is_active: isActive,
         },
@@ -97,13 +89,11 @@ export function AccountDialog({
       await createAccount.mutateAsync({
         platform_id: platformId,
         account_name: accountName,
-        account_handle: accountHandle || null,
         account_type: accountType,
-        profile_url: profileUrl || null,
         linked_kr_id: linkedKrId,
         is_active: isActive,
-        sort_order: 0,
-        avatar_url: null,
+        display_order: 0,
+        settings: {},
       });
     }
 
@@ -159,31 +149,11 @@ export function AccountDialog({
                 id="accountName"
                 value={accountName}
                 onChange={(e) => setAccountName(e.target.value)}
-                placeholder="My Twitter Account"
+                placeholder={`My ${selectedPlatform?.display_name || "Social Media"} Account`}
                 required
               />
               <p className="text-small text-text-muted">
-                A friendly name to identify this account
-              </p>
-            </div>
-
-            {/* Handle */}
-            <div className="grid gap-2">
-              <Label htmlFor="accountHandle">Handle (optional)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">
-                  @
-                </span>
-                <Input
-                  id="accountHandle"
-                  value={accountHandle}
-                  onChange={(e) => setAccountHandle(e.target.value)}
-                  placeholder="username"
-                  className="pl-7"
-                />
-              </div>
-              <p className="text-small text-text-muted">
-                Your username or handle on {selectedPlatform?.display_name || "the platform"}
+                A friendly name to identify this account (e.g., &quot;Personal Twitter&quot;, &quot;Business Instagram&quot;)
               </p>
             </div>
 
@@ -202,18 +172,6 @@ export function AccountDialog({
                   <SelectItem value="business">Business</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Profile URL */}
-            <div className="grid gap-2">
-              <Label htmlFor="profileUrl">Profile URL (optional)</Label>
-              <Input
-                id="profileUrl"
-                type="url"
-                value={profileUrl}
-                onChange={(e) => setProfileUrl(e.target.value)}
-                placeholder="https://twitter.com/username"
-              />
             </div>
 
             {/* KR Linking */}

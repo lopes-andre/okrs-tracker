@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link, ExternalLink } from "lucide-react";
+import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -185,9 +185,6 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
             <span className={`font-medium ${colors.text}`}>{account.account_name}</span>
-            {account.account_handle && (
-              <span className="text-small text-text-muted">@{account.account_handle}</span>
-            )}
             <Badge variant="outline" className="text-[10px]">
               {account.account_type}
             </Badge>
@@ -209,22 +206,6 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        {account.profile_url && (
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="h-8 w-8"
-          >
-            <a
-              href={account.profile_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </Button>
-        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
