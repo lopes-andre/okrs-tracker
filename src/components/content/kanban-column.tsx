@@ -1,0 +1,139 @@
+"use client";
+
+import React from "react";
+import { useDroppable } from "@dnd-kit/core";
+import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import type { ContentPostStatus } from "@/lib/supabase/types";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface KanbanColumnProps {
+  id: ContentPostStatus;
+  title: string;
+  description: string;
+  count: number;
+  children: React.ReactNode;
+  onAddPost?: () => void;
+  /** Render content above the cards (e.g., quick capture input) */
+  headerContent?: React.ReactNode;
+}
+
+// ============================================================================
+// STATUS COLORS
+// ============================================================================
+
+const statusColors: Record<ContentPostStatus, { bg: string; border: string; badge: string }> = {
+  backlog: {
+    bg: "bg-bg-1/50",
+    border: "border-border-soft",
+    badge: "bg-text-muted/10 text-text-muted",
+  },
+  tagged: {
+    bg: "bg-amber-50/50 dark:bg-amber-950/20",
+    border: "border-amber-200/50 dark:border-amber-800/30",
+    badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+  },
+  ongoing: {
+    bg: "bg-blue-50/50 dark:bg-blue-950/20",
+    border: "border-blue-200/50 dark:border-blue-800/30",
+    badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
+  complete: {
+    bg: "bg-green-50/50 dark:bg-green-950/20",
+    border: "border-green-200/50 dark:border-green-800/30",
+    badge: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  },
+};
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export function KanbanColumn({
+  id,
+  title,
+  description,
+  count,
+  children,
+  onAddPost,
+  headerContent,
+}: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id,
+  });
+
+  const colors = statusColors[id];
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex flex-col rounded-lg border min-h-[400px]",
+        colors.bg,
+        colors.border,
+        isOver && "ring-2 ring-accent ring-offset-2"
+      )}
+    >
+      {/* Column Header */}
+      <div className="p-3 border-b border-border-soft">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-body-sm">{title}</h3>
+            <span
+              className={cn(
+                "px-2 py-0.5 rounded-full text-small font-medium",
+                colors.badge
+              )}
+            >
+              {count}
+            </span>
+          </div>
+          {onAddPost && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onAddPost}
+            >
+              <Plus className="w-4 h-4" />
+              <span className="sr-only">Add post to {title}</span>
+            </Button>
+          )}
+        </div>
+        <p className="text-small text-text-muted">{description}</p>
+      </div>
+
+      {/* Column Content */}
+      <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+        {/* Header content (e.g., quick capture) */}
+        {headerContent && (
+          <div className="mb-2">{headerContent}</div>
+        )}
+
+        {children}
+
+        {/* Empty state */}
+        {count === 0 && !headerContent && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <p className="text-small text-text-muted mb-2">No posts yet</p>
+            {onAddPost && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onAddPost}
+                className="text-small"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add post
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

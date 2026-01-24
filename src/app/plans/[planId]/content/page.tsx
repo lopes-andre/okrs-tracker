@@ -7,11 +7,14 @@ import {
   BarChart3,
   Settings,
   Construction,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentSettings } from "@/components/content/content-settings";
+import { KanbanBoard } from "@/components/content/kanban-board";
+import { useGoals } from "@/features/content/hooks";
 
 export default function ContentPage({
   params,
@@ -19,6 +22,7 @@ export default function ContentPage({
   params: Promise<{ planId: string }>;
 }) {
   const { planId } = use(params);
+  const { data: goals = [], isLoading: isLoadingGoals } = useGoals(planId);
 
   return (
     <>
@@ -27,7 +31,7 @@ export default function ContentPage({
         description="Plan and track your social media content strategy"
       />
 
-      <Tabs defaultValue="settings" className="space-y-6">
+      <Tabs defaultValue="planner" className="space-y-6">
         <TabsList>
           <TabsTrigger value="planner" className="gap-2">
             <Kanban className="w-4 h-4" />
@@ -47,18 +51,15 @@ export default function ContentPage({
           </TabsTrigger>
         </TabsList>
 
-        {/* Planner - Coming Soon */}
+        {/* Planner - Kanban Board */}
         <TabsContent value="planner">
-          <ComingSoonPlaceholder
-            title="Content Planner"
-            description="Kanban-style board for planning your content pipeline. Drag posts through stages from idea to published."
-            features={[
-              "Kanban board with customizable stages",
-              "Drag-and-drop post management",
-              "Quick post creation",
-              "Status tracking",
-            ]}
-          />
+          {isLoadingGoals ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+            </div>
+          ) : (
+            <KanbanBoard planId={planId} goals={goals} />
+          )}
         </TabsContent>
 
         {/* Calendar - Coming Soon */}

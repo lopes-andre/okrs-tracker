@@ -301,8 +301,30 @@ export function useCreatePost(planId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ post, goalIds }: { post: Omit<ContentPostInsert, "plan_id">; goalIds?: string[] }) =>
-      api.createPost({ ...post, plan_id: planId }, goalIds),
+    mutationFn: async ({
+      post,
+      goalIds,
+    }: {
+      post: Omit<ContentPostInsert, "plan_id" | "created_by" | "display_order">;
+      goalIds?: string[];
+    }) => {
+      // Get current user ID
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      return api.createPost(
+        {
+          ...post,
+          plan_id: planId,
+          created_by: user.id,
+          display_order: 0, // Will be at top, can be reordered later
+        },
+        goalIds
+      );
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
       toast(successMessages.postCreated);
@@ -743,6 +765,7 @@ export function useUploadMedia(planId: string) {
       api.uploadMediaFile(planId, postId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
       toast(successMessages.mediaUploaded);
     },
     onError: (error) => {
@@ -759,9 +782,10 @@ export function useDeleteMedia(planId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (path: string) => api.deleteMediaFile(path),
+    mutationFn: (mediaId: string) => api.deleteMediaFile(mediaId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
       toast(successMessages.mediaDeleted);
     },
     onError: (error) => {
