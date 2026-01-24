@@ -49,6 +49,8 @@ const successMessages = {
   campaignDeleted: { title: "Campaign deleted", variant: "success" as const },
   mediaUploaded: { title: "Media uploaded", variant: "success" as const },
   mediaDeleted: { title: "Media deleted", variant: "success" as const },
+  linkAdded: { title: "Link added", variant: "success" as const },
+  linkDeleted: { title: "Link deleted", variant: "success" as const },
 };
 
 // ============================================================================
@@ -432,38 +434,6 @@ export function useDeletePostMedia(_planId: string) {
 }
 
 // ============================================================================
-// POST LINKS HOOKS
-// ============================================================================
-
-/**
- * Add link to a post
- */
-export function useAddPostLink(_planId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (link: ContentPostLinkInsert) => api.addPostLink(link),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
-    },
-  });
-}
-
-/**
- * Delete post link
- */
-export function useDeletePostLink(_planId: string) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (linkId: string) => api.deletePostLink(linkId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
-    },
-  });
-}
-
-// ============================================================================
 // DISTRIBUTIONS HOOKS
 // ============================================================================
 
@@ -787,6 +757,57 @@ export function useDeleteMedia(planId: string) {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
       toast(successMessages.mediaDeleted);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+// ============================================================================
+// LINKS HOOKS
+// ============================================================================
+
+/**
+ * Add a link to a post
+ */
+export function useAddPostLink(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (link: { post_id: string; url: string; title?: string | null }) =>
+      api.addPostLink({
+        post_id: link.post_id,
+        url: link.url,
+        title: link.title ?? null,
+        description: null,
+        link_type: null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      toast(successMessages.linkAdded);
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Delete a link from a post
+ */
+export function useDeletePostLink(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (linkId: string) => api.deletePostLink(linkId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      toast(successMessages.linkDeleted);
     },
     onError: (error) => {
       toast(formatErrorMessage(error));
