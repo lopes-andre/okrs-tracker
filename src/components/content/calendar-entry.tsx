@@ -1,0 +1,295 @@
+"use client";
+
+import { format, parseISO, isPast, isToday } from "date-fns";
+import { Check, AlertTriangle, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { PlatformIcon } from "./platform-icon";
+import { cn } from "@/lib/utils";
+import type { ContentCalendarEntry } from "@/lib/supabase/types";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CalendarEntryProps {
+  entry: ContentCalendarEntry;
+  onClick?: () => void;
+  variant?: "compact" | "default" | "expanded";
+  showTime?: boolean;
+}
+
+interface CalendarEntryGroupProps {
+  entries: ContentCalendarEntry[];
+  onClick?: (entry: ContentCalendarEntry) => void;
+  variant?: "compact" | "default" | "expanded";
+  showTime?: boolean;
+  maxVisible?: number;
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function getEntryStatus(entry: ContentCalendarEntry) {
+  if (entry.status === "posted") {
+    return "posted";
+  }
+
+  if (entry.scheduled_at) {
+    const scheduledDate = parseISO(entry.scheduled_at);
+    if (isPast(scheduledDate) && !isToday(scheduledDate)) {
+      return "overdue";
+    }
+    return "scheduled";
+  }
+
+  return "draft";
+}
+
+function getStatusStyles(status: string) {
+  switch (status) {
+    case "posted":
+      return "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300";
+    case "overdue":
+      return "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300";
+    case "scheduled":
+      return "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300";
+    default:
+      return "bg-bg-1 border-border text-text";
+  }
+}
+
+// ============================================================================
+// SINGLE ENTRY COMPONENT
+// ============================================================================
+
+export function CalendarEntry({
+  entry,
+  onClick,
+  variant = "default",
+  showTime = true,
+}: CalendarEntryProps) {
+  const status = getEntryStatus(entry);
+  const statusStyles = getStatusStyles(status);
+
+  const time = entry.scheduled_at
+    ? format(parseISO(entry.scheduled_at), "h:mm a")
+    : null;
+
+  const content = (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-md border cursor-pointer transition-all hover:shadow-sm",
+        statusStyles,
+        variant === "compact" && "px-1.5 py-0.5 text-[10px]",
+        variant === "default" && "px-2 py-1 text-small",
+        variant === "expanded" && "px-3 py-2"
+      )}
+      onClick={onClick}
+    >
+      {/* Platform Icon */}
+      <PlatformIcon
+        platformName={entry.platform_name}
+        size={variant === "compact" ? "sm" : "sm"}
+              />
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p
+          className={cn(
+            "truncate font-medium",
+            variant === "compact" && "text-[10px]",
+            variant === "default" && "text-small",
+            variant === "expanded" && "text-body-sm"
+          )}
+        >
+          {entry.post_title}
+        </p>
+        {variant === "expanded" && (
+          <p className="text-[10px] text-text-muted truncate">
+            {entry.account_name}
+          </p>
+        )}
+      </div>
+
+      {/* Time */}
+      {showTime && time && variant !== "compact" && (
+        <span className="text-[10px] text-text-muted shrink-0">{time}</span>
+      )}
+
+      {/* Status Icon */}
+      {status === "posted" && (
+        <Check className="w-3 h-3 text-green-600 shrink-0" />
+      )}
+      {status === "overdue" && (
+        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+      )}
+    </div>
+  );
+
+  // Wrap in tooltip for additional info
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <div className="space-y-1">
+            <p className="font-medium">{entry.post_title}</p>
+            <div className="flex items-center gap-2 text-small">
+              <PlatformIcon
+                platformName={entry.platform_name}
+                size="sm"
+                              />
+              <span>{entry.account_name}</span>
+            </div>
+            {time && (
+              <p className="text-small text-text-muted flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {time}
+              </p>
+            )}
+            <Badge
+              variant={status === "posted" ? "default" : "outline"}
+              className={cn(
+                "text-[10px]",
+                status === "posted" && "bg-green-600",
+                status === "overdue" && "border-amber-500 text-amber-600",
+                status === "scheduled" && "border-blue-500 text-blue-600"
+              )}
+            >
+              {status === "posted" && "Posted"}
+              {status === "overdue" && "Overdue"}
+              {status === "scheduled" && "Scheduled"}
+            </Badge>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ============================================================================
+// GROUPED ENTRIES COMPONENT (for same post, multiple platforms)
+// ============================================================================
+
+export function CalendarEntryGroup({
+  entries,
+  onClick,
+  variant = "default",
+  showTime = true,
+  maxVisible = 3,
+}: CalendarEntryGroupProps) {
+  if (entries.length === 0) return null;
+
+  // Group entries by post_id and scheduled time
+  const groupedByPostAndTime = entries.reduce((acc, entry) => {
+    const key = `${entry.post_id}-${entry.scheduled_at}`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(entry);
+    return acc;
+  }, {} as Record<string, ContentCalendarEntry[]>);
+
+  const groups = Object.values(groupedByPostAndTime);
+  const visibleGroups = groups.slice(0, maxVisible);
+  const hiddenCount = groups.length - maxVisible;
+
+  return (
+    <div className="space-y-1">
+      {visibleGroups.map((group, idx) => {
+        // If same post scheduled to multiple platforms at same time, show combined
+        if (group.length > 1) {
+          const firstEntry = group[0];
+          const status = getEntryStatus(firstEntry);
+          const statusStyles = getStatusStyles(status);
+          const time = firstEntry.scheduled_at
+            ? format(parseISO(firstEntry.scheduled_at), "h:mm a")
+            : null;
+
+          return (
+            <div
+              key={idx}
+              className={cn(
+                "flex items-center gap-2 rounded-md border cursor-pointer transition-all hover:shadow-sm",
+                statusStyles,
+                variant === "compact" && "px-1.5 py-0.5",
+                variant === "default" && "px-2 py-1",
+                variant === "expanded" && "px-3 py-2"
+              )}
+              onClick={() => onClick?.(firstEntry)}
+            >
+              {/* Multiple Platform Icons */}
+              <div className="flex -space-x-1">
+                {group.slice(0, 3).map((entry, i) => (
+                  <PlatformIcon
+                    key={entry.distribution_id}
+                    platformName={entry.platform_name}
+                    size="sm"
+                                        className={i > 0 ? "ring-1 ring-white rounded-full" : ""}
+                  />
+                ))}
+                {group.length > 3 && (
+                  <span className="text-[10px] text-text-muted ml-1">
+                    +{group.length - 3}
+                  </span>
+                )}
+              </div>
+
+              {/* Content */}
+              <p
+                className={cn(
+                  "flex-1 min-w-0 truncate font-medium",
+                  variant === "compact" && "text-[10px]",
+                  variant === "default" && "text-small",
+                  variant === "expanded" && "text-body-sm"
+                )}
+              >
+                {firstEntry.post_title}
+              </p>
+
+              {/* Time */}
+              {showTime && time && variant !== "compact" && (
+                <span className="text-[10px] text-text-muted shrink-0">
+                  {time}
+                </span>
+              )}
+
+              {/* Status */}
+              {status === "posted" && (
+                <Check className="w-3 h-3 text-green-600 shrink-0" />
+              )}
+              {status === "overdue" && (
+                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+              )}
+            </div>
+          );
+        }
+
+        // Single entry
+        return (
+          <CalendarEntry
+            key={group[0].distribution_id}
+            entry={group[0]}
+            onClick={() => onClick?.(group[0])}
+            variant={variant}
+            showTime={showTime}
+          />
+        );
+      })}
+
+      {/* Hidden count */}
+      {hiddenCount > 0 && (
+        <p className="text-[10px] text-text-muted text-center py-0.5">
+          +{hiddenCount} more
+        </p>
+      )}
+    </div>
+  );
+}

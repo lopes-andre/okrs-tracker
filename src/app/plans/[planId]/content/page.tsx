@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContentSettings } from "@/components/content/content-settings";
 import { KanbanBoard } from "@/components/content/kanban-board";
+import { ContentCalendar } from "@/components/content/content-calendar";
 import { useGoals } from "@/features/content/hooks";
 
 export default function ContentPage({
@@ -62,18 +63,9 @@ export default function ContentPage({
           )}
         </TabsContent>
 
-        {/* Calendar - Coming Soon */}
+        {/* Calendar */}
         <TabsContent value="calendar">
-          <ComingSoonPlaceholder
-            title="Content Calendar"
-            description="Visual calendar view of your scheduled content. See your publishing schedule at a glance."
-            features={[
-              "Month/week/day views",
-              "Drag-and-drop scheduling",
-              "Platform color coding",
-              "Publishing reminders",
-            ]}
-          />
+          <ContentCalendar planId={planId} />
         </TabsContent>
 
         {/* Analytics - Coming Soon */}
