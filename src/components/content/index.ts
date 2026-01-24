@@ -8,6 +8,12 @@ export { GoalsSettings } from "./goals-settings";
 // Dialogs
 export { AccountDialog } from "./account-dialog";
 export { GoalDialog } from "./goal-dialog";
+export { PostDialog } from "./post-dialog";
+
+// Kanban Board
+export { KanbanBoard } from "./kanban-board";
+export { KanbanColumn } from "./kanban-column";
+export { PostCard } from "./post-card";
 
 // Visual Components
 export { PlatformIcon, getPlatformColors } from "./platform-icon";
