@@ -141,8 +141,11 @@ export function createMockSupabase() {
       if (state.orders.length > 0) {
         data = [...data].sort((a, b) => {
           for (const order of state.orders) {
-            const aVal = (a as Record<string, unknown>)[order.column];
-            const bVal = (b as Record<string, unknown>)[order.column];
+            const aVal = (a as Record<string, unknown>)[order.column] as string | number | null;
+            const bVal = (b as Record<string, unknown>)[order.column] as string | number | null;
+            if (aVal == null && bVal == null) continue;
+            if (aVal == null) return order.ascending ? 1 : -1;
+            if (bVal == null) return order.ascending ? -1 : 1;
             if (aVal < bVal) return order.ascending ? -1 : 1;
             if (aVal > bVal) return order.ascending ? 1 : -1;
           }
@@ -182,7 +185,7 @@ export function createMockSupabase() {
         mockData[table] = [...(mockData[table] || []), ...toInsert];
         return builder;
       },
-      update: (values) => {
+      update: (values: Record<string, unknown>) => {
         recordCall("update", [values]);
         // Update matching items in mock data
         if (mockData[table]) {
@@ -291,7 +294,8 @@ export function createMockSupabase() {
         state.single = true;
         return builder;
       },
-      then: (resolve) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      then: (resolve: any) => {
         return executeQuery().then(resolve);
       },
     };
@@ -347,7 +351,7 @@ export function createMockSupabase() {
 interface MockQueryBuilder {
   select: (columns?: string) => MockQueryBuilder;
   insert: (values: unknown) => MockQueryBuilder;
-  update: (values: unknown) => MockQueryBuilder;
+  update: (values: Record<string, unknown>) => MockQueryBuilder;
   upsert: (values: unknown) => MockQueryBuilder;
   delete: () => MockQueryBuilder;
   eq: (column: string, value: unknown) => MockQueryBuilder;
@@ -364,7 +368,9 @@ interface MockQueryBuilder {
   range: (from: number, to: number) => MockQueryBuilder;
   single: () => MockQueryBuilder;
   maybeSingle: () => MockQueryBuilder;
-  then: <T>(resolve: (result: { data: T; error: Error | null; count: number | null }) => void) => Promise<void>;
+  then: <T>(
+    resolve: (result: { data: T | null; error: Error | null; count: number | null }) => void
+  ) => Promise<void>;
 }
 
 // ============================================================================

@@ -9,7 +9,7 @@
 export * from "./factories";
 
 // Mocks
-export { createMockSupabase, setupSupabaseMock } from "./mocks/supabase";
+export { createMockSupabase } from "./mocks/supabase";
 
 // Render utilities
 export { render, renderWithQueryClient, createTestQueryClient, screen, waitFor, fireEvent, within } from "./utils/render";

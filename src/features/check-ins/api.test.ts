@@ -49,15 +49,28 @@ describe("Check-ins API", () => {
 
   describe("getCheckInsByKr", () => {
     it("should fetch check-ins for a KR", async () => {
-      const checkIn1 = createCheckInFactory({ id: "ci-1", annual_kr_id: "kr-123", value: 50 });
-      const checkIn2 = createCheckInFactory({ id: "ci-2", annual_kr_id: "kr-123", value: 75 });
+      // Use explicit recorded_at timestamps to ensure deterministic order
+      // API orders by recorded_at descending, so newer (checkIn2) comes first
+      const checkIn1 = createCheckInFactory({
+        id: "ci-1",
+        annual_kr_id: "kr-123",
+        value: 50,
+        recorded_at: "2026-01-20T10:00:00Z",
+      });
+      const checkIn2 = createCheckInFactory({
+        id: "ci-2",
+        annual_kr_id: "kr-123",
+        value: 75,
+        recorded_at: "2026-01-21T10:00:00Z",
+      });
       getMock().setMockData("check_ins", [checkIn1, checkIn2]);
 
       const result = await checkInsApi.getCheckInsByKr("kr-123");
 
       expect(result).toHaveLength(2);
-      expect(result[0].value).toBe(50);
-      expect(result[1].value).toBe(75);
+      // Order is descending by recorded_at, so checkIn2 (newer) comes first
+      expect(result[0].value).toBe(75);
+      expect(result[1].value).toBe(50);
     });
 
     it("should return empty array when no check-ins", async () => {

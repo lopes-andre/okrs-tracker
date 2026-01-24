@@ -21,6 +21,7 @@ import type {
   Task,
   CheckIn,
   Tag,
+  KrGroup,
   Dashboard,
   DashboardWidget,
   ActivityEvent,
@@ -250,18 +251,32 @@ export function createAnnualKr(options: CreateAnnualKrOptions = {}): AnnualKr {
       break;
   }
 
+  // Merge defaults with overrides, filtering out undefined values from overrides
+  const merged = {
+    ...defaults,
+    ...Object.fromEntries(
+      Object.entries(overrides).filter(([, v]) => v !== undefined)
+    ),
+  };
+
   return {
     id,
-    objective_id: generateId("obj"),
-    group_id: null,
-    owner_id: null,
-    name: `Test KR ${id}`,
-    description: null,
-    sort_order: 1,
-    created_at: isoDate(-30),
-    updated_at: isoDate(),
-    ...defaults,
-    ...overrides,
+    objective_id: overrides.objective_id ?? generateId("obj"),
+    group_id: overrides.group_id ?? null,
+    owner_id: overrides.owner_id ?? null,
+    name: overrides.name ?? `Test KR ${id}`,
+    description: overrides.description ?? null,
+    sort_order: overrides.sort_order ?? 1,
+    created_at: overrides.created_at ?? isoDate(-30),
+    updated_at: overrides.updated_at ?? isoDate(),
+    // Ensure required fields have valid values (can't be undefined)
+    kr_type: merged.kr_type ?? ("metric" as KrType),
+    direction: merged.direction ?? ("increase" as KrDirection),
+    aggregation: merged.aggregation ?? ("cumulative" as KrAggregation),
+    unit: merged.unit ?? "units",
+    start_value: merged.start_value ?? 0,
+    target_value: merged.target_value ?? 100,
+    current_value: merged.current_value ?? 0,
   };
 }
 
@@ -331,23 +346,36 @@ export function createTask(options: CreateTaskOptions = {}): Task {
       break;
   }
 
+  // Merge defaults with overrides, filtering out undefined values
+  const merged = {
+    ...defaults,
+    ...Object.fromEntries(
+      Object.entries(overrides).filter(([, v]) => v !== undefined)
+    ),
+  };
+
   return {
     id,
-    plan_id: generateId("plan"),
-    objective_id: null,
-    annual_kr_id: null,
-    quarter_target_id: null,
-    title: `Test Task ${id}`,
-    description: null,
-    assigned_to: null,
-    reminder_enabled: false,
-    sort_order: 1,
-    is_recurring: false,
-    recurring_master_id: null,
-    created_at: isoDate(-7),
-    updated_at: isoDate(),
-    ...defaults,
-    ...overrides,
+    plan_id: overrides.plan_id ?? generateId("plan"),
+    objective_id: overrides.objective_id ?? null,
+    annual_kr_id: overrides.annual_kr_id ?? null,
+    quarter_target_id: overrides.quarter_target_id ?? null,
+    title: overrides.title ?? `Test Task ${id}`,
+    description: overrides.description ?? null,
+    assigned_to: overrides.assigned_to ?? null,
+    reminder_enabled: overrides.reminder_enabled ?? false,
+    sort_order: overrides.sort_order ?? 1,
+    is_recurring: overrides.is_recurring ?? false,
+    recurring_master_id: overrides.recurring_master_id ?? null,
+    created_at: overrides.created_at ?? isoDate(-7),
+    updated_at: overrides.updated_at ?? isoDate(),
+    // Ensure required fields have valid values
+    status: merged.status ?? ("pending" as TaskStatus),
+    priority: merged.priority ?? ("medium" as TaskPriority),
+    effort: merged.effort ?? ("moderate" as TaskEffort),
+    due_date: merged.due_date ?? null,
+    due_time: merged.due_time ?? null,
+    completed_at: merged.completed_at ?? null,
   };
 }
 
@@ -384,6 +412,25 @@ export function createTag(overrides: Partial<Tag> = {}): Tag {
     kind: "custom" as TagKind,
     color: "#3B82F6",
     created_at: isoDate(-30),
+    ...overrides,
+  };
+}
+
+// ============================================================================
+// KR GROUP FACTORY
+// ============================================================================
+
+export function createKrGroup(overrides: Partial<KrGroup> = {}): KrGroup {
+  const id = overrides.id || generateId("group");
+  return {
+    id,
+    plan_id: generateId("plan"),
+    name: `KR Group ${id}`,
+    description: null,
+    color: "#10B981",
+    sort_order: 1,
+    created_at: isoDate(-30),
+    updated_at: isoDate(),
     ...overrides,
   };
 }
