@@ -6,19 +6,27 @@ Database schema, migrations, and local development configuration.
 
 ```
 supabase/
-├── config.toml       # Local Supabase configuration
-├── seed.sql          # Seed data for development
-└── migrations/       # Database migrations
-    ├── 20260108000001_enums_and_functions.sql
-    ├── 20260108000002_core_tables.sql
-    ├── 20260108000003_okr_tables.sql
-    ├── 20260108000004_tracking_tables.sql
-    ├── 20260108000005_ui_tables.sql
-    ├── 20260108000006_activity_events.sql
-    ├── 20260108000007_rls_policies.sql
-    ├── 20260108000008_views.sql
-    ├── 20260111000002_weekly_reviews.sql
-    └── 20260111000003_weekly_review_activity.sql
+├── config.toml           # Local Supabase configuration
+├── seed.sql              # Seed data for development
+├── TARGET_SCHEMA.md      # Target schema documentation
+├── migrations/           # Consolidated database migrations (14 files)
+│   ├── 001_extensions_and_types.sql   # All enums (14)
+│   ├── 002_helper_functions.sql       # Trigger & helper functions
+│   ├── 003_core_tables.sql            # profiles, plans, plan_members, invites
+│   ├── 004_okr_tables.sql             # objectives, kr_groups, annual_krs, quarter_targets, tasks
+│   ├── 005_tracking_tables.sql        # check_ins, tags, tag junctions
+│   ├── 006_ui_tables.sql              # dashboards, dashboard_widgets
+│   ├── 007_activity_events.sql        # activity_events + triggers
+│   ├── 008_weekly_reviews.sql         # weekly_reviews tables + triggers
+│   ├── 009_task_features.sql          # task_reminder_settings, assignees, recurrence
+│   ├── 010_communication.sql          # comments, mentions, notifications
+│   ├── 011_rls_policies.sql           # All RLS policies (28 tables)
+│   ├── 012_views.sql                  # Database views (6)
+│   ├── 013_rpc_functions.sql          # Client-callable RPC functions
+│   └── 014_realtime.sql               # Supabase Realtime publication
+└── migrations_archive/   # Original migrations (for reference)
+    ├── MANIFEST.md       # Archive manifest
+    └── *.sql             # Archived migration files
 ```
 
 ## Database Schema
@@ -51,11 +59,18 @@ CREATE TYPE task_effort AS ENUM ('light', 'moderate', 'heavy');
 CREATE TYPE tag_kind AS ENUM ('platform', 'funnel_stage', 'initiative', 'category', 'custom');
 
 -- Event types for activity log
-CREATE TYPE event_entity_type AS ENUM ('task', 'check_in', 'member', 'objective', 'annual_kr', 'quarter_target', 'plan', 'weekly_review');
+CREATE TYPE event_entity_type AS ENUM ('task', 'check_in', 'member', 'objective', 'annual_kr', 'quarter_target', 'plan', 'weekly_review', 'comment');
 CREATE TYPE event_type AS ENUM ('created', 'updated', 'deleted', 'status_changed', 'completed', 'joined', 'left', 'role_changed', 'started');
 
 -- Weekly review status
 CREATE TYPE weekly_review_status AS ENUM ('open', 'pending', 'late', 'complete');
+
+-- Notification types
+CREATE TYPE notification_type AS ENUM ('mentioned', 'comment', 'assigned', 'unassigned', 'task_completed', 'task_updated');
+
+-- Task recurrence
+CREATE TYPE recurrence_frequency AS ENUM ('daily', 'weekly', 'monthly', 'yearly');
+CREATE TYPE recurrence_end_type AS ENUM ('never', 'count', 'until');
 ```
 
 ### Core Tables
@@ -299,14 +314,15 @@ CREATE POLICY "Editors can modify X" ON table_name
 
 ## Database Views
 
-Precomputed views for common queries:
+Precomputed views for common queries (all use SECURITY INVOKER):
 
-- `v_plan_timeline` - Activity events with user info
+- `v_plan_checkins_by_day` - Check-in counts by day for heatmaps
 - `v_objective_progress` - Objective progress with KR counts
 - `v_kr_progress` - KR progress calculations
 - `v_plan_stats` - Plan-level statistics
 - `v_quarter_overview` - Quarter summary
-- `v_weekly_review_summary` - Review status
+- `v_weekly_review_summary` - Review status with computed fields
+- `v_plan_review_stats` - Review analytics and streaks
 
 ## Triggers
 
