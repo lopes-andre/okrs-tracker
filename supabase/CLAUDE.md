@@ -434,15 +434,34 @@ const { error } = await supabase.storage
 
 Storage for content planner media files (images, PDFs).
 
-**Configuration:**
-- Private bucket (uses signed URLs)
+**⚠️ Manual Setup Required:** This bucket must be created via Supabase Dashboard (Storage > New Bucket). SQL migrations cannot create storage buckets due to schema permissions.
+
+**Configuration (create via Dashboard):**
+- Name: `content-media`
+- Public: OFF (private, uses signed URLs)
 - File size limit: 10MB
 - Allowed MIME types: image/jpeg, image/png, image/webp, image/gif, application/pdf
 - Path pattern: `{planId}/{postId}/{filename}`
 
-**RLS Policies:**
-- Members can view files from their plans
-- Editors can upload/delete files in their plans
+**RLS Policies (add via Dashboard > Storage > Policies):**
+
+1. **"Members can view content media"** (SELECT)
+   ```sql
+   bucket_id = 'content-media' AND (storage.foldername(name))[1] IN (
+     SELECT plan_id::text FROM plan_members WHERE user_id = auth.uid()
+   )
+   ```
+
+2. **"Editors can upload content media"** (INSERT)
+   ```sql
+   bucket_id = 'content-media' AND (storage.foldername(name))[1] IN (
+     SELECT plan_id::text FROM plan_members WHERE user_id = auth.uid() AND role IN ('owner', 'editor')
+   )
+   ```
+
+3. **"Editors can update content media"** (UPDATE) - same as INSERT policy
+
+4. **"Editors can delete content media"** (DELETE) - same USING clause as INSERT
 
 **Usage (via `src/features/content/api.ts`):**
 ```typescript
