@@ -4,30 +4,37 @@ import React, { Component, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
+import { handleComponentError } from "@/lib/error-reporter";
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Optional component name for error context */
+  componentName?: string;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorId: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorId: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error("ErrorBoundary caught an error:", error, errorInfo);
+    // Report to centralized error system
+    handleComponentError(error, errorInfo);
+
+    // Call custom error handler if provided
     this.props.onError?.(error, errorInfo);
   }
 

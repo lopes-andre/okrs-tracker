@@ -1,4 +1,11 @@
 import { PostgrestError } from "@supabase/supabase-js";
+import { createModuleLogger } from "./logger";
+
+// ============================================================================
+// LOGGER
+// ============================================================================
+
+const apiLogger = createModuleLogger("api");
 
 // ============================================================================
 // ERROR HANDLING
@@ -37,6 +44,18 @@ export class ApiError extends Error {
         return this.message || "An unexpected error occurred.";
     }
   }
+
+  /**
+   * Get structured error context for logging
+   */
+  toLogContext(): Record<string, unknown> {
+    return {
+      code: this.code,
+      details: this.details,
+      hint: this.hint,
+      userMessage: this.userMessage,
+    };
+  }
 }
 
 // Type for Supabase query results
@@ -47,17 +66,26 @@ interface SupabaseQueryResult<T> {
 
 // Wrapper to handle Supabase errors consistently
 export async function handleSupabaseError<T>(
-  query: PromiseLike<SupabaseQueryResult<T>>
+  query: PromiseLike<SupabaseQueryResult<T>>,
+  operationName?: string
 ): Promise<T> {
   const result = await query;
   const { data, error } = result as SupabaseQueryResult<T>;
 
   if (error) {
-    throw new ApiError(error);
+    const apiError = new ApiError(error);
+    apiLogger.error(
+      `Database operation failed${operationName ? `: ${operationName}` : ""}`,
+      apiError.toLogContext(),
+      apiError
+    );
+    throw apiError;
   }
 
   if (data === null) {
-    throw new Error("No data returned");
+    const noDataError = new Error("No data returned");
+    apiLogger.warn("Query returned no data", { operation: operationName });
+    throw noDataError;
   }
 
   return data;
@@ -65,13 +93,20 @@ export async function handleSupabaseError<T>(
 
 // For queries that can return null (single item fetch)
 export async function handleSupabaseQuery<T>(
-  query: PromiseLike<SupabaseQueryResult<T>>
+  query: PromiseLike<SupabaseQueryResult<T>>,
+  operationName?: string
 ): Promise<T | null> {
   const result = await query;
   const { data, error } = result as SupabaseQueryResult<T>;
 
   if (error) {
-    throw new ApiError(error);
+    const apiError = new ApiError(error);
+    apiLogger.error(
+      `Database operation failed${operationName ? `: ${operationName}` : ""}`,
+      apiError.toLogContext(),
+      apiError
+    );
+    throw apiError;
   }
 
   return data;
