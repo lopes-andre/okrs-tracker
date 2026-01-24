@@ -1,0 +1,252 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, Loader2, MoreVertical, Pencil, Trash2, Link, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/layout/empty-state";
+import { PlatformIcon, getPlatformColors } from "./platform-icon";
+import { AccountDialog } from "./account-dialog";
+import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-dialog";
+import {
+  useAccountsWithPlatform,
+  usePlatforms,
+  useDeleteAccount,
+} from "@/features/content/hooks";
+import type { ContentAccountWithPlatform } from "@/lib/supabase/types";
+
+interface AccountsSettingsProps {
+  planId: string;
+}
+
+export function AccountsSettings({ planId }: AccountsSettingsProps) {
+  const { data: accounts, isLoading } = useAccountsWithPlatform(planId);
+  const { data: platforms } = usePlatforms();
+  const deleteAccount = useDeleteAccount(planId);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<ContentAccountWithPlatform | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [accountToDelete, setAccountToDelete] = useState<ContentAccountWithPlatform | null>(null);
+
+  // Group accounts by platform
+  const accountsByPlatform = accounts?.reduce((acc, account) => {
+    const platformId = account.platform_id;
+    if (!acc[platformId]) {
+      acc[platformId] = [];
+    }
+    acc[platformId].push(account);
+    return acc;
+  }, {} as Record<string, ContentAccountWithPlatform[]>) || {};
+
+  const handleEdit = (account: ContentAccountWithPlatform) => {
+    setEditingAccount(account);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (account: ContentAccountWithPlatform) => {
+    setAccountToDelete(account);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (accountToDelete) {
+      await deleteAccount.mutateAsync(accountToDelete.id);
+      setDeleteDialogOpen(false);
+      setAccountToDelete(null);
+    }
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    setEditingAccount(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-text-muted" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-h4 font-heading font-semibold text-text-strong">
+            Platforms & Accounts
+          </h2>
+          <p className="text-small text-text-muted mt-1">
+            Manage your social media accounts and platforms
+          </p>
+        </div>
+        <Button onClick={() => setDialogOpen(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Add Account
+        </Button>
+      </div>
+
+      {/* Accounts List */}
+      {!accounts || accounts.length === 0 ? (
+        <EmptyState
+          icon={Link}
+          title="No accounts connected"
+          description="Add your social media accounts to start tracking content distribution across platforms."
+          action={{
+            label: "Add Account",
+            onClick: () => setDialogOpen(true),
+          }}
+        />
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(accountsByPlatform).map(([platformId, platformAccounts]) => {
+            const platform = platformAccounts[0]?.platform;
+            if (!platform) return null;
+
+            return (
+              <Card key={platformId}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <PlatformIcon platformName={platform.name} size="lg" />
+                    <div>
+                      <CardTitle className="text-base">{platform.display_name}</CardTitle>
+                      <CardDescription>
+                        {platformAccounts.length} account{platformAccounts.length !== 1 ? "s" : ""}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {platformAccounts.map((account) => (
+                      <AccountRow
+                        key={account.id}
+                        account={account}
+                        onEdit={() => handleEdit(account)}
+                        onDelete={() => handleDelete(account)}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Account Dialog */}
+      <AccountDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogClose}
+        planId={planId}
+        account={editingAccount}
+        platforms={platforms || []}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete Account"
+        description="This will remove all distribution data associated with this account."
+        itemName={accountToDelete?.account_name || "this account"}
+      />
+    </div>
+  );
+}
+
+interface AccountRowProps {
+  account: ContentAccountWithPlatform;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
+  const colors = getPlatformColors(account.platform.name);
+
+  return (
+    <div
+      className={`flex items-center justify-between p-4 rounded-card border ${
+        account.is_active ? "border-border-soft" : "border-border-soft opacity-60"
+      } bg-bg-0 hover:border-border transition-colors`}
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className={`font-medium ${colors.text}`}>{account.account_name}</span>
+            {account.account_handle && (
+              <span className="text-small text-text-muted">@{account.account_handle}</span>
+            )}
+            <Badge variant="outline" className="text-[10px]">
+              {account.account_type}
+            </Badge>
+            {!account.is_active && (
+              <Badge variant="secondary" className="text-[10px]">
+                Inactive
+              </Badge>
+            )}
+          </div>
+          {account.linked_kr && (
+            <div className="flex items-center gap-1 mt-1">
+              <Link className="w-3 h-3 text-text-muted" />
+              <span className="text-small text-text-muted">
+                Linked to: {account.linked_kr.name}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {account.profile_url && (
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="h-8 w-8"
+          >
+            <a
+              href={account.profile_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-status-danger focus:text-status-danger"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
