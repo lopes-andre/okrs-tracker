@@ -368,23 +368,28 @@ interface MockQueryBuilder {
 }
 
 // ============================================================================
-// CONVENIENCE MOCK CREATOR
+// MOCK USAGE EXAMPLE
 // ============================================================================
 
 /**
- * Creates a pre-configured mock for the Supabase untyped client
- * Use this in beforeEach to set up the mock
+ * To use this mock in tests, you need to use vi.hoisted() and vi.mock() at the
+ * top level of your test file. Example:
+ *
+ * ```typescript
+ * import { createMockSupabase } from "@/test/mocks/supabase";
+ *
+ * const { mockRef } = vi.hoisted(() => ({
+ *   mockRef: { current: null as ReturnType<typeof createMockSupabase> | null },
+ * }));
+ *
+ * vi.mock("@/lib/supabase/untyped-client", () => ({
+ *   createUntypedClient: () => mockRef.current?.mockSupabase,
+ * }));
+ *
+ * describe("MyTests", () => {
+ *   beforeEach(() => {
+ *     mockRef.current = createMockSupabase();
+ *   });
+ * });
+ * ```
  */
-export function setupSupabaseMock() {
-  const mock = createMockSupabase();
-
-  vi.mock("@/lib/supabase/untyped-client", () => ({
-    createUntypedClient: () => mock.mockSupabase,
-  }));
-
-  vi.mock("@/lib/supabase/client", () => ({
-    createClient: () => mock.mockSupabase,
-  }));
-
-  return mock;
-}
