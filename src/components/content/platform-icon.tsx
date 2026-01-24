@@ -18,7 +18,7 @@ const platformColors: Record<string, { bg: string; text: string; border: string;
   medium: { bg: "bg-[#000000]/10", text: "text-[#000000]", border: "border-[#000000]/30", fill: "#000000" },
   spotify: { bg: "bg-[#1DB954]/10", text: "text-[#1DB954]", border: "border-[#1DB954]/30", fill: "#1DB954" },
   blog: { bg: "bg-[#6366F1]/10", text: "text-[#6366F1]", border: "border-[#6366F1]/30", fill: "#6366F1" },
-  newsletter: { bg: "bg-[#10B981]/10", text: "text-[#10B981]", border: "border-[#10B981]/30", fill: "#10B981" },
+  newsletter: { bg: "bg-[#F59E0B]/10", text: "text-[#F59E0B]", border: "border-[#F59E0B]/30", fill: "#F59E0B" },
   podcast: { bg: "bg-[#8B5CF6]/10", text: "text-[#8B5CF6]", border: "border-[#8B5CF6]/30", fill: "#8B5CF6" },
 };
 
