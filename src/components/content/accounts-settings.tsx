@@ -213,17 +213,17 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
               )}
             </div>
             {account.linked_kr && (
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
                 <Target className="w-3 h-3 text-text-muted shrink-0" />
                 {account.linked_kr.objective && (
                   <>
-                    <span className="text-small text-text-muted truncate max-w-[140px]">
+                    <span className="text-small text-text-muted">
                       {account.linked_kr.objective.name}
                     </span>
                     <span className="text-small text-text-muted">→</span>
                   </>
                 )}
-                <span className="text-small text-text-muted truncate max-w-[140px]">
+                <span className="text-small text-text-muted">
                   {account.linked_kr.name}
                 </span>
               </div>
