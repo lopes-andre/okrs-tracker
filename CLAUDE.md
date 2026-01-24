@@ -1,152 +1,171 @@
-# OKRs Tracker - Project Context for Claude
+# OKRs Tracker - AI Assistant Instructions
 
-This document provides comprehensive context for AI assistants working on this codebase.
+This document provides comprehensive context for AI assistants (Claude Code and others) working on this codebase.
 
 ## Project Overview
 
-**OKRs Tracker** is a premium personal OKR (Objectives and Key Results) tracking application built with Next.js 15 and Supabase. It helps individuals manage annual objectives, quarterly key results, tasks, and track progress with beautiful analytics.
+**OKRs Tracker** is a full-featured OKR (Objectives and Key Results) tracking application for individuals and teams. Built with Next.js 15 and Supabase, it helps users manage annual objectives, quarterly key results, tasks, and track progress with analytics.
 
-### Key Features
-- **Customizable Dashboard**: Widget-based plan overview with fullscreen expansion
-- **Objectives & Key Results**: Annual objectives with multiple KR types (metric, count, milestone, rate, average)
-- **Quarterly Targets**: Break down annual KRs into quarterly milestones
-- **Tasks**: Task management linked to OKRs with due dates, priorities, and tags
-- **Check-ins**: Progress tracking through check-ins
-- **Analytics**: Charts, pace analysis, burnup charts, activity heatmaps
-- **Weekly Reviews**: Structured review system with reflection prompts
-- **Activity Timeline**: Audit trail of all changes
-- **Import/Export**: JSON and Markdown exports, import with validation
-- **Cloud Backups**: Backup plans to Supabase Storage
+### Core Domain Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Plan** | A yearly OKR plan (e.g., "2026 Goals") |
+| **Objective** | A high-level annual goal (e.g., "O1: Grow Audience") |
+| **Key Result (KR)** | A measurable outcome for an objective |
+| **Quarter Target** | Quarterly milestone for a KR (Q1-Q4) |
+| **Task** | Actionable work item linked to OKRs |
+| **Check-in** | Progress update for a KR |
+| **Weekly Review** | Structured reflection on the week |
+
+### KR Types
+- **Metric**: Numeric value (followers, revenue)
+- **Count**: Integer count (posts published)
+- **Milestone**: Binary completion (launch feature)
+- **Rate**: Percentage or ratio (conversion rate)
+- **Average**: Mean value (engagement rate)
+
+### KR Directions
+- **Increase**: Goal is to grow the value
+- **Decrease**: Goal is to reduce the value
+- **Maintain**: Goal is to stay within range
 
 ## Tech Stack
 
-### Core Framework
-- **Next.js 15.1.0** - App Router with React Server Components
-- **React 19.0.0** - Latest React with concurrent features
-- **TypeScript 5.7** - Strict mode enabled
-
-### Backend & Database
-- **Supabase** - PostgreSQL database with Row Level Security
-- **@supabase/ssr** - Server-side rendering support for auth
-- **@supabase/supabase-js** - Client library
-
-### State Management & Data Fetching
-- **TanStack React Query 5.90** - Server state management with caching
-- Custom query keys factory at `src/lib/query-client.tsx`
-
-### UI & Styling
-- **Tailwind CSS 3.4** - Utility-first CSS
-- **Radix UI** - Headless accessible components:
-  - Dialog, Dropdown Menu, Select, Tabs, Popover, Toast, Tooltip, etc.
-- **class-variance-authority (CVA)** - Variant-based component styling
-- **Lucide React** - Icon library
-- **Recharts 3.6** - Charting library
-
-### Utilities
-- **date-fns 4.1** - Date manipulation
-- **clsx + tailwind-merge** - Class name utilities
-- **html-to-image** - Export functionality
-- **Zod** - Runtime schema validation (for import/export)
-
-### Testing
-- **Vitest 4.0** - Test runner
-- **@testing-library/react** - Component testing
-- Coverage via @vitest/coverage-v8
+| Category | Technology | Version |
+|----------|------------|---------|
+| Framework | Next.js (App Router) | 15.1 |
+| Language | TypeScript (strict) | 5.7 |
+| UI | React | 19.0 |
+| Styling | Tailwind CSS | 3.4 |
+| Components | Radix UI + CVA | Various |
+| State | TanStack React Query | 5.90 |
+| Charts | Recharts | 3.6 |
+| Database | Supabase (PostgreSQL) | 2.47 |
+| Validation | Zod | 4.3 |
+| Testing | Vitest + Testing Library | 4.0 |
+| Dates | date-fns | 4.1 |
+| Icons | Lucide React | 0.468 |
 
 ## Project Structure
 
 ```
 okrs-tracker/
 ├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── (auth)/            # Auth-related server actions
-│   │   ├── auth/callback/     # OAuth callback route
-│   │   ├── login/             # Login page
-│   │   ├── plans/             # Main app routes (protected)
-│   │   │   ├── [planId]/      # Dynamic plan routes
-│   │   │   │   ├── analytics/ # Analytics dashboard
-│   │   │   │   ├── okrs/      # OKRs management
-│   │   │   │   ├── reviews/   # Weekly reviews
-│   │   │   │   ├── settings/  # Plan settings
-│   │   │   │   ├── tasks/     # Tasks management
-│   │   │   │   └── timeline/  # Activity timeline
-│   │   │   └── page.tsx       # Plans list
-│   │   ├── globals.css        # Global styles
-│   │   └── layout.tsx         # Root layout
+│   ├── app/                      # Next.js App Router
+│   │   ├── (auth)/               # Auth server actions
+│   │   ├── auth/callback/        # OAuth callback
+│   │   ├── login/                # Login page
+│   │   └── plans/                # Protected routes
+│   │       ├── page.tsx          # Plans list
+│   │       └── [planId]/         # Plan routes
+│   │           ├── page.tsx      # Dashboard
+│   │           ├── okrs/         # OKR management
+│   │           ├── tasks/        # Task management
+│   │           │   └── logbook/  # Completed tasks
+│   │           ├── analytics/    # Charts & insights
+│   │           ├── reviews/      # Weekly reviews
+│   │           │   └── [reviewId]/ # Review wizard
+│   │           ├── timeline/     # Activity feed
+│   │           └── settings/     # Plan settings
 │   │
-│   ├── components/            # React components
-│   │   ├── activity/          # Activity feed components
-│   │   ├── analytics/         # Charts and analytics
-│   │   ├── dashboard/         # Dashboard widgets and grid system
-│   │   ├── import-export/     # Import/Export settings & dialogs
-│   │   ├── layout/            # Layout components (Navbar, PageHeader, EmptyState)
-│   │   ├── okr/               # OKR-specific components
-│   │   ├── tags/              # Tag management components
-│   │   ├── tasks/             # Task-related components
-│   │   ├── ui/                # Base UI components (Radix-based)
-│   │   └── weekly-review/     # Weekly review components
+│   ├── components/               # React components
+│   │   ├── ui/                   # Base Radix UI components
+│   │   ├── layout/               # Navbar, PageHeader, EmptyState
+│   │   ├── dashboard/            # Widget-based dashboard
+│   │   ├── okr/                  # OKR components
+│   │   ├── tasks/                # Task components
+│   │   ├── tags/                 # Tag management
+│   │   ├── activity/             # Activity timeline
+│   │   ├── analytics/            # Charts and data viz
+│   │   ├── comments/             # Comment system
+│   │   ├── import-export/        # Import/export UI
+│   │   └── weekly-review/        # Review components
 │   │
-│   ├── features/              # Feature modules (API + hooks)
-│   │   ├── analytics/
-│   │   ├── annual-krs/
-│   │   ├── check-ins/
-│   │   ├── dashboards/
-│   │   ├── import-export/     # Export JSON/MD, import, cloud backups
-│   │   ├── objectives/
-│   │   ├── plans/
-│   │   ├── progress/
-│   │   ├── quarter-targets/
-│   │   ├── tags/
-│   │   ├── tasks/
-│   │   ├── timeline/
-│   │   └── weekly-reviews/
+│   ├── features/                 # Data layer (API + hooks)
+│   │   ├── plans/                # Plan management
+│   │   ├── objectives/           # Objectives CRUD
+│   │   ├── annual-krs/           # Key Results CRUD
+│   │   ├── quarter-targets/      # Quarter targets
+│   │   ├── tasks/                # Task management
+│   │   ├── task-recurrence/      # Recurring tasks
+│   │   ├── check-ins/            # Progress check-ins
+│   │   ├── tags/                 # Tags & KR groups
+│   │   ├── comments/             # Comments & mentions
+│   │   ├── notifications/        # In-app notifications
+│   │   ├── timeline/             # Activity events
+│   │   ├── weekly-reviews/       # Weekly reviews
+│   │   ├── dashboards/           # Dashboard widgets
+│   │   ├── analytics/            # Analytics queries
+│   │   ├── team-analytics/       # Team workload stats
+│   │   ├── progress/             # Progress computations
+│   │   └── import-export/        # Data portability
 │   │
-│   ├── lib/                   # Core utilities
-│   │   ├── supabase/          # Supabase client configs
-│   │   ├── api-utils.ts       # API helpers (error handling, pagination)
-│   │   ├── design-tokens.ts   # Design system tokens
-│   │   ├── progress-engine.ts # OKR progress calculations
-│   │   ├── query-client.tsx   # React Query provider & keys
-│   │   ├── toast-utils.ts     # Toast message utilities
-│   │   ├── utils.ts           # General utilities
-│   │   └── weekly-review-engine.ts
+│   ├── lib/                      # Core utilities
+│   │   ├── supabase/             # Supabase clients & types
+│   │   ├── progress-engine.ts    # OKR progress calculations
+│   │   ├── weekly-review-engine.ts # Review logic
+│   │   ├── recurrence-engine.ts  # Task recurrence logic
+│   │   ├── query-client.tsx      # React Query setup
+│   │   ├── api-utils.ts          # API helpers
+│   │   ├── toast-utils.ts        # Toast messages
+│   │   ├── design-tokens.ts      # Design system values
+│   │   └── utils.ts              # General utilities
 │   │
-│   └── middleware.ts          # Auth middleware
+│   ├── test/                     # Test utilities
+│   │   ├── factories/            # Test data factories
+│   │   ├── mocks/                # Mock implementations
+│   │   └── utils/                # Test helpers
+│   │
+│   └── middleware.ts             # Auth middleware
 │
 ├── supabase/
-│   ├── migrations/            # Database migrations
-│   ├── config.toml            # Supabase local config
-│   └── seed.sql               # Seed data
+│   ├── migrations/               # 14 consolidated migrations
+│   ├── scripts/                  # Utility SQL scripts
+│   └── config.toml               # Local Supabase config
 │
-├── coverage/                  # Test coverage reports
-├── tailwind.config.ts         # Tailwind configuration
-├── tsconfig.json              # TypeScript config
-├── vitest.config.ts           # Vitest config
-└── package.json
+└── docs/                         # Documentation
 ```
 
-## Architectural Patterns
+## Key Architectural Patterns
 
-### 1. Feature-Based Organization
+### 1. Feature Module Pattern
 
-Each domain has its own module in `src/features/` containing:
-- `api.ts` - Supabase queries and mutations
-- `hooks.ts` - React Query hooks wrapping the API
+Each domain has its own module in `src/features/`:
 
+```
+src/features/tasks/
+├── api.ts      # Supabase queries/mutations
+├── hooks.ts    # React Query hooks
+└── index.ts    # Re-exports
+```
+
+**API Layer:**
 ```typescript
-// src/features/objectives/api.ts
-export async function getObjectives(planId: string): Promise<Objective[]> {
+// api.ts
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
+import { handleSupabaseError } from "@/lib/api-utils";
+
+export async function getTasks(planId: string): Promise<Task[]> {
   const supabase = createClient();
   return handleSupabaseError(
-    supabase.from("objectives").select("*").eq("plan_id", planId)
+    supabase.from("tasks").select("*").eq("plan_id", planId)
   );
 }
+```
 
-// src/features/objectives/hooks.ts
-export function useObjectives(planId: string) {
+**Hooks Layer:**
+```typescript
+// hooks.ts
+"use client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-client";
+import * as api from "./api";
+
+export function useTasks(planId: string) {
   return useQuery({
-    queryKey: queryKeys.objectives.list(planId),
-    queryFn: () => api.getObjectives(planId),
+    queryKey: queryKeys.tasks.list(planId),
+    queryFn: () => api.getTasks(planId),
     enabled: !!planId,
   });
 }
@@ -154,21 +173,16 @@ export function useObjectives(planId: string) {
 
 ### 2. Query Key Factory
 
-Centralized query keys in `src/lib/query-client.tsx` for cache management:
+Centralized cache keys in `src/lib/query-client.tsx`:
 
 ```typescript
 export const queryKeys = {
-  plans: {
-    all: ["plans"] as const,
-    list: () => [...queryKeys.plans.all, "list"] as const,
-    detail: (planId: string) => [...queryKeys.plans.all, "detail", planId] as const,
+  tasks: {
+    all: ["tasks"] as const,
+    list: (planId: string) => [...queryKeys.tasks.all, "list", planId] as const,
+    detail: (id: string) => [...queryKeys.tasks.all, "detail", id] as const,
   },
-  objectives: {
-    all: ["objectives"] as const,
-    list: (planId: string) => [...queryKeys.objectives.all, "list", planId] as const,
-    // ...
-  },
-  // ...
+  // ... other domains
 };
 ```
 
@@ -176,316 +190,219 @@ export const queryKeys = {
 
 Three client types for different contexts:
 
-```typescript
-// Client-side (browser) - src/lib/supabase/client.ts
-export function createClient() {
-  return createBrowserClient<Database>(url, key);
-}
+| Client | File | Use Case |
+|--------|------|----------|
+| Typed | `client.ts` | Browser, typed queries |
+| Server | `server.ts` | RSC, Server Actions |
+| Untyped | `untyped-client.ts` | Complex/dynamic queries |
 
-// Server-side (RSC, Server Actions) - src/lib/supabase/server.ts
-export async function createClient() {
-  const cookieStore = await cookies();
-  return createServerClient<Database>(url, key, { cookies: {...} });
-}
+### 4. Progress Engine
 
-// Untyped client for complex queries - src/lib/supabase/untyped-client.ts
-export function createUntypedClient() {
-  return createBrowserClient(url, key); // No Database type
-}
-```
-
-### 4. Error Handling Pattern
-
-Consistent error handling with user-friendly messages:
-
-```typescript
-// src/lib/api-utils.ts
-export class ApiError extends Error {
-  get userMessage(): string {
-    switch (this.code) {
-      case "23505": return "This item already exists.";
-      case "42501": return "You don't have permission.";
-      // ...
-    }
-  }
-}
-
-export async function handleSupabaseError<T>(query): Promise<T> {
-  const { data, error } = await query;
-  if (error) throw new ApiError(error);
-  return data;
-}
-```
-
-### 5. Toast Notifications
-
-Standardized toast messages in `src/lib/toast-utils.ts`:
-
-```typescript
-export const successMessages = {
-  taskCreated: { title: "Task created", variant: "success" },
-  taskCompleted: { title: "Task completed", description: "Great work! 🎉", variant: "success" },
-  // ...
-};
-```
-
-### 6. Progress Engine
-
-Pure, testable functions in `src/lib/progress-engine.ts` for:
-- Computing current values
-- Progress percentages (0-1)
-- Expected progress (pace baseline)
+Pure functions in `src/lib/progress-engine.ts` for OKR calculations:
+- Progress percentages
 - Pace status (ahead/on_track/at_risk/off_track)
-- Forecasts
-- Daily/weekly series
-- Rollups (Objective & Plan level)
-
-## Design System
-
-### Kympler-Inspired Design
-The app follows a premium, minimalist aesthetic:
-- Neutral color palette with soft grays
-- Professional blue accent (#2563EB)
-- Crisp typography (Plus Jakarta Sans for headings, Inter for body)
-- Soft shadows and rounded corners
-- Generous whitespace
-
-### Color Tokens (Tailwind)
-```typescript
-colors: {
-  bg: { 0: "#FFFFFF", 1: "#F5F5F5", 2: "rgba(245,245,245,0.35)" },
-  text: { strong: "#000", DEFAULT: "#000", muted: "rgba(0,0,0,0.60)" },
-  border: { DEFAULT: "rgba(0,0,0,0.10)", soft: "rgba(0,0,0,0.08)" },
-  status: { success: "#22C55E", warning: "#F59E0B", danger: "#EF4444" },
-  accent: { DEFAULT: "#2563EB", hover: "#1D4ED8" },
-}
-```
-
-### UI Components
-Based on Radix UI with CVA variants. All in `src/components/ui/`:
-- Button (variants: default, secondary, ghost, outline, danger)
-- Card, Dialog, Dropdown, Select, Tabs, Toast, etc.
-
-## Database Schema
-
-### Core Tables
-- `profiles` - User profiles (synced from auth.users)
-- `plans` - OKR plans (yearly)
-- `plan_members` - Plan membership with roles (owner/editor/viewer)
-- `objectives` - Annual objectives within plans
-- `annual_krs` - Key Results with types (metric/count/milestone/rate/average)
-- `quarter_targets` - Quarterly targets for KRs
-- `tasks` - Tasks linked to objectives or KRs
-- `check_ins` - Progress check-ins
-- `tags` - Tags for categorizing tasks
-- `task_tags` - Many-to-many junction table
-- `dashboards` - Customizable dashboards per plan
-- `dashboard_widgets` - Widget configurations (type, position, size, config)
-- `activity_events` - Audit trail (auto-populated by triggers)
-- `weekly_reviews` - Weekly review records
-
-### Row Level Security
-All tables have RLS policies based on `plan_members` relationship. Users can only access data from plans they're members of.
+- Forecasting
+- Rollups (Objective and Plan level)
 
 ## Development Workflow
 
-### Commands
-```bash
-npm run dev          # Start development server
-npm run build        # Production build
-npm run lint         # ESLint check
-npm run test         # Run Vitest tests
-npm run test:run     # Single test run
-npm run test:coverage # Tests with coverage
+### Branch Naming
+```
+feature/description    # New features
+fix/description        # Bug fixes
+refactor/description   # Code refactoring
+docs/description       # Documentation
+chore/description      # Maintenance
 ```
 
-### Environment Variables
+### Commit Messages
+Use conventional commits:
 ```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-```
-
-### Supabase Local Development
-```bash
-supabase start       # Start local Supabase
-supabase db reset    # Reset and re-run migrations
-supabase migration new <name>  # Create new migration
+feat(tasks): add recurring task scheduling
+fix(auth): resolve session refresh issue
+refactor(progress): simplify calculation logic
+docs(readme): update setup instructions
 ```
 
-## Branch Management Workflow
+### PR Process
+1. Create feature branch from `main`
+2. Make changes with tests
+3. Ensure `npm run build` passes
+4. Submit PR with description
+5. Merge to `main` after review
 
-For all development work, follow this branch-based workflow:
-
-### Before Starting Work
-1. **Pull latest main**: `git pull origin main`
-2. **Create a feature branch** with a descriptive name:
-   - `feature/` - New features (e.g., `feature/recurring-tasks`)
-   - `fix/` - Bug fixes (e.g., `fix/task-deletion-bug`)
-   - `refactor/` - Code refactoring (e.g., `refactor/task-model`)
-   - `chore/` - Maintenance tasks (e.g., `chore/update-dependencies`)
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b feature/my-feature-name
-```
-
-### During Development
-- Make **atomic, logical commits** with clear messages
-- Commit in small chunks as you progress (not everything at the end)
-- Use conventional commit format: `type(scope): description`
-
-```bash
-git add <files>
-git commit -m "feat(tasks): add recurring task scheduling"
-```
-
-### After Completing Work
-1. Ensure all changes are committed to the feature branch
-2. Switch to `main` and merge the feature branch
-3. Push to remote
-4. Delete the feature branch (local cleanup)
-
-```bash
-git checkout main
-git merge feature/my-feature-name
-git push origin main
-git branch -d feature/my-feature-name
-```
-
-## End-of-Cycle Deliverables
-
-At the end of every development cycle, provide the following documentation:
-
-### 1. Summary of Changes
-Brief bullet points of what was implemented or modified:
-```
-- Added recurring task scheduling with daily/weekly/monthly options
-- Created new RecurringTaskDialog component
-- Added database migration for recurrence fields
-```
-
-### 2. How to Test
-Step-by-step manual testing instructions:
-```
-1. Navigate to Tasks page (/plans/[planId]/tasks)
-2. Click "New Task" button
-3. Enable "Recurring" toggle
-4. Select frequency (daily/weekly/monthly)
-5. Save the task
-6. Verify the recurrence icon appears on the task card
-```
-
-### 3. Test Scenarios
-Specific examples as a checklist, including happy path and edge cases:
-```
-- [ ] Create a daily recurring task → Should show "Repeats daily" badge
-- [ ] Create weekly task on Monday → Should show "Repeats weekly on Mon"
-- [ ] Edit recurring task to remove recurrence → Badge should disappear
-- [ ] Delete a recurring task → Should ask about deleting all occurrences
-- [ ] Edge case: Create task with past start date → Should start from today
-```
-
-### 4. Known Limitations / TODOs
-Anything incomplete or to be aware of:
-```
-- Recurring tasks don't yet support "end after X occurrences"
-- No bulk edit for recurring task series
-- Mobile: recurrence picker needs responsive styling
-```
-
-### Template Example
-
-```markdown
-## Summary of Changes
-- Added X feature with Y and Z capabilities
-- Modified existing A component to support B
-- Created database migration for new fields
-
-## How to Test
-1. Navigate to [page/route]
-2. Perform [action]
-3. Verify [expected behavior]
-4. Check [secondary behavior]
-
-## Test Scenarios
-- [ ] Happy path: [description] → [expected result]
-- [ ] Happy path: [description] → [expected result]
-- [ ] Edge case: [description] → [expected result]
-- [ ] Edge case: [description] → [expected result]
-
-## Known Limitations
-- [Limitation 1]
-- [Limitation 2]
-- TODO: [Future improvement]
-```
-
-## Key Conventions
+## Code Conventions
 
 ### File Naming
 - Components: `PascalCase.tsx` (e.g., `TaskDialog.tsx`)
-- Utils/hooks: `kebab-case.ts` (e.g., `use-toast.ts`)
-- Feature modules: `api.ts`, `hooks.ts`
+- Utilities: `kebab-case.ts` (e.g., `progress-engine.ts`)
+- Tests: `*.test.ts` or `*.test.tsx`
 
-### Component Patterns
-- "use client" directive for client components
-- Props interfaces defined inline or co-located
-- Destructure props in function signature
-- Use `cn()` utility for conditional classes
+### Component Structure
+```tsx
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useTasks } from "@/features/tasks";
+import type { Task } from "@/lib/supabase/types";
+
+interface TaskListProps {
+  planId: string;
+  onSelect?: (task: Task) => void;
+}
+
+export function TaskList({ planId, onSelect }: TaskListProps) {
+  const { data: tasks, isLoading } = useTasks(planId);
+  // ...
+}
+```
 
 ### Import Order
-1. React/Next.js imports
+1. React/Next.js
 2. Third-party libraries
 3. Internal components (`@/components/`)
-4. Internal features/hooks (`@/features/`)
+4. Internal features (`@/features/`)
 5. Internal utilities (`@/lib/`)
 6. Types
 
 ### TypeScript
 - Strict mode enabled
 - Types in `src/lib/supabase/types.ts`
-- Use `type` imports when only importing types
+- Use `type` imports for type-only imports
+- All new code must pass type checking
 
-## Current State & Known Issues
+## Database Conventions
 
-### Recently Completed
-- Customizable widget-based dashboard for plan overview
-- Import/Export with JSON and Markdown formats
-- Cloud backups via Supabase Storage
-- Tags management page in Settings
-- Weekly reviews system
-- Activity timeline with filtering
+### Table Naming
+- Plural, snake_case: `tasks`, `annual_krs`, `plan_members`
+- Junction tables: `task_tags`, `annual_kr_tags`
 
-### Known Technical Debt
-- Some TypeScript errors in analytics components (Recharts types)
-- Activity filters type export issue in settings page
-- Some pace status comparisons use wrong string format
+### Column Naming
+- snake_case: `created_at`, `plan_id`, `is_recurring`
+- Foreign keys: `{table}_id` (e.g., `task_id`, `user_id`)
+- Timestamps: `created_at`, `updated_at`, `completed_at`
 
-### Pending Improvements
-- Optimistic updates for better UX
-- Offline support consideration
-- Drag-and-drop widget reordering
+### RLS Policies
+All tables use Row Level Security based on `plan_members`:
+```sql
+CREATE POLICY "Users can view in their plans" ON tasks
+  FOR SELECT USING (
+    plan_id IN (SELECT plan_id FROM plan_members WHERE user_id = auth.uid())
+  );
+```
+
+### Functions
+- Use `SET search_path = ''` for security
+- Prefix table references with `public.`
+- Use `SECURITY DEFINER` only when necessary
 
 ## Testing
 
-Tests are in `*.test.ts` files alongside source:
-- `src/lib/progress-engine.test.ts` - Progress calculations
-- `src/lib/weekly-review-engine.test.ts` - Weekly review logic
+### Test Location
+Tests are co-located with source files:
+- `progress-engine.test.ts` next to `progress-engine.ts`
+- `hooks.test.ts` next to `hooks.ts`
 
-Run tests:
+### Running Tests
 ```bash
-npm test                # Watch mode
-npm run test:run        # Single run
-npm run test:coverage   # With coverage
+npm test              # Watch mode
+npm run test:run      # Single run
+npm run test:coverage # With coverage
 ```
 
-## Tips for AI Assistants
+### Test Patterns
+- Use factories from `src/test/factories/`
+- Mock Supabase with `src/test/mocks/supabase.ts`
+- Test behavior, not implementation
 
-1. **Always check existing patterns** - Look at similar features before implementing
-2. **Use the feature module structure** - API in `api.ts`, hooks in `hooks.ts`
-3. **Follow the query key pattern** - Add new keys to `queryKeys` factory
-4. **Toast messages** - Add success/error messages to `toast-utils.ts`
-5. **Invalidate related queries** - On mutations, invalidate affected query keys
-6. **TypeScript strict** - All code must pass strict type checking
-7. **Design tokens** - Use existing Tailwind classes, not arbitrary values
-8. **Component composition** - Prefer composition over configuration
+## Common Tasks
+
+### Adding a New Feature
+
+1. **Database** (if needed):
+   ```bash
+   # Add to appropriate migration file or create new one
+   supabase db reset
+   ```
+
+2. **Types** in `src/lib/supabase/types.ts`
+
+3. **Feature module**:
+   - `src/features/myFeature/api.ts`
+   - `src/features/myFeature/hooks.ts`
+
+4. **Query keys** in `src/lib/query-client.tsx`
+
+5. **Toast messages** in `src/lib/toast-utils.ts`
+
+6. **Components** in `src/components/myFeature/`
+
+7. **Route** in `src/app/plans/[planId]/myFeature/`
+
+### Adding a Settings Tab
+
+1. Create component in `src/components/`
+2. Import in `src/app/plans/[planId]/settings/page.tsx`
+3. Add `TabsTrigger` and `TabsContent`
+
+### Adding an Analytics Widget
+
+1. Define widget in `src/components/dashboard/widget-registry.ts`
+2. Create widget component in `src/components/dashboard/widgets/`
+3. Add to `widget-renderer.tsx`
+
+## Do's and Don'ts
+
+### DO
+- ✅ Check existing patterns before implementing
+- ✅ Use the feature module structure (api.ts + hooks.ts)
+- ✅ Add query keys to the centralized factory
+- ✅ Invalidate related queries on mutations
+- ✅ Use toast notifications for user feedback
+- ✅ Follow TypeScript strict mode
+- ✅ Write tests for business logic
+- ✅ Use existing design tokens and components
+
+### DON'T
+- ❌ Create new patterns when existing ones work
+- ❌ Skip type checking
+- ❌ Forget to invalidate related queries
+- ❌ Use arbitrary Tailwind values (use design tokens)
+- ❌ Expose service role keys to the browser
+- ❌ Skip RLS policies on new tables
+- ❌ Leave console.log statements in production code
+
+## Useful Commands
+
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build            # Production build
+npm run lint             # Run ESLint
+
+# Testing
+npm test                 # Watch mode
+npm run test:run         # Single run
+npm run test:coverage    # With coverage
+
+# Database
+supabase start           # Start local Supabase
+supabase stop            # Stop local Supabase
+supabase db reset        # Reset and re-run migrations
+supabase migration new X # Create new migration
+```
+
+## Related Documentation
+
+- [Getting Started](./docs/getting-started.md) - Setup guide
+- [Architecture](./docs/architecture.md) - System design
+- [Database](./docs/database.md) - Schema documentation
+- [Testing](./docs/testing.md) - Testing guide
+- [Deployment](./docs/deployment.md) - Production setup
+
+### Domain-Specific Instructions
+- [Components](./src/components/CLAUDE.md)
+- [Features](./src/features/CLAUDE.md)
+- [Library](./src/lib/CLAUDE.md)
+- [Supabase](./supabase/CLAUDE.md)
