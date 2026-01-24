@@ -11,8 +11,15 @@ export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskEffort = 'light' | 'moderate' | 'heavy';
 export type TagKind = 'platform' | 'funnel_stage' | 'initiative' | 'category' | 'custom';
-export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review' | 'comment';
+export type EventEntityType = 'task' | 'check_in' | 'member' | 'objective' | 'annual_kr' | 'quarter_target' | 'plan' | 'weekly_review' | 'comment' | 'content_post' | 'content_distribution' | 'content_campaign';
 export type EventType = 'created' | 'updated' | 'deleted' | 'status_changed' | 'completed' | 'joined' | 'left' | 'role_changed' | 'started';
+
+// Content Planner Enums
+export type ContentPostStatus = 'backlog' | 'tagged' | 'ongoing' | 'complete';
+export type ContentDistributionStatus = 'draft' | 'scheduled' | 'posted';
+export type ContentCampaignStatus = 'draft' | 'active' | 'paused' | 'completed';
+export type ContentCampaignObjective = 'awareness' | 'traffic' | 'engagement' | 'conversions';
+export type ContentAccountType = 'personal' | 'business';
 export type WeeklyReviewStatus = 'open' | 'pending' | 'late' | 'complete';
 export type NotificationType = 'mentioned' | 'comment' | 'assigned' | 'unassigned' | 'task_completed' | 'task_updated';
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -391,6 +398,149 @@ export interface WeeklyReviewTask {
 }
 
 // ============================================================================
+// CONTENT PLANNER TABLE TYPES
+// ============================================================================
+
+export interface ContentPlatform {
+  id: string;
+  name: string;
+  display_name: string;
+  icon: string;
+  color: string;
+  supported_formats: string[];
+  available_metrics: ContentMetricDefinition[];
+  created_at: string;
+}
+
+export interface ContentMetricDefinition {
+  key: string;
+  label: string;
+  type: 'count' | 'percentage' | 'duration' | 'currency';
+}
+
+export interface ContentAccount {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  platform_id: string;
+  account_name: string;
+  account_type: ContentAccountType;
+  linked_kr_id: string | null;
+  display_order: number;
+  is_active: boolean;
+  settings: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentGoal {
+  id: string;
+  plan_id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentPost {
+  id: string;
+  plan_id: string;
+  title: string;
+  description: string | null;
+  status: ContentPostStatus;
+  created_by: string;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentPostGoal {
+  post_id: string;
+  goal_id: string;
+}
+
+export interface ContentPostMedia {
+  id: string;
+  post_id: string;
+  storage_path: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ContentPostLink {
+  id: string;
+  post_id: string;
+  url: string;
+  title: string | null;
+  description: string | null;
+  link_type: string | null;
+  created_at: string;
+}
+
+export interface ContentDistribution {
+  id: string;
+  post_id: string;
+  account_id: string;
+  format: string;
+  status: ContentDistributionStatus;
+  scheduled_at: string | null;
+  posted_at: string | null;
+  platform_post_url: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentDistributionMetrics {
+  id: string;
+  distribution_id: string;
+  metrics: Record<string, number>;
+  checked_at: string;
+  created_at: string;
+}
+
+export interface ContentCampaign {
+  id: string;
+  plan_id: string;
+  platform_id: string;
+  name: string;
+  description: string | null;
+  objective: ContentCampaignObjective;
+  status: ContentCampaignStatus;
+  budget_allocated: number | null;
+  budget_spent: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentCampaignPost {
+  campaign_id: string;
+  post_id: string;
+  sort_order: number;
+}
+
+export interface ContentCampaignCheckin {
+  id: string;
+  campaign_id: string;
+  impressions: number | null;
+  clicks: number | null;
+  conversions: number | null;
+  spend: number | null;
+  notes: string | null;
+  checked_at: string;
+  created_at: string;
+}
+
+// ============================================================================
 // INSERT/UPDATE TYPES (without auto-generated fields)
 // ============================================================================
 
@@ -464,6 +614,30 @@ export type CommentUpdate = Partial<Pick<Comment, 'content'>>;
 // Notification Insert/Update Types
 export type NotificationInsert = Omit<Notification, 'id' | 'created_at'>;
 export type NotificationUpdate = Partial<Pick<Notification, 'read'>>;
+
+// Content Planner Insert/Update Types
+export type ContentAccountInsert = Omit<ContentAccount, 'id' | 'created_at' | 'updated_at'>;
+export type ContentAccountUpdate = Partial<Omit<ContentAccount, 'id' | 'plan_id' | 'platform_id' | 'created_at' | 'updated_at'>>;
+
+export type ContentGoalInsert = Omit<ContentGoal, 'id' | 'created_at' | 'updated_at'>;
+export type ContentGoalUpdate = Partial<Omit<ContentGoal, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>;
+
+export type ContentPostInsert = Omit<ContentPost, 'id' | 'created_at' | 'updated_at'>;
+export type ContentPostUpdate = Partial<Omit<ContentPost, 'id' | 'plan_id' | 'created_by' | 'created_at' | 'updated_at'>>;
+
+export type ContentPostMediaInsert = Omit<ContentPostMedia, 'id' | 'created_at'>;
+export type ContentPostLinkInsert = Omit<ContentPostLink, 'id' | 'created_at'>;
+export type ContentPostLinkUpdate = Partial<Pick<ContentPostLink, 'url' | 'title' | 'description' | 'link_type'>>;
+
+export type ContentDistributionInsert = Omit<ContentDistribution, 'id' | 'created_at' | 'updated_at'>;
+export type ContentDistributionUpdate = Partial<Omit<ContentDistribution, 'id' | 'post_id' | 'account_id' | 'created_at' | 'updated_at'>>;
+
+export type ContentDistributionMetricsInsert = Omit<ContentDistributionMetrics, 'id' | 'created_at'>;
+
+export type ContentCampaignInsert = Omit<ContentCampaign, 'id' | 'created_at' | 'updated_at'>;
+export type ContentCampaignUpdate = Partial<Omit<ContentCampaign, 'id' | 'plan_id' | 'platform_id' | 'created_by' | 'created_at' | 'updated_at'>>;
+
+export type ContentCampaignCheckinInsert = Omit<ContentCampaignCheckin, 'id' | 'created_at'>;
 
 // ============================================================================
 // EXTENDED TYPES (with joined data)
@@ -586,6 +760,68 @@ export interface NotificationWithDetails extends Notification {
 }
 
 // ============================================================================
+// CONTENT PLANNER EXTENDED TYPES
+// ============================================================================
+
+export interface ContentAccountLinkedKr extends AnnualKr {
+  objective?: { code: string; name: string } | null;
+}
+
+export interface ContentAccountWithPlatform extends ContentAccount {
+  platform: ContentPlatform;
+  linked_kr?: ContentAccountLinkedKr | null;
+}
+
+export interface ContentPostWithDetails extends ContentPost {
+  goals: ContentGoal[];
+  media: ContentPostMedia[];
+  links: ContentPostLink[];
+  distributions: ContentDistributionWithAccount[];
+  distribution_count: number;
+  scheduled_count: number;
+  posted_count: number;
+  created_by_user?: Profile;
+}
+
+export interface ContentDistributionWithAccount extends ContentDistribution {
+  account: ContentAccountWithPlatform;
+  latest_metrics?: ContentDistributionMetrics | null;
+}
+
+export interface ContentCampaignWithDetails extends ContentCampaign {
+  platform: ContentPlatform;
+  posts: ContentPostWithDetails[];
+  checkins: ContentCampaignCheckin[];
+  created_by_user?: Profile;
+}
+
+// Calendar view type
+export interface ContentCalendarEntry {
+  distribution_id: string;
+  post_id: string;
+  post_title: string;
+  account_id: string;
+  account_name: string;
+  platform_name: string;
+  platform_color: string;
+  format: string;
+  status: ContentDistributionStatus;
+  scheduled_at: string | null;
+  posted_at: string | null;
+}
+
+// Content stats for dashboard
+export interface ContentStats {
+  total_posts: number;
+  posts_by_status: Record<ContentPostStatus, number>;
+  total_distributions: number;
+  distributions_by_status: Record<ContentDistributionStatus, number>;
+  upcoming_scheduled: number;
+  posted_this_week: number;
+  posted_this_month: number;
+}
+
+// ============================================================================
 // FILTER/QUERY TYPES
 // ============================================================================
 
@@ -619,6 +855,28 @@ export interface TimelineFilters {
   user_id?: string;
   date_from?: string;
   date_to?: string;
+}
+
+export interface ContentPostFilters {
+  status?: ContentPostStatus | ContentPostStatus[];
+  goal_ids?: string[];
+  created_by?: string;
+  has_distributions?: boolean;
+  search?: string;
+}
+
+export interface ContentDistributionFilters {
+  status?: ContentDistributionStatus | ContentDistributionStatus[];
+  account_id?: string;
+  platform_id?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface ContentCampaignFilters {
+  status?: ContentCampaignStatus | ContentCampaignStatus[];
+  platform_id?: string;
+  objective?: ContentCampaignObjective | ContentCampaignObjective[];
 }
 
 export interface PaginationParams {
@@ -809,6 +1067,67 @@ export interface Database {
         Insert: Omit<CommentRead, 'id'>;
         Update: Pick<CommentRead, 'last_read_at'>;
       };
+      // Content Planner Tables
+      content_platforms: {
+        Row: ContentPlatform;
+        Insert: never; // Read-only, seeded by migration
+        Update: never;
+      };
+      content_accounts: {
+        Row: ContentAccount;
+        Insert: ContentAccountInsert;
+        Update: ContentAccountUpdate;
+      };
+      content_goals: {
+        Row: ContentGoal;
+        Insert: ContentGoalInsert;
+        Update: ContentGoalUpdate;
+      };
+      content_posts: {
+        Row: ContentPost;
+        Insert: ContentPostInsert;
+        Update: ContentPostUpdate;
+      };
+      content_post_goals: {
+        Row: ContentPostGoal;
+        Insert: ContentPostGoal;
+        Update: never;
+      };
+      content_post_media: {
+        Row: ContentPostMedia;
+        Insert: ContentPostMediaInsert;
+        Update: never;
+      };
+      content_post_links: {
+        Row: ContentPostLink;
+        Insert: ContentPostLinkInsert;
+        Update: ContentPostLinkUpdate;
+      };
+      content_distributions: {
+        Row: ContentDistribution;
+        Insert: ContentDistributionInsert;
+        Update: ContentDistributionUpdate;
+      };
+      content_distribution_metrics: {
+        Row: ContentDistributionMetrics;
+        Insert: ContentDistributionMetricsInsert;
+        Update: never;
+      };
+      content_campaigns: {
+        Row: ContentCampaign;
+        Insert: ContentCampaignInsert;
+        Update: ContentCampaignUpdate;
+      };
+      content_campaign_posts: {
+        Row: ContentCampaignPost;
+        Insert: ContentCampaignPost;
+        Update: never;
+      };
+      content_campaign_checkins: {
+        Row: ContentCampaignCheckin;
+        Insert: ContentCampaignCheckinInsert;
+        Update: never;
+      };
     };
     Views: {
       v_plan_timeline: {
@@ -872,6 +1191,12 @@ export interface Database {
       event_type: EventType;
       weekly_review_status: WeeklyReviewStatus;
       notification_type: NotificationType;
+      // Content Planner Enums
+      content_post_status: ContentPostStatus;
+      content_distribution_status: ContentDistributionStatus;
+      content_campaign_status: ContentCampaignStatus;
+      content_campaign_objective: ContentCampaignObjective;
+      content_account_type: ContentAccountType;
     };
   };
 }

@@ -112,6 +112,25 @@ export async function handleSupabaseQuery<T>(
   return data;
 }
 
+// For delete operations that don't return data
+export async function handleSupabaseDelete(
+  query: PromiseLike<SupabaseQueryResult<unknown>>,
+  operationName?: string
+): Promise<void> {
+  const result = await query;
+  const { error } = result as SupabaseQueryResult<unknown>;
+
+  if (error) {
+    const apiError = new ApiError(error);
+    apiLogger.error(
+      `Delete operation failed${operationName ? `: ${operationName}` : ""}`,
+      apiError.toLogContext(),
+      apiError
+    );
+    throw apiError;
+  }
+}
+
 // ============================================================================
 // PAGINATION HELPERS
 // ============================================================================

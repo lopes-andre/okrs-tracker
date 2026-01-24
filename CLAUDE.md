@@ -17,6 +17,9 @@ This document provides comprehensive context for AI assistants (Claude Code and 
 | **Task** | Actionable work item linked to OKRs |
 | **Check-in** | Progress update for a KR |
 | **Weekly Review** | Structured reflection on the week |
+| **Content Post** | Content idea with Kanban workflow (Content Planner) |
+| **Distribution** | Scheduled/posted content to a platform account |
+| **Campaign** | Paid advertising campaign tracking |
 
 ### KR Types
 - **Metric**: Numeric value (followers, revenue)
@@ -99,6 +102,7 @@ okrs-tracker/
 │   │   ├── analytics/            # Analytics queries
 │   │   ├── team-analytics/       # Team workload stats
 │   │   ├── progress/             # Progress computations
+│   │   ├── content/              # Content Planner
 │   │   └── import-export/        # Data portability
 │   │
 │   ├── lib/                      # Core utilities
@@ -120,7 +124,7 @@ okrs-tracker/
 │   └── middleware.ts             # Auth middleware
 │
 ├── supabase/
-│   ├── migrations/               # 14 consolidated migrations
+│   ├── migrations/               # 17 migrations (14 core + 3 content planner)
 │   ├── scripts/                  # Utility SQL scripts
 │   └── config.toml               # Local Supabase config
 │

@@ -24,6 +24,9 @@ import {
   Star,
   Play,
   MessageCircle,
+  FileImage,
+  Share2,
+  Megaphone,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +64,9 @@ const entityTypeIcons: Record<EventEntityType, React.ElementType> = {
   plan: Flag,
   weekly_review: CalendarCheck,
   comment: MessageCircle,
+  content_post: FileImage,
+  content_distribution: Share2,
+  content_campaign: Megaphone,
 };
 
 // Badge variants for event types
@@ -95,6 +101,9 @@ const formatEntityType = (type: EventEntityType): string => {
     plan: "Plan",
     weekly_review: "Weekly Review",
     comment: "Comment",
+    content_post: "Content Post",
+    content_distribution: "Distribution",
+    content_campaign: "Campaign",
   };
   return labels[type] || type;
 };

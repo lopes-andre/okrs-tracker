@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   Search,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchCommand } from "./search-command";
@@ -26,6 +27,7 @@ const navItems = [
   { label: "Tasks", href: "/tasks", icon: ListTodo },
   { label: "Reviews", href: "/reviews", icon: CalendarCheck },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
+  { label: "Content", href: "/content", icon: Megaphone },
   { label: "Settings", href: "/settings", icon: Settings },
 ];
 

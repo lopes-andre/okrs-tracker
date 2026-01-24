@@ -171,4 +171,42 @@ export const queryKeys = {
     contributions: (planId: string, dateFrom?: string, dateTo?: string) =>
       [...queryKeys.teamAnalytics.all, "contributions", planId, dateFrom, dateTo] as const,
   },
+
+  // Content Planner
+  content: {
+    all: ["content"] as const,
+    platforms: {
+      all: ["content", "platforms"] as const,
+      list: () => [...queryKeys.content.platforms.all, "list"] as const,
+    },
+    accounts: {
+      all: ["content", "accounts"] as const,
+      list: (planId: string) => [...queryKeys.content.accounts.all, "list", planId] as const,
+      detail: (accountId: string) => [...queryKeys.content.accounts.all, "detail", accountId] as const,
+    },
+    goals: {
+      all: ["content", "goals"] as const,
+      list: (planId: string) => [...queryKeys.content.goals.all, "list", planId] as const,
+    },
+    posts: {
+      all: ["content", "posts"] as const,
+      list: (planId: string, filters?: object) =>
+        [...queryKeys.content.posts.all, "list", planId, filters] as const,
+      detail: (postId: string) => [...queryKeys.content.posts.all, "detail", postId] as const,
+      withDetails: (planId: string) => [...queryKeys.content.posts.all, "withDetails", planId] as const,
+    },
+    distributions: {
+      all: ["content", "distributions"] as const,
+      byPost: (postId: string) => [...queryKeys.content.distributions.all, "byPost", postId] as const,
+      calendar: (planId: string, startDate: string, endDate: string) =>
+        [...queryKeys.content.distributions.all, "calendar", planId, startDate, endDate] as const,
+    },
+    campaigns: {
+      all: ["content", "campaigns"] as const,
+      list: (planId: string, filters?: object) =>
+        [...queryKeys.content.campaigns.all, "list", planId, filters] as const,
+      detail: (campaignId: string) => [...queryKeys.content.campaigns.all, "detail", campaignId] as const,
+    },
+    stats: (planId: string) => [...queryKeys.content.all, "stats", planId] as const,
+  },
 } as const;
