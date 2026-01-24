@@ -16,7 +16,7 @@
  *   <ErrorBoundary onError={handleComponentError}>
  */
 
-import { logger, createModuleLogger, LogContext } from "./logger";
+import { createModuleLogger, LogContext } from "./logger";
 
 // ============================================================================
 // TYPES

@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createMockSupabase } from "@/test/mocks/supabase";
-import { createCheckIn as createCheckInFactory, createAnnualKr } from "@/test/factories";
+import { createCheckIn as createCheckInFactory } from "@/test/factories";
 
 // Use vi.hoisted to create a variable that exists at the hoisted scope
 const { mockRef } = vi.hoisted(() => ({

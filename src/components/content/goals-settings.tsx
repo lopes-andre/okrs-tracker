@@ -8,7 +8,6 @@ import {
   Pencil,
   Trash2,
   GripVertical,
-  Link,
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

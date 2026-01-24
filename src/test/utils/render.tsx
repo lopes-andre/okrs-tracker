@@ -44,17 +44,6 @@ function createTestQueryClient(): QueryClient {
   });
 }
 
-function AllProviders({ children }: WrapperProps): ReactElement {
-  const queryClient = createTestQueryClient();
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider delayDuration={0}>
-        {children}
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
 
 // ============================================================================
 // CUSTOM RENDER

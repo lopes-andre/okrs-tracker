@@ -15,7 +15,7 @@
  * - All display helpers
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   // Utility functions
   clamp01,
@@ -41,11 +41,9 @@ import {
 
   // Progress computation
   computeProgress,
-  computeMilestoneProgressWithTasks,
 
   // Pace computation
   computeExpectedProgress,
-  computeExpectedValue,
   computePaceRatio,
   classifyPaceStatus,
 
@@ -75,7 +73,6 @@ import {
 
   // Display helpers
   formatProgress,
-  formatPaceStatus,
   getPaceStatusVariant,
   formatValueWithUnit,
   formatDelta,

@@ -23,7 +23,6 @@ import type {
   ContentDistributionMetrics,
   ContentDistributionMetricsInsert,
   ContentCampaign,
-  ContentCampaignInsert,
   ContentCampaignUpdate,
   ContentCampaignCheckin,
   ContentCampaignCheckinInsert,

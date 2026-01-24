@@ -58,7 +58,6 @@ import { PostDistributionsTab } from "./post-distributions-tab";
 import { PostMetricsTab } from "./post-metrics-tab";
 import { MediaUpload } from "./media-upload";
 import type {
-  ContentPostWithDetails,
   ContentPostStatus,
   ContentGoal,
   ContentAccountWithPlatform,

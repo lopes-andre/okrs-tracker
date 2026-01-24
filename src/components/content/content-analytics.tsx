@@ -20,13 +20,11 @@ import {
   Eye,
   Heart,
   Send,
-  CheckCircle,
   Loader2,
   BarChart3,
   Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PlatformIcon } from "./platform-icon";
 import { useContentAnalytics } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";

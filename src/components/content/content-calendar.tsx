@@ -13,14 +13,11 @@ import {
   subWeeks,
   addDays,
   subDays,
-  isSameDay,
-  isToday,
   parseISO,
 } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
   Loader2,
   CalendarDays,
   CalendarRange,
@@ -28,14 +25,6 @@ import {
   List,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { CalendarMonthView } from "./calendar-month-view";
 import { CalendarWeekView } from "./calendar-week-view";
 import { CalendarDayView } from "./calendar-day-view";
@@ -44,7 +33,7 @@ import { CalendarFilters, type CalendarFiltersState, defaultCalendarFilters } fr
 import { PostDetailModal } from "./post-detail-modal";
 import { useCalendarData, useAccountsWithPlatform, useGoals } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
-import type { ContentCalendarEntry, ContentGoal, ContentAccountWithPlatform } from "@/lib/supabase/types";
+import type { ContentCalendarEntry, ContentAccountWithPlatform } from "@/lib/supabase/types";
 
 // ============================================================================
 // TYPES

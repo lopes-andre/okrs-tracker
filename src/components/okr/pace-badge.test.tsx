@@ -8,7 +8,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@/test/utils/render";
 import { PaceBadge } from "./pace-badge";
-import { formatPaceStatus, formatProgress } from "@/lib/progress-engine";
+import { formatPaceStatus } from "@/lib/progress-engine";
 import type { PaceStatus } from "@/lib/progress-engine";
 
 // ============================================================================
@@ -166,7 +166,7 @@ describe("PaceBadge", () => {
     });
 
     it("should hide tooltip when showTooltip is false", () => {
-      const { container } = render(<PaceBadge status="on_track" showTooltip={false} />);
+      render(<PaceBadge status="on_track" showTooltip={false} />);
 
       // When showTooltip=false, the badge should render without tooltip wrapper
       // The badge should still be present

@@ -10,7 +10,6 @@ import {
   eachDayOfInterval,
   isSameMonth,
   isToday,
-  isSameDay,
 } from "date-fns";
 import { CalendarEntryGroup } from "./calendar-entry";
 import { cn } from "@/lib/utils";

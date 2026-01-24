@@ -11,7 +11,6 @@ import {
   parseISO,
   getHours,
   getMinutes,
-  isSameDay,
 } from "date-fns";
 import { CalendarEntry } from "./calendar-entry";
 import { cn } from "@/lib/utils";
@@ -59,7 +58,7 @@ function getEntryPosition(entry: ContentCalendarEntry) {
 // ============================================================================
 
 export function CalendarWeekView({
-  currentDate,
+  currentDate: _currentDate,
   dateRange,
   entriesByDay,
   onEntryClick,

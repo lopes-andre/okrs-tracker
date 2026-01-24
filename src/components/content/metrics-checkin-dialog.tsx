@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { format } from "date-fns";
-import { Loader2, Calendar, TrendingUp } from "lucide-react";
+import { Loader2, TrendingUp } from "lucide-react";
 import {
   Dialog,
   DialogContent,

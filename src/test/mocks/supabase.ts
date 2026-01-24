@@ -326,7 +326,7 @@ export function createMockSupabase() {
         getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: "https://example.com/file" } }),
       }),
     },
-    rpc: vi.fn().mockImplementation((fnName: string) => {
+    rpc: vi.fn().mockImplementation((_fnName: string) => {
       return {
         then: (resolve: (result: { data: unknown; error: null }) => void) => {
           resolve({ data: null, error: null });

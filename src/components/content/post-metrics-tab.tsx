@@ -65,7 +65,6 @@ function DistributionMetricsCard({
 
   // Get latest metrics
   const latestMetrics = metricsHistory[0];
-  const previousMetrics = metricsHistory[1];
 
   // Calculate summary stats from latest metrics
   const summaryStats = useMemo(() => {

@@ -9,7 +9,6 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@/test/utils/render";
 import { ProgressDisplay, ProgressInline, ProgressMini } from "./progress-display";
 import { formatProgress, formatValueWithUnit, type ProgressResult, type PaceStatus } from "@/lib/progress-engine";
-import type { KrType, KrDirection } from "@/lib/supabase/types";
 
 // ============================================================================
 // TEST DATA FACTORIES

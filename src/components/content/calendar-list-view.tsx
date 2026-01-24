@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, isToday, isTomorrow, parseISO, addDays, isPast } from "date-fns";
+import { format, isToday, isTomorrow, parseISO, isPast } from "date-fns";
 import { CalendarX } from "lucide-react";
 import { CalendarEntry } from "./calendar-entry";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ function getDayLabel(date: Date): string {
 // ============================================================================
 
 export function CalendarListView({
-  currentDate,
+  currentDate: _currentDate,
   entriesByDay,
   onEntryClick,
 }: CalendarListViewProps) {
