@@ -609,8 +609,8 @@ export function useCreateCampaign(planId: string) {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (campaign: Omit<ContentCampaignInsert, "plan_id">) =>
-      api.createCampaign({ ...campaign, plan_id: planId }),
+    mutationFn: (campaign: api.CreateCampaignData) =>
+      api.createCampaign(planId, campaign),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.campaigns.all });
       toast(successMessages.campaignCreated);
@@ -812,5 +812,21 @@ export function useDeletePostLink(planId: string) {
     onError: (error) => {
       toast(formatErrorMessage(error));
     },
+  });
+}
+
+// ============================================================================
+// ANALYTICS HOOKS
+// ============================================================================
+
+/**
+ * Get content analytics data
+ */
+export function useContentAnalytics(planId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.content.posts.all, "analytics", planId],
+    queryFn: () => api.getContentAnalytics(planId),
+    enabled: !!planId,
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
