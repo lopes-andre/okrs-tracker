@@ -121,6 +121,19 @@ export const successMessages = {
   importComplete: { title: "Import complete", description: "Data imported successfully", variant: "success" as const },
   backupCreated: { title: "Backup created", description: "Stored in cloud", variant: "success" as const },
   backupDeleted: { title: "Backup deleted", variant: "success" as const },
+
+  // Content Planner
+  postCreated: { title: "Post created", variant: "success" as const },
+  postUpdated: { title: "Post updated", variant: "success" as const },
+  postDeleted: { title: "Post deleted", variant: "success" as const },
+  distributionCreated: { title: "Distribution added", variant: "success" as const },
+  distributionUpdated: { title: "Distribution updated", variant: "success" as const },
+  distributionDeleted: { title: "Distribution deleted", variant: "success" as const },
+  distributionPosted: { title: "Marked as posted", variant: "success" as const },
+  mediaUploaded: { title: "Media uploaded", variant: "success" as const },
+  mediaDeleted: { title: "Media deleted", variant: "success" as const },
+  linkAdded: { title: "Link added", variant: "success" as const },
+  linkDeleted: { title: "Link deleted", variant: "success" as const },
 } as const;
 
 // ============================================================================

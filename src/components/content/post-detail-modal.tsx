@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   Link2,
   Plus,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -50,7 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePost, useUpdatePost, useDeletePost, useCreatePost } from "@/features/content/hooks";
+import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
 import { PostDistributionsTab } from "./post-distributions-tab";
 import { MediaUpload } from "./media-upload";
@@ -104,6 +105,8 @@ export function PostDetailModal({
   const createPost = useCreatePost(planId);
   const updatePost = useUpdatePost(planId);
   const deletePost = useDeletePost(planId);
+  const addPostLink = useAddPostLink(planId);
+  const deletePostLink = useDeletePostLink(planId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -114,6 +117,11 @@ export function PostDetailModal({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ContentPostStatus>(initialStatus);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+
+  // Link form state
+  const [showAddLinkForm, setShowAddLinkForm] = useState(false);
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [newLinkTitle, setNewLinkTitle] = useState("");
 
   // Reset form when dialog opens or post changes
   useEffect(() => {
@@ -130,8 +138,31 @@ export function PostDetailModal({
         setSelectedGoalIds([]);
       }
       setActiveTab("overview");
+      setShowAddLinkForm(false);
+      setNewLinkUrl("");
+      setNewLinkTitle("");
     }
   }, [open, post, isEditing, initialStatus]);
+
+  // Handle adding a link
+  const handleAddLink = useCallback(async () => {
+    if (!postId || !newLinkUrl.trim()) return;
+
+    await addPostLink.mutateAsync({
+      post_id: postId,
+      url: newLinkUrl.trim(),
+      title: newLinkTitle.trim() || null,
+    });
+
+    setNewLinkUrl("");
+    setNewLinkTitle("");
+    setShowAddLinkForm(false);
+  }, [postId, newLinkUrl, newLinkTitle, addPostLink]);
+
+  // Handle deleting a link
+  const handleDeleteLink = useCallback(async (linkId: string) => {
+    await deletePostLink.mutateAsync(linkId);
+  }, [deletePostLink]);
 
   // Toggle goal selection
   const toggleGoal = useCallback((goalId: string) => {
@@ -424,7 +455,7 @@ export function PostDetailModal({
                   </div>
                 )}
 
-                {/* Media & Links (placeholder for now) */}
+                {/* Media & Links */}
                 <div className="grid md:grid-cols-2 gap-6">
                   {/* Media */}
                   <div className="space-y-2">
@@ -437,16 +468,59 @@ export function PostDetailModal({
                         </Badge>
                       )}
                     </Label>
-                    <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                      <ImageIcon className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-                      <p className="text-small text-text-muted mb-2">
-                        Drag files here or click to upload
-                      </p>
-                      <Button variant="outline" size="sm" disabled>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Media
-                      </Button>
-                    </div>
+                    {isEditing && post?.media && post.media.length > 0 ? (
+                      <div className="border border-border rounded-lg p-4 space-y-3">
+                        {/* Media file list */}
+                        <div className="space-y-2">
+                          {post.media.slice(0, 3).map((media) => (
+                            <div
+                              key={media.id}
+                              className="flex items-center gap-2 text-small"
+                            >
+                              {media.file_type?.startsWith("image/") ? (
+                                <ImageIcon className="w-4 h-4 text-text-muted shrink-0" />
+                              ) : (
+                                <FileText className="w-4 h-4 text-text-muted shrink-0" />
+                              )}
+                              <span className="truncate text-text-muted">
+                                {media.file_name || "File"}
+                              </span>
+                            </div>
+                          ))}
+                          {post.media.length > 3 && (
+                            <p className="text-small text-text-muted">
+                              +{post.media.length - 3} more files
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setActiveTab("media")}
+                        >
+                          Manage Media
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-border rounded-lg p-6 text-center">
+                        <ImageIcon className="w-8 h-8 mx-auto mb-2 text-text-muted" />
+                        <p className="text-small text-text-muted mb-2">
+                          {isEditing
+                            ? "Upload images and files for this post"
+                            : "Save the post first to add media"}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!isEditing}
+                          onClick={() => setActiveTab("media")}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Media
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Links */}
@@ -460,15 +534,101 @@ export function PostDetailModal({
                         </Badge>
                       )}
                     </Label>
-                    <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                      <Link2 className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-                      <p className="text-small text-text-muted mb-2">
-                        Add reference links for this post
-                      </p>
-                      <Button variant="outline" size="sm" disabled>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Link
-                      </Button>
+                    <div className="border border-border rounded-lg p-4 space-y-3">
+                      {/* Existing links */}
+                      {isEditing && post?.links && post.links.length > 0 && (
+                        <div className="space-y-2">
+                          {post.links.map((link) => (
+                            <div
+                              key={link.id}
+                              className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
+                            >
+                              <Link2 className="w-4 h-4 text-text-muted shrink-0" />
+                              <a
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex-1 min-w-0 text-small hover:text-accent truncate"
+                              >
+                                {link.title || link.url}
+                              </a>
+                              <ExternalLink className="w-3 h-3 text-text-muted shrink-0" />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                onClick={() => handleDeleteLink(link.id)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Add link form */}
+                      {showAddLinkForm ? (
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="https://..."
+                            value={newLinkUrl}
+                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                            autoFocus
+                          />
+                          <Input
+                            placeholder="Link title (optional)"
+                            value={newLinkTitle}
+                            onChange={(e) => setNewLinkTitle(e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setShowAddLinkForm(false);
+                                setNewLinkUrl("");
+                                setNewLinkTitle("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1"
+                              onClick={handleAddLink}
+                              disabled={!newLinkUrl.trim() || addPostLink.isPending}
+                            >
+                              {addPostLink.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                "Add"
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : !isEditing ? (
+                        <div className="text-center py-4">
+                          <Link2 className="w-8 h-8 mx-auto mb-2 text-text-muted" />
+                          <p className="text-small text-text-muted mb-2">
+                            Save the post first to add links
+                          </p>
+                          <Button variant="outline" size="sm" disabled>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Link
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setShowAddLinkForm(true)}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Link
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
