@@ -92,7 +92,10 @@ export async function getAccountsWithPlatform(planId: string): Promise<ContentAc
       .select(`
         *,
         platform:content_platforms(*),
-        linked_kr:annual_krs(*)
+        linked_kr:annual_krs(
+          *,
+          objective:objectives(code, name)
+        )
       `)
       .eq("plan_id", planId)
       .order("display_order", { ascending: true })

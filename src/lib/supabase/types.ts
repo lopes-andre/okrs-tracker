@@ -763,9 +763,13 @@ export interface NotificationWithDetails extends Notification {
 // CONTENT PLANNER EXTENDED TYPES
 // ============================================================================
 
+export interface ContentAccountLinkedKr extends AnnualKr {
+  objective?: { code: string; name: string } | null;
+}
+
 export interface ContentAccountWithPlatform extends ContentAccount {
   platform: ContentPlatform;
-  linked_kr?: AnnualKr | null;
+  linked_kr?: ContentAccountLinkedKr | null;
 }
 
 export interface ContentPostWithDetails extends ContentPost {
