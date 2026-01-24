@@ -25,7 +25,8 @@ import { Button } from "@/components/ui/button";
 import { KanbanColumn } from "./kanban-column";
 import { PostCard } from "./post-card";
 import { PostDialog } from "./post-dialog";
-import { usePostsWithDetails, useUpdatePost, useReorderPosts } from "@/features/content/hooks";
+import { QuickCapture } from "./quick-capture";
+import { usePostsWithDetails, useCreatePost, useUpdatePost, useReorderPosts } from "@/features/content/hooks";
 import type { ContentPostWithDetails, ContentPostStatus, ContentGoal } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -76,6 +77,7 @@ const COLUMNS: Column[] = [
 
 export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   const { data: posts, isLoading } = usePostsWithDetails(planId);
+  const createPost = useCreatePost(planId);
   const updatePost = useUpdatePost(planId);
   const reorderPosts = useReorderPosts(planId);
 
@@ -140,6 +142,20 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
     setSelectedPost(post);
     setDialogOpen(true);
   }, []);
+
+  // Handle quick capture (create post with just title)
+  const handleQuickCapture = useCallback(
+    async (title: string) => {
+      await createPost.mutateAsync({
+        post: {
+          title,
+          description: null,
+          status: "backlog",
+        },
+      });
+    },
+    [createPost]
+  );
 
   // Handle drag start
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -258,6 +274,11 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
                 description={column.description}
                 count={postsByStatus[column.id].length}
                 onAddPost={() => handleNewPost(column.id)}
+                headerContent={
+                  column.id === "backlog" ? (
+                    <QuickCapture onCapture={handleQuickCapture} />
+                  ) : undefined
+                }
               >
                 {postsByStatus[column.id].map((post) => (
                   <PostCard

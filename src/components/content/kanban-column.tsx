@@ -18,6 +18,8 @@ interface KanbanColumnProps {
   count: number;
   children: React.ReactNode;
   onAddPost?: () => void;
+  /** Render content above the cards (e.g., quick capture input) */
+  headerContent?: React.ReactNode;
 }
 
 // ============================================================================
@@ -58,6 +60,7 @@ export function KanbanColumn({
   count,
   children,
   onAddPost,
+  headerContent,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -106,10 +109,15 @@ export function KanbanColumn({
 
       {/* Column Content */}
       <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+        {/* Header content (e.g., quick capture) */}
+        {headerContent && (
+          <div className="mb-2">{headerContent}</div>
+        )}
+
         {children}
 
         {/* Empty state */}
-        {count === 0 && (
+        {count === 0 && !headerContent && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <p className="text-small text-text-muted mb-2">No posts yet</p>
             {onAddPost && (

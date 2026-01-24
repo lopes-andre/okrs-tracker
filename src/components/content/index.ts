@@ -14,6 +14,7 @@ export { PostDialog } from "./post-dialog";
 export { KanbanBoard } from "./kanban-board";
 export { KanbanColumn } from "./kanban-column";
 export { PostCard } from "./post-card";
+export { QuickCapture } from "./quick-capture";
 
 // Visual Components
 export { PlatformIcon, getPlatformColors } from "./platform-icon";
