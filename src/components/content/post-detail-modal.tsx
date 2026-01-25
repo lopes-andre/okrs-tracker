@@ -45,23 +45,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink } from "@/features/content/hooks";
+import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useCreateDistribution } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
 import { PostDistributionsTab } from "./post-distributions-tab";
 import { PostMetricsTab } from "./post-metrics-tab";
 import { MediaUpload } from "./media-upload";
+import { PendingMediaUpload } from "./pending-media-upload";
+import { PendingDistributionsTab } from "./pending-distributions-tab";
 import type {
   ContentPostStatus,
   ContentGoal,
   ContentAccountWithPlatform,
+  ContentDistributionInsert,
 } from "@/lib/supabase/types";
+
+// ============================================================================
+// PENDING TYPES
+// ============================================================================
+
+interface PendingLink {
+  id: string;
+  url: string;
+  title: string;
+}
+
+interface PendingDistribution {
+  id: string;
+  accountId: string;
+  format: string | null;
+  caption: string | null;
+  scheduledAt: string | null;
+  postedAt: string | null;
+  status: "draft" | "scheduled" | "posted";
+}
 
 // ============================================================================
 // TYPES
@@ -108,6 +124,8 @@ export function PostDetailModal({
   const deletePost = useDeletePost(planId);
   const addPostLink = useAddPostLink(planId);
   const deletePostLink = useDeletePostLink(planId);
+  const uploadMedia = useUploadMedia(planId);
+  const createDistribution = useCreateDistribution(planId);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -119,10 +137,15 @@ export function PostDetailModal({
   const [status, setStatus] = useState<ContentPostStatus>(initialStatus);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
 
-  // Link form state
+  // Link form state (for existing posts)
   const [showAddLinkForm, setShowAddLinkForm] = useState(false);
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [newLinkTitle, setNewLinkTitle] = useState("");
+
+  // Pending state for new posts (stored locally until post is created)
+  const [pendingMediaFiles, setPendingMediaFiles] = useState<File[]>([]);
+  const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
+  const [pendingDistributions, setPendingDistributions] = useState<PendingDistribution[]>([]);
 
   // Reset form when dialog opens or post changes
   useEffect(() => {
@@ -137,6 +160,10 @@ export function PostDetailModal({
         setDescription("");
         setStatus(initialStatus);
         setSelectedGoalIds([]);
+        // Reset pending state for new posts
+        setPendingMediaFiles([]);
+        setPendingLinks([]);
+        setPendingDistributions([]);
       }
       setActiveTab("overview");
       setShowAddLinkForm(false);
@@ -144,6 +171,54 @@ export function PostDetailModal({
       setNewLinkTitle("");
     }
   }, [open, post, isEditing, initialStatus]);
+
+  // Compute status for new posts based on pending distributions
+  const computedStatus = useCallback((): ContentPostStatus => {
+    if (pendingDistributions.length === 0) return "backlog";
+
+    const allPosted = pendingDistributions.every(d => d.status === "posted");
+    if (allPosted) return "complete";
+
+    const hasScheduledOrPosted = pendingDistributions.some(
+      d => d.status === "scheduled" || d.status === "posted"
+    );
+    if (hasScheduledOrPosted) return "ongoing";
+
+    return "tagged";
+  }, [pendingDistributions]);
+
+  // Handlers for pending media
+  const handleAddPendingMedia = useCallback((files: File[]) => {
+    setPendingMediaFiles(prev => [...prev, ...files]);
+  }, []);
+
+  const handleRemovePendingMedia = useCallback((index: number) => {
+    setPendingMediaFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Handlers for pending links
+  const handleAddPendingLink = useCallback((url: string, linkTitle: string) => {
+    setPendingLinks(prev => [...prev, { id: crypto.randomUUID(), url, title: linkTitle }]);
+  }, []);
+
+  const handleRemovePendingLink = useCallback((id: string) => {
+    setPendingLinks(prev => prev.filter(l => l.id !== id));
+  }, []);
+
+  // Handlers for pending distributions
+  const handleAddPendingDistribution = useCallback((distribution: Omit<PendingDistribution, "id">) => {
+    setPendingDistributions(prev => [...prev, { ...distribution, id: crypto.randomUUID() }]);
+  }, []);
+
+  const handleUpdatePendingDistribution = useCallback((id: string, updates: Partial<PendingDistribution>) => {
+    setPendingDistributions(prev =>
+      prev.map(d => d.id === id ? { ...d, ...updates } : d)
+    );
+  }, []);
+
+  const handleRemovePendingDistribution = useCallback((id: string) => {
+    setPendingDistributions(prev => prev.filter(d => d.id !== id));
+  }, []);
 
   // Handle adding a link
   const handleAddLink = useCallback(async () => {
@@ -181,6 +256,7 @@ export function PostDetailModal({
     setIsSubmitting(true);
     try {
       if (isEditing && postId) {
+        // Update existing post
         await updatePost.mutateAsync({
           postId,
           updates: {
@@ -191,20 +267,66 @@ export function PostDetailModal({
           goalIds: selectedGoalIds,
         });
       } else {
-        await createPost.mutateAsync({
+        // Create new post with computed status
+        const newStatus = computedStatus();
+        const newPost = await createPost.mutateAsync({
           post: {
             title: title.trim(),
             description: description.trim() || null,
-            status,
+            status: newStatus,
           },
           goalIds: selectedGoalIds,
         });
+
+        // Upload pending media files
+        for (const file of pendingMediaFiles) {
+          try {
+            await uploadMedia.mutateAsync({ postId: newPost.id, file });
+          } catch (err) {
+            console.error("Failed to upload media:", err);
+          }
+        }
+
+        // Add pending links
+        for (const link of pendingLinks) {
+          try {
+            await addPostLink.mutateAsync({
+              post_id: newPost.id,
+              url: link.url,
+              title: link.title || null,
+            });
+          } catch (err) {
+            console.error("Failed to add link:", err);
+          }
+        }
+
+        // Create pending distributions
+        for (const dist of pendingDistributions) {
+          try {
+            const distributionData: ContentDistributionInsert = {
+              post_id: newPost.id,
+              account_id: dist.accountId,
+              status: dist.status,
+              format: dist.format,
+              caption: dist.caption,
+              scheduled_at: dist.scheduledAt,
+              posted_at: dist.postedAt,
+              platform_post_url: null,
+              platform_specific_data: {},
+              linked_task_id: null,
+            };
+            await createDistribution.mutateAsync(distributionData);
+          } catch (err) {
+            console.error("Failed to create distribution:", err);
+          }
+        }
+
         onOpenChange(false);
       }
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange]);
+  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution]);
 
   // Handle delete
   const handleDelete = useCallback(async () => {
@@ -269,7 +391,7 @@ export function PostDetailModal({
                   <DialogTitle className="text-xl">
                     {isEditing ? "Edit Post" : "New Post"}
                   </DialogTitle>
-                  {currentStatus && (
+                  {isEditing && currentStatus && (
                     <Badge
                       variant="outline"
                       className={cn("shrink-0", currentStatus.color)}
@@ -281,6 +403,11 @@ export function PostDetailModal({
                 {isEditing && post && (
                   <p className="text-small text-text-muted truncate">
                     {post.title}
+                  </p>
+                )}
+                {!isEditing && (
+                  <p className="text-small text-text-muted">
+                    Status is set automatically based on distributions
                   </p>
                 )}
               </div>
@@ -327,20 +454,20 @@ export function PostDetailModal({
                 <FileText className="w-4 h-4 mr-2" />
                 Overview
               </TabsTrigger>
+              <TabsTrigger
+                value="distributions"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Distributions
+                {(isEditing ? post?.distribution_count : pendingDistributions.length) ? (
+                  <Badge variant="secondary" className="ml-2 text-[10px] px-1.5">
+                    {isEditing ? post?.distribution_count : pendingDistributions.length}
+                  </Badge>
+                ) : null}
+              </TabsTrigger>
               {isEditing && (
                 <>
-                  <TabsTrigger
-                    value="distributions"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Distributions
-                    {post?.distribution_count ? (
-                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5">
-                        {post.distribution_count}
-                      </Badge>
-                    ) : null}
-                  </TabsTrigger>
                   <TabsTrigger
                     value="media"
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
@@ -382,7 +509,7 @@ export function PostDetailModal({
               <TabsContent value="overview" className="p-6 space-y-6 m-0">
                 {/* Title */}
                 <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
+                  <Label htmlFor="title">Title <span className="text-status-danger">*</span></Label>
                   <Input
                     id="title"
                     value={title}
@@ -403,34 +530,6 @@ export function PostDetailModal({
                     rows={5}
                     className="resize-none"
                   />
-                </div>
-
-                {/* Status */}
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={status}
-                    onValueChange={(value) => setStatus(value as ContentPostStatus)}
-                  >
-                    <SelectTrigger id="status" className="w-[200px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                "w-2 h-2 rounded-full",
-                                option.color
-                              )}
-                            />
-                            {option.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {/* Goals */}
@@ -475,64 +574,70 @@ export function PostDetailModal({
                     <Label className="flex items-center gap-2">
                       <ImageIcon className="w-4 h-4" />
                       Media
-                      {post?.media && post.media.length > 0 && (
+                      {(isEditing ? post?.media?.length : pendingMediaFiles.length) ? (
                         <Badge variant="secondary" className="text-[10px]">
-                          {post.media.length}
+                          {isEditing ? post?.media?.length : pendingMediaFiles.length}
                         </Badge>
-                      )}
+                      ) : null}
                     </Label>
-                    {isEditing && post?.media && post.media.length > 0 ? (
-                      <div className="border border-border rounded-lg p-4 space-y-3">
-                        {/* Media file list */}
-                        <div className="space-y-2">
-                          {post.media.slice(0, 3).map((media) => (
-                            <div
-                              key={media.id}
-                              className="flex items-center gap-2 text-small"
-                            >
-                              {media.file_type?.startsWith("image/") ? (
-                                <ImageIcon className="w-4 h-4 text-text-muted shrink-0" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-text-muted shrink-0" />
-                              )}
-                              <span className="truncate text-text-muted">
-                                {media.file_name || "File"}
-                              </span>
-                            </div>
-                          ))}
-                          {post.media.length > 3 && (
-                            <p className="text-small text-text-muted">
-                              +{post.media.length - 3} more files
-                            </p>
-                          )}
+                    {isEditing ? (
+                      // Editing mode - show existing media
+                      post?.media && post.media.length > 0 ? (
+                        <div className="border border-border rounded-lg p-4 space-y-3">
+                          <div className="space-y-2">
+                            {post.media.slice(0, 3).map((media) => (
+                              <div
+                                key={media.id}
+                                className="flex items-center gap-2 text-small"
+                              >
+                                {media.file_type?.startsWith("image/") ? (
+                                  <ImageIcon className="w-4 h-4 text-text-muted shrink-0" />
+                                ) : (
+                                  <FileText className="w-4 h-4 text-text-muted shrink-0" />
+                                )}
+                                <span className="truncate text-text-muted">
+                                  {media.file_name || "File"}
+                                </span>
+                              </div>
+                            ))}
+                            {post.media.length > 3 && (
+                              <p className="text-small text-text-muted">
+                                +{post.media.length - 3} more files
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setActiveTab("media")}
+                          >
+                            Manage Media
+                          </Button>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setActiveTab("media")}
-                        >
-                          Manage Media
-                        </Button>
-                      </div>
+                      ) : (
+                        <div className="border border-dashed border-border rounded-lg p-6 text-center">
+                          <ImageIcon className="w-8 h-8 mx-auto mb-2 text-text-muted" />
+                          <p className="text-small text-text-muted mb-2">
+                            Upload images and files for this post
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setActiveTab("media")}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Media
+                          </Button>
+                        </div>
+                      )
                     ) : (
-                      <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                        <ImageIcon className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-                        <p className="text-small text-text-muted mb-2">
-                          {isEditing
-                            ? "Upload images and files for this post"
-                            : "Save the post first to add media"}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={!isEditing}
-                          onClick={() => setActiveTab("media")}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Media
-                        </Button>
-                      </div>
+                      // New post mode - show pending media upload
+                      <PendingMediaUpload
+                        files={pendingMediaFiles}
+                        onAddFiles={handleAddPendingMedia}
+                        onRemoveFile={handleRemovePendingMedia}
+                      />
                     )}
                   </div>
 
@@ -541,14 +646,14 @@ export function PostDetailModal({
                     <Label className="flex items-center gap-2">
                       <Link2 className="w-4 h-4" />
                       Reference Links
-                      {post?.links && post.links.length > 0 && (
+                      {(isEditing ? post?.links?.length : pendingLinks.length) ? (
                         <Badge variant="secondary" className="text-[10px]">
-                          {post.links.length}
+                          {isEditing ? post?.links?.length : pendingLinks.length}
                         </Badge>
-                      )}
+                      ) : null}
                     </Label>
                     <div className="border border-border rounded-lg p-4 space-y-3">
-                      {/* Existing links */}
+                      {/* Existing links (edit mode) */}
                       {isEditing && post?.links && post.links.length > 0 && (
                         <div className="space-y-2">
                           {post.links.map((link) => (
@@ -571,6 +676,31 @@ export function PostDetailModal({
                                 size="icon"
                                 className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                                 onClick={() => handleDeleteLink(link.id)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Pending links (new mode) */}
+                      {!isEditing && pendingLinks.length > 0 && (
+                        <div className="space-y-2">
+                          {pendingLinks.map((link) => (
+                            <div
+                              key={link.id}
+                              className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
+                            >
+                              <Link2 className="w-4 h-4 text-text-muted shrink-0" />
+                              <span className="flex-1 min-w-0 text-small truncate">
+                                {link.title || link.url}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                onClick={() => handleRemovePendingLink(link.id)}
                               >
                                 <X className="w-3 h-3" />
                               </Button>
@@ -609,27 +739,26 @@ export function PostDetailModal({
                             <Button
                               size="sm"
                               className="flex-1"
-                              onClick={handleAddLink}
-                              disabled={!newLinkUrl.trim() || addPostLink.isPending}
+                              onClick={() => {
+                                if (isEditing) {
+                                  handleAddLink();
+                                } else {
+                                  // Add to pending links
+                                  handleAddPendingLink(newLinkUrl.trim(), newLinkTitle.trim());
+                                  setNewLinkUrl("");
+                                  setNewLinkTitle("");
+                                  setShowAddLinkForm(false);
+                                }
+                              }}
+                              disabled={!newLinkUrl.trim() || (isEditing && addPostLink.isPending)}
                             >
-                              {addPostLink.isPending ? (
+                              {isEditing && addPostLink.isPending ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 "Add"
                               )}
                             </Button>
                           </div>
-                        </div>
-                      ) : !isEditing ? (
-                        <div className="text-center py-4">
-                          <Link2 className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-                          <p className="text-small text-text-muted mb-2">
-                            Save the post first to add links
-                          </p>
-                          <Button variant="outline" size="sm" disabled>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Link
-                          </Button>
                         </div>
                       ) : (
                         <Button
@@ -648,15 +777,23 @@ export function PostDetailModal({
               </TabsContent>
 
               {/* Distributions Tab */}
-              {isEditing && post && (
-                <TabsContent value="distributions" className="p-6 m-0">
+              <TabsContent value="distributions" className="p-6 m-0">
+                {isEditing && post ? (
                   <PostDistributionsTab
                     post={post}
                     accounts={accounts}
                     planId={planId}
                   />
-                </TabsContent>
-              )}
+                ) : (
+                  <PendingDistributionsTab
+                    accounts={accounts}
+                    pendingDistributions={pendingDistributions}
+                    onAddDistribution={handleAddPendingDistribution}
+                    onUpdateDistribution={handleUpdatePendingDistribution}
+                    onRemoveDistribution={handleRemovePendingDistribution}
+                  />
+                )}
+              </TabsContent>
 
               {/* Media Tab */}
               {isEditing && post && (
