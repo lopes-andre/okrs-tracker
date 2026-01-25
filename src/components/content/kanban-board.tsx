@@ -7,7 +7,7 @@ import { KanbanColumn } from "./kanban-column";
 import { PostCard } from "./post-card";
 import { PostDetailModal } from "./post-detail-modal";
 import { KanbanFilters, defaultFilters, type KanbanFilters as KanbanFiltersType } from "./kanban-filters";
-import { usePostsWithDetails, useAccountsWithPlatform } from "@/features/content/hooks";
+import { usePostsWithDetails, useAccountsWithPlatform, useToggleFavorite } from "@/features/content/hooks";
 import type { ContentPostWithDetails, ContentPostStatus, ContentGoal } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -64,6 +64,7 @@ const COLUMNS: Column[] = [
 export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   const { data: posts, isLoading } = usePostsWithDetails(planId);
   const { data: accounts = [] } = useAccountsWithPlatform(planId);
+  const toggleFavorite = useToggleFavorite(planId);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -73,13 +74,21 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   // Filter state
   const [filters, setFilters] = useState<KanbanFiltersType>(defaultFilters);
 
+  // Handle favorite toggle
+  const handleToggleFavorite = useCallback((postId: string, isFavorite: boolean) => {
+    toggleFavorite.mutate({ postId, isFavorite });
+  }, [toggleFavorite]);
+
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
       filters.search !== "" ||
       filters.goalIds.length > 0 ||
       filters.accountIds.length > 0 ||
-      filters.hasDistributions !== null
+      filters.hasDistributions !== null ||
+      filters.isFavorite === true ||
+      filters.hasMedia !== null ||
+      filters.hasLinks !== null
     );
   }, [filters]);
 
@@ -94,6 +103,11 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         const titleMatch = post.title.toLowerCase().includes(searchLower);
         const descMatch = post.description?.toLowerCase().includes(searchLower);
         if (!titleMatch && !descMatch) return false;
+      }
+
+      // Favorites filter
+      if (filters.isFavorite === true && !post.is_favorite) {
+        return false;
       }
 
       // Goal filter
@@ -115,6 +129,20 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         const distributionCount = post.distribution_count || 0;
         if (filters.hasDistributions && distributionCount === 0) return false;
         if (!filters.hasDistributions && distributionCount > 0) return false;
+      }
+
+      // Has media filter
+      if (filters.hasMedia !== null) {
+        const mediaCount = post.media?.length || 0;
+        if (filters.hasMedia && mediaCount === 0) return false;
+        if (!filters.hasMedia && mediaCount > 0) return false;
+      }
+
+      // Has links filter
+      if (filters.hasLinks !== null) {
+        const linkCount = post.links?.length || 0;
+        if (filters.hasLinks && linkCount === 0) return false;
+        if (!filters.hasLinks && linkCount > 0) return false;
       }
 
       return true;
@@ -214,6 +242,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
                   key={post.id}
                   post={post}
                   onClick={() => handleEditPost(post)}
+                  onToggleFavorite={handleToggleFavorite}
                 />
               ))}
             </KanbanColumn>

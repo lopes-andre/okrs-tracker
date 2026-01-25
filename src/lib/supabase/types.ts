@@ -453,6 +453,7 @@ export interface ContentPost {
   status: ContentPostStatus;
   created_by: string;
   display_order: number;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -626,7 +627,7 @@ export type ContentAccountUpdate = Partial<Omit<ContentAccount, 'id' | 'plan_id'
 export type ContentGoalInsert = Omit<ContentGoal, 'id' | 'created_at' | 'updated_at'>;
 export type ContentGoalUpdate = Partial<Omit<ContentGoal, 'id' | 'plan_id' | 'created_at' | 'updated_at'>>;
 
-export type ContentPostInsert = Omit<ContentPost, 'id' | 'created_at' | 'updated_at'>;
+export type ContentPostInsert = Omit<ContentPost, 'id' | 'created_at' | 'updated_at' | 'is_favorite' | 'display_order'>;
 export type ContentPostUpdate = Partial<Omit<ContentPost, 'id' | 'plan_id' | 'created_by' | 'created_at' | 'updated_at'>>;
 
 export type ContentPostMediaInsert = Omit<ContentPostMedia, 'id' | 'created_at' | 'display_order'>;
@@ -784,6 +785,8 @@ export interface ContentPostWithDetails extends ContentPost {
   distribution_count: number;
   scheduled_count: number;
   posted_count: number;
+  media_count: number;
+  link_count: number;
   created_by_user?: Profile;
 }
 
@@ -867,6 +870,9 @@ export interface ContentPostFilters {
   created_by?: string;
   has_distributions?: boolean;
   search?: string;
+  is_favorite?: boolean;
+  has_media?: boolean;
+  has_links?: boolean;
 }
 
 export interface ContentDistributionFilters {

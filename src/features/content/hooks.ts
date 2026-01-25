@@ -320,7 +320,6 @@ export function useCreatePost(planId: string) {
           ...post,
           plan_id: planId,
           created_by: user.id,
-          display_order: 0, // Will be at top, can be reordered later
         },
         goalIds
       );
@@ -370,6 +369,22 @@ export function useDeletePost(_planId: string) {
     },
     onError: (error) => {
       toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Toggle post favorite status
+ */
+export function useToggleFavorite(planId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ postId, isFavorite }: { postId: string; isFavorite: boolean }) =>
+      api.togglePostFavorite(postId, isFavorite),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
     },
   });
 }

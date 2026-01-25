@@ -320,6 +320,9 @@ export async function getPostsWithDetails(planId: string): Promise<ContentPostWi
       media: media || [],
       links: links || [],
       distributions: distributions || [],
+      // Use counts from RPC if available, otherwise calculate from fetched arrays
+      media_count: post.media_count ?? (media?.length || 0),
+      link_count: post.link_count ?? (links?.length || 0),
     });
   }
 
@@ -467,6 +470,21 @@ export async function deletePost(postId: string): Promise<void> {
       .delete()
       .eq("id", postId),
     "deletePost"
+  );
+}
+
+/**
+ * Toggle favorite status of a post
+ */
+export async function togglePostFavorite(postId: string, isFavorite: boolean): Promise<ContentPost> {
+  const supabase = createClient();
+  return handleSupabaseError(
+    supabase
+      .from("content_posts")
+      .update({ is_favorite: isFavorite })
+      .eq("id", postId)
+      .select()
+      .single()
   );
 }
 

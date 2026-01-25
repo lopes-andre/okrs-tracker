@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Star, Image, Link2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,9 @@ export interface KanbanFilters {
   goalIds: string[];
   accountIds: string[];
   hasDistributions: boolean | null;
+  isFavorite: boolean | null;
+  hasMedia: boolean | null;
+  hasLinks: boolean | null;
 }
 
 interface KanbanFiltersProps {
@@ -39,6 +42,9 @@ export const defaultFilters: KanbanFilters = {
   goalIds: [],
   accountIds: [],
   hasDistributions: null,
+  isFavorite: null,
+  hasMedia: null,
+  hasLinks: null,
 };
 
 // ============================================================================
@@ -57,7 +63,10 @@ export function KanbanFilters({
   const activeFilterCount =
     filters.goalIds.length +
     filters.accountIds.length +
-    (filters.hasDistributions !== null ? 1 : 0);
+    (filters.hasDistributions !== null ? 1 : 0) +
+    (filters.isFavorite === true ? 1 : 0) +
+    (filters.hasMedia !== null ? 1 : 0) +
+    (filters.hasLinks !== null ? 1 : 0);
 
   // Handle search change
   const handleSearchChange = useCallback(
@@ -93,6 +102,30 @@ export function KanbanFilters({
   const toggleHasDistributions = useCallback(
     (value: boolean | null) => {
       onFiltersChange({ ...filters, hasDistributions: value });
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Toggle favorites filter
+  const toggleFavorites = useCallback(
+    (value: boolean | null) => {
+      onFiltersChange({ ...filters, isFavorite: value });
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Toggle hasMedia filter
+  const toggleHasMedia = useCallback(
+    (value: boolean | null) => {
+      onFiltersChange({ ...filters, hasMedia: value });
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Toggle hasLinks filter
+  const toggleHasLinks = useCallback(
+    (value: boolean | null) => {
+      onFiltersChange({ ...filters, hasLinks: value });
     },
     [filters, onFiltersChange]
   );
@@ -166,6 +199,63 @@ export function KanbanFilters({
                   Clear all
                 </button>
               )}
+            </div>
+
+            {/* Quick Filters */}
+            <div className="space-y-2">
+              <Label className="text-small font-medium">Quick Filters</Label>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={filters.isFavorite === true}
+                    onCheckedChange={(checked) =>
+                      toggleFavorites(checked ? true : null)
+                    }
+                  />
+                  <Star className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-small">Favorites only</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Attachments */}
+            <div className="space-y-2">
+              <Label className="text-small font-medium">Attachments</Label>
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={filters.hasMedia === true}
+                    onCheckedChange={(checked) =>
+                      toggleHasMedia(checked ? true : null)
+                    }
+                  />
+                  <Image className="w-3.5 h-3.5" />
+                  <span className="text-small">Has media files</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={filters.hasLinks === true}
+                    onCheckedChange={(checked) =>
+                      toggleHasLinks(checked ? true : null)
+                    }
+                  />
+                  <Link2 className="w-3.5 h-3.5" />
+                  <span className="text-small">Has reference links</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={filters.hasMedia === false && filters.hasLinks === false}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onFiltersChange({ ...filters, hasMedia: false, hasLinks: false });
+                      } else {
+                        onFiltersChange({ ...filters, hasMedia: null, hasLinks: null });
+                      }
+                    }}
+                  />
+                  <span className="text-small">No attachments</span>
+                </label>
+              </div>
             </div>
 
             {/* Distribution Status */}
@@ -254,6 +344,55 @@ export function KanbanFilters({
       {/* Active Filter Tags */}
       {activeFilterCount > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
+          {filters.isFavorite === true && (
+            <Badge variant="secondary" className="gap-1">
+              <Star className="w-3 h-3 text-amber-500" />
+              Favorites
+              <button
+                onClick={() => toggleFavorites(null)}
+                className="ml-1 hover:text-status-danger"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {filters.hasMedia === true && (
+            <Badge variant="secondary" className="gap-1">
+              <Image className="w-3 h-3" />
+              Has media
+              <button
+                onClick={() => toggleHasMedia(null)}
+                className="ml-1 hover:text-status-danger"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {filters.hasLinks === true && (
+            <Badge variant="secondary" className="gap-1">
+              <Link2 className="w-3 h-3" />
+              Has links
+              <button
+                onClick={() => toggleHasLinks(null)}
+                className="ml-1 hover:text-status-danger"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+          {filters.hasMedia === false && filters.hasLinks === false && (
+            <Badge variant="secondary" className="gap-1">
+              No attachments
+              <button
+                onClick={() => {
+                  onFiltersChange({ ...filters, hasMedia: null, hasLinks: null });
+                }}
+                className="ml-1 hover:text-status-danger"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
           {filters.hasDistributions !== null && (
             <Badge variant="secondary" className="gap-1">
               {filters.hasDistributions ? "Has distributions" : "No distributions"}
