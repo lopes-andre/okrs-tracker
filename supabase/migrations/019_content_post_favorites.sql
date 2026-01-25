@@ -19,6 +19,9 @@ COMMENT ON COLUMN content_posts.is_favorite IS 'Whether this post is marked as a
 -- Update get_content_posts_with_details to include is_favorite and media counts
 -- ============================================================================
 
+-- Must drop function first because we're changing the return type
+DROP FUNCTION IF EXISTS get_content_posts_with_details(UUID);
+
 CREATE OR REPLACE FUNCTION get_content_posts_with_details(p_plan_id UUID)
 RETURNS TABLE (
   id UUID,
