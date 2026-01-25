@@ -378,12 +378,50 @@ export function useDeletePost(_planId: string) {
  */
 export function useToggleFavorite(planId: string) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: ({ postId, isFavorite }: { postId: string; isFavorite: boolean }) =>
       api.togglePostFavorite(postId, isFavorite),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+    // Optimistic update
+    onMutate: async ({ postId, isFavorite }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+
+      // Snapshot the previous value
+      const previousPosts = queryClient.getQueryData(queryKeys.content.posts.withDetails(planId));
+
+      // Optimistically update the cache
+      queryClient.setQueryData(
+        queryKeys.content.posts.withDetails(planId),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (old: any[] | undefined) => {
+          if (!old) return old;
+          return old.map((post) =>
+            post.id === postId ? { ...post, is_favorite: isFavorite } : post
+          );
+        }
+      );
+
+      // Return context with the snapshotted value
+      return { previousPosts };
+    },
+    onError: (_error, _variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousPosts) {
+        queryClient.setQueryData(
+          queryKeys.content.posts.withDetails(planId),
+          context.previousPosts
+        );
+      }
+      toast({
+        title: "Failed to update favorite",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure data consistency
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
     },
   });

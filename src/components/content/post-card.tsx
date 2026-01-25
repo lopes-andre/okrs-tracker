@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import {
   Calendar,
@@ -25,6 +25,110 @@ interface PostCardProps {
   post: ContentPostWithDetails;
   onClick?: () => void;
   onToggleFavorite?: (postId: string, isFavorite: boolean) => void;
+}
+
+// ============================================================================
+// FAVORITE STAR BUTTON COMPONENT
+// ============================================================================
+
+interface FavoriteStarProps {
+  isFavorite: boolean;
+  onToggle: () => void;
+}
+
+function FavoriteStar({ isFavorite, onToggle }: FavoriteStarProps) {
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [optimisticFavorite, setOptimisticFavorite] = useState(isFavorite);
+  const pendingRef = useRef(false);
+
+  // Sync optimistic state with actual state when it changes from server
+  useEffect(() => {
+    if (!pendingRef.current) {
+      setOptimisticFavorite(isFavorite);
+    }
+  }, [isFavorite]);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+
+      // Optimistic update - immediately toggle UI
+      const newValue = !optimisticFavorite;
+      setOptimisticFavorite(newValue);
+      pendingRef.current = true;
+
+      // Trigger animation
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 300);
+
+      // Call the actual toggle (will sync on success/error)
+      onToggle();
+
+      // Reset pending flag after a delay to allow server sync
+      setTimeout(() => {
+        pendingRef.current = false;
+      }, 2000);
+    },
+    [optimisticFavorite, onToggle]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+        handleClick(e as unknown as React.MouseEvent);
+      }
+    },
+    [handleClick]
+  );
+
+  return (
+    <button
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      aria-label={optimisticFavorite ? "Remove from favorites" : "Add to favorites"}
+      aria-pressed={optimisticFavorite}
+      tabIndex={0}
+      className={cn(
+        // Base styles - 44x44 min touch target with visible 24x24 button
+        "relative flex items-center justify-center",
+        "w-7 h-7 -mr-1", // Visible size with negative margin to align
+        "rounded-full",
+        "transition-all duration-200 ease-out",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1",
+        // Hover states
+        "hover:bg-bg-1 hover:scale-110",
+        // Active (click) state
+        "active:scale-125",
+        // Color states
+        optimisticFavorite
+          ? "text-amber-500"
+          : "text-text-muted/60 hover:text-amber-400"
+      )}
+      style={{
+        // Ensure minimum touch target
+        minWidth: "44px",
+        minHeight: "44px",
+        margin: "-8px -8px -8px 0", // Expand touch area without affecting layout
+        padding: "8px",
+      }}
+    >
+      <Star
+        className={cn(
+          "w-4 h-4 transition-all duration-200",
+          optimisticFavorite && "fill-current",
+          // Pop animation when toggling
+          isAnimating && "scale-125"
+        )}
+        style={{
+          // Smooth fill transition
+          transition: "fill 150ms ease-out, transform 200ms ease-out",
+        }}
+      />
+    </button>
+  );
 }
 
 // ============================================================================
@@ -239,45 +343,32 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
     return false;
   });
 
-  const handleFavoriteClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onToggleFavorite?.(post.id, !post.is_favorite);
-    },
-    [post.id, post.is_favorite, onToggleFavorite]
-  );
+  const handleToggleFavorite = useCallback(() => {
+    onToggleFavorite?.(post.id, !post.is_favorite);
+  }, [post.id, post.is_favorite, onToggleFavorite]);
 
   return (
     <div
       className={cn(
         "bg-bg-0 rounded-card border border-border-soft",
         "hover:border-border hover:shadow-sm transition-all cursor-pointer",
-        "p-3 relative"
+        "p-3"
       )}
       onClick={onClick}
     >
-      {/* Favorite Star - Top Right */}
-      <button
-        onClick={handleFavoriteClick}
-        className={cn(
-          "absolute top-2 right-2 z-10 p-1 rounded-full transition-all",
-          "hover:bg-bg-1",
-          post.is_favorite ? "text-amber-500" : "text-text-muted hover:text-amber-400"
-        )}
-        title={post.is_favorite ? "Remove from favorites" : "Add to favorites"}
-      >
-        <Star
-          className={cn("w-4 h-4", post.is_favorite && "fill-current")}
-        />
-      </button>
-
       {/* Cover Image (if has image media) */}
       {hasImageMedia && <CoverImage post={post} />}
 
-      {/* Title */}
-      <h4 className="font-medium text-body-sm line-clamp-2 mb-2 pr-6">
-        {post.title || "Untitled Post"}
-      </h4>
+      {/* Title Row with Favorite Star */}
+      <div className="flex items-start gap-2 mb-2">
+        <h4 className="flex-1 font-medium text-body-sm line-clamp-2">
+          {post.title || "Untitled Post"}
+        </h4>
+        <FavoriteStar
+          isFavorite={post.is_favorite}
+          onToggle={handleToggleFavorite}
+        />
+      </div>
 
       {/* Description preview */}
       {post.description && (
