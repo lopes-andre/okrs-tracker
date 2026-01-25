@@ -61,6 +61,10 @@ const COLUMNS: Column[] = [
 // Maximum visible completed posts in kanban (rest go to Content Logbook)
 const MAX_VISIBLE_COMPLETED = 10;
 
+// Initial visible posts per column (for load more pattern)
+const INITIAL_VISIBLE_PER_COLUMN = 20;
+const LOAD_MORE_INCREMENT = 20;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -81,10 +85,26 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   // Filter state
   const [filters, setFilters] = useState<KanbanFiltersType>(defaultFilters);
 
+  // Visible count per column (for load more pattern)
+  const [visibleCounts, setVisibleCounts] = useState<Record<ContentPostStatus, number>>({
+    backlog: INITIAL_VISIBLE_PER_COLUMN,
+    tagged: INITIAL_VISIBLE_PER_COLUMN,
+    ongoing: INITIAL_VISIBLE_PER_COLUMN,
+    complete: MAX_VISIBLE_COMPLETED, // Complete uses its own limit
+  });
+
   // Handle favorite toggle
   const handleToggleFavorite = useCallback((postId: string, isFavorite: boolean) => {
     toggleFavorite.mutate({ postId, isFavorite });
   }, [toggleFavorite]);
+
+  // Handle load more for a column
+  const handleLoadMore = useCallback((status: ContentPostStatus) => {
+    setVisibleCounts((prev) => ({
+      ...prev,
+      [status]: prev[status] + LOAD_MORE_INCREMENT,
+    }));
+  }, []);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
@@ -169,7 +189,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   }, [posts, filters]);
 
   // Organize filtered posts by status
-  const { postsByStatus, totalCompletedCount } = useMemo(() => {
+  const { postsByStatus, totalCounts } = useMemo(() => {
     const grouped: Record<ContentPostStatus, ContentPostWithDetails[]> = {
       backlog: [],
       tagged: [],
@@ -188,14 +208,26 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
       );
     });
 
-    // For complete column, sort by most recently updated and limit to MAX_VISIBLE_COMPLETED
-    const totalCompleted = grouped.complete.length;
-    grouped.complete = grouped.complete
-      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-      .slice(0, MAX_VISIBLE_COMPLETED);
+    // Track total counts before slicing
+    const totals: Record<ContentPostStatus, number> = {
+      backlog: grouped.backlog.length,
+      tagged: grouped.tagged.length,
+      ongoing: grouped.ongoing.length,
+      complete: grouped.complete.length,
+    };
 
-    return { postsByStatus: grouped, totalCompletedCount: totalCompleted };
-  }, [filteredPosts]);
+    // For complete column, sort by most recently updated
+    grouped.complete = grouped.complete
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+    // Apply visible limits to each column
+    grouped.backlog = grouped.backlog.slice(0, visibleCounts.backlog);
+    grouped.tagged = grouped.tagged.slice(0, visibleCounts.tagged);
+    grouped.ongoing = grouped.ongoing.slice(0, visibleCounts.ongoing);
+    grouped.complete = grouped.complete.slice(0, MAX_VISIBLE_COMPLETED);
+
+    return { postsByStatus: grouped, totalCounts: totals };
+  }, [filteredPosts, visibleCounts]);
 
   // Handle creating a new post (only in backlog)
   const handleNewPost = useCallback(() => {
@@ -245,12 +277,13 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
         {COLUMNS.map((column) => {
           const columnPosts = postsByStatus[column.id];
+          const totalCount = totalCounts[column.id];
           const isBacklog = column.id === "backlog";
           const isComplete = column.id === "complete";
 
-          // For Complete column, show total count in header, visible count in footer
-          const headerCount = isComplete ? totalCompletedCount : columnPosts.length;
-          const showViewAll = isComplete && totalCompletedCount > MAX_VISIBLE_COMPLETED;
+          // Show total count in header for all columns
+          const showViewAll = isComplete && totalCount > MAX_VISIBLE_COMPLETED;
+          const showLoadMore = !isComplete && columnPosts.length < totalCount;
 
           return (
             <KanbanColumn
@@ -258,7 +291,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
               id={column.id}
               title={column.title}
               description={column.description}
-              count={headerCount}
+              count={totalCount}
               emptyMessage={
                 hasActiveFilters
                   ? "No posts match your filters"
@@ -276,11 +309,25 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
                 />
               ))}
 
+              {/* Load More button for non-complete columns */}
+              {showLoadMore && (
+                <div className="pt-2 pb-1 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleLoadMore(column.id)}
+                    className="text-small text-text-muted hover:text-text"
+                  >
+                    Load more ({totalCount - columnPosts.length} remaining)
+                  </Button>
+                </div>
+              )}
+
               {/* View All footer for Complete column */}
               {showViewAll && (
                 <div className="pt-2 pb-1 text-center border-t border-border-soft mt-2">
                   <p className="text-small text-text-muted">
-                    Showing {columnPosts.length} of {totalCompletedCount}
+                    Showing {columnPosts.length} of {totalCount}
                     {" • "}
                     <Link
                       href={`/plans/${planId}/content/logbook`}

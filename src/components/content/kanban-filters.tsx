@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Search, SlidersHorizontal, X, Star, Image, Link2, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,9 @@ export const defaultFilters: KanbanFilters = {
 // COMPONENT
 // ============================================================================
 
+// Debounce delay in milliseconds
+const SEARCH_DEBOUNCE_MS = 300;
+
 export function KanbanFilters({
   goals,
   accounts,
@@ -60,6 +63,26 @@ export function KanbanFilters({
   onFiltersChange,
 }: KanbanFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Local search state for immediate UI feedback
+  const [localSearch, setLocalSearch] = useState(filters.search);
+
+  // Sync local search when filters.search changes externally (e.g., clear filters)
+  useEffect(() => {
+    setLocalSearch(filters.search);
+  }, [filters.search]);
+
+  // Debounce search updates to parent
+  useEffect(() => {
+    // Skip if already in sync
+    if (localSearch === filters.search) return;
+
+    const timeoutId = setTimeout(() => {
+      onFiltersChange({ ...filters, search: localSearch });
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [localSearch, filters, onFiltersChange]);
 
   // Calculate active filter count
   const activeFilterCount =
@@ -71,13 +94,16 @@ export function KanbanFilters({
     (filters.hasVideoLinks !== null ? 1 : 0) +
     (filters.hasLinks !== null ? 1 : 0);
 
-  // Handle search change
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      onFiltersChange({ ...filters, search: value });
-    },
-    [filters, onFiltersChange]
-  );
+  // Handle search change (updates local state, debounced to parent)
+  const handleSearchChange = useCallback((value: string) => {
+    setLocalSearch(value);
+  }, []);
+
+  // Handle immediate clear (bypass debounce)
+  const handleClearSearch = useCallback(() => {
+    setLocalSearch("");
+    onFiltersChange({ ...filters, search: "" });
+  }, [filters, onFiltersChange]);
 
   // Toggle goal filter
   const toggleGoal = useCallback(
@@ -164,13 +190,13 @@ export function KanbanFilters({
         <Input
           type="text"
           placeholder="Search posts..."
-          value={filters.search}
+          value={localSearch}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="pl-9"
         />
-        {filters.search && (
+        {localSearch && (
           <button
-            onClick={() => handleSearchChange("")}
+            onClick={handleClearSearch}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
           >
             <X className="w-4 h-4" />
