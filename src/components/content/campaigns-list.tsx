@@ -414,6 +414,7 @@ function CampaignGroup({
           <CampaignCard
             key={campaign.id}
             campaign={campaign}
+            onClick={() => onEdit(campaign)}
             onEdit={() => onEdit(campaign)}
             onDelete={() => onDelete(campaign.id)}
             onStatusChange={(status) => onStatusChange(campaign.id, status)}

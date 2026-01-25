@@ -916,7 +916,7 @@ export async function getCampaignDistributions(campaignId: string): Promise<Cont
 
   const distributionIds = links.map((l) => l.distribution_id);
 
-  // Get distributions with account info
+  // Get distributions with account and post info
   return handleSupabaseError(
     supabase
       .from("content_distributions")
@@ -925,7 +925,8 @@ export async function getCampaignDistributions(campaignId: string): Promise<Cont
         account:content_accounts(
           *,
           platform:content_platforms(*)
-        )
+        ),
+        post:content_posts(id, title, plan_id)
       `)
       .in("id", distributionIds)
   );

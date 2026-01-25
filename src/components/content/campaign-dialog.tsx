@@ -1,7 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Loader2, Search, Calendar, FileText } from "lucide-react";
+import { format } from "date-fns";
+import {
+  Loader2,
+  Search,
+  Calendar,
+  FileText,
+  TrendingUp,
+  DollarSign,
+  Eye,
+  MousePointer,
+  Target,
+  Filter,
+  X,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +41,7 @@ import {
   usePlatforms,
   useCampaignDistributions,
   useAvailableDistributionsForCampaign,
+  useCampaignCheckins,
 } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
 import type {
@@ -34,6 +49,8 @@ import type {
   ContentCampaignStatus,
   ContentCampaignObjective,
   ContentDistribution,
+  ContentDistributionStatus,
+  ContentCampaignCheckin,
 } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -46,6 +63,7 @@ interface CampaignDialogProps {
   planId: string;
   campaign?: ContentCampaign | null;
   onSubmit: (data: CampaignFormData) => Promise<void>;
+  onAddCheckin?: () => void;
 }
 
 export interface CampaignFormData {
@@ -75,6 +93,11 @@ interface DistributionWithPost extends ContentDistribution {
       display_name: string;
     };
   };
+}
+
+interface DistributionFilters {
+  status: ContentDistributionStatus | "all";
+  platformId: string;
 }
 
 // ============================================================================
@@ -111,6 +134,13 @@ const statusOptions: { value: ContentCampaignStatus; label: string }[] = [
   { value: "completed", label: "Completed" },
 ];
 
+const distributionStatusOptions: { value: ContentDistributionStatus | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "posted", label: "Posted" },
+];
+
 // ============================================================================
 // DISTRIBUTION ITEM COMPONENT
 // ============================================================================
@@ -127,6 +157,11 @@ function DistributionItem({ distribution, isSelected, onToggle }: DistributionIt
   const platformName = distribution.account?.platform?.name || "blog";
   const platformDisplayName = distribution.account?.platform?.display_name || "Platform";
 
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+  };
+
   return (
     <div
       className={cn(
@@ -139,7 +174,7 @@ function DistributionItem({ distribution, isSelected, onToggle }: DistributionIt
     >
       <Checkbox
         checked={isSelected}
-        onCheckedChange={onToggle}
+        onClick={handleCheckboxClick}
         className="mt-0.5"
       />
       <div className="flex-1 min-w-0">
@@ -184,7 +219,162 @@ function DistributionItem({ distribution, isSelected, onToggle }: DistributionIt
 }
 
 // ============================================================================
-// COMPONENT
+// METRICS TAB COMPONENT
+// ============================================================================
+
+interface MetricsTabProps {
+  campaign: ContentCampaign;
+  onAddCheckin?: () => void;
+}
+
+function MetricsTab({ campaign, onAddCheckin }: MetricsTabProps) {
+  const { data: checkins = [], isLoading } = useCampaignCheckins(campaign.id);
+
+  // Calculate totals from latest checkin
+  const latestCheckin = checkins[0];
+  const totalSpent = latestCheckin?.amount_spent || campaign.budget_spent || 0;
+  const budgetAllocated = campaign.budget_allocated || 0;
+  const budgetProgress = budgetAllocated > 0 ? Math.min((totalSpent / budgetAllocated) * 100, 100) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[300px]">
+        <Loader2 className="w-6 h-6 animate-spin text-text-muted" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-3 bg-bg-1 rounded-lg">
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <DollarSign className="w-4 h-4" />
+            <span className="text-[11px]">Spent</span>
+          </div>
+          <p className="text-lg font-semibold">${totalSpent.toLocaleString()}</p>
+          {budgetAllocated > 0 && (
+            <p className="text-[10px] text-text-muted">of ${budgetAllocated.toLocaleString()}</p>
+          )}
+        </div>
+        <div className="p-3 bg-bg-1 rounded-lg">
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <Eye className="w-4 h-4" />
+            <span className="text-[11px]">Impressions</span>
+          </div>
+          <p className="text-lg font-semibold">
+            {latestCheckin?.impressions?.toLocaleString() || "—"}
+          </p>
+        </div>
+        <div className="p-3 bg-bg-1 rounded-lg">
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <MousePointer className="w-4 h-4" />
+            <span className="text-[11px]">Clicks</span>
+          </div>
+          <p className="text-lg font-semibold">
+            {latestCheckin?.clicks?.toLocaleString() || "—"}
+          </p>
+        </div>
+        <div className="p-3 bg-bg-1 rounded-lg">
+          <div className="flex items-center gap-2 text-text-muted mb-1">
+            <Target className="w-4 h-4" />
+            <span className="text-[11px]">Conversions</span>
+          </div>
+          <p className="text-lg font-semibold">
+            {latestCheckin?.conversions?.toLocaleString() || "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* Budget Progress */}
+      {budgetAllocated > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-small">
+            <span className="text-text-muted">Budget Usage</span>
+            <span className="font-medium">{budgetProgress.toFixed(0)}%</span>
+          </div>
+          <div className="h-2 bg-bg-1 rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                budgetProgress > 90 ? "bg-status-danger" : budgetProgress > 70 ? "bg-status-warning" : "bg-accent"
+              )}
+              style={{ width: `${budgetProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Add Check-in Button */}
+      {campaign.status === "active" && onAddCheckin && (
+        <Button variant="outline" onClick={onAddCheckin} className="w-full">
+          <TrendingUp className="w-4 h-4 mr-2" />
+          Add Check-in
+        </Button>
+      )}
+
+      {/* Check-in History */}
+      <div className="space-y-3">
+        <h4 className="text-small font-medium text-text-muted">Check-in History</h4>
+        {checkins.length === 0 ? (
+          <div className="text-center py-8 text-text-muted">
+            <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-small">No check-ins yet</p>
+            <p className="text-[11px]">Add a check-in to track campaign performance</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+            {checkins.map((checkin) => (
+              <CheckinCard key={checkin.id} checkin={checkin} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CheckinCard({ checkin }: { checkin: ContentCampaignCheckin }) {
+  return (
+    <div className="p-3 border border-border-soft rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-small font-medium">
+          {format(new Date(checkin.checked_at), "MMM d, yyyy 'at' h:mm a")}
+        </span>
+        <Badge variant="outline" className="text-[10px]">
+          ${checkin.amount_spent.toLocaleString()}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-[11px]">
+        {checkin.impressions !== null && (
+          <div>
+            <span className="text-text-muted">Impressions: </span>
+            <span className="font-medium">{checkin.impressions.toLocaleString()}</span>
+          </div>
+        )}
+        {checkin.clicks !== null && (
+          <div>
+            <span className="text-text-muted">Clicks: </span>
+            <span className="font-medium">{checkin.clicks.toLocaleString()}</span>
+          </div>
+        )}
+        {checkin.conversions !== null && (
+          <div>
+            <span className="text-text-muted">Conversions: </span>
+            <span className="font-medium">{checkin.conversions.toLocaleString()}</span>
+          </div>
+        )}
+      </div>
+      {checkin.notes && (
+        <p className="mt-2 text-[11px] text-text-muted">{checkin.notes}</p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
 // ============================================================================
 
 export function CampaignDialog({
@@ -193,6 +383,7 @@ export function CampaignDialog({
   planId,
   campaign,
   onSubmit,
+  onAddCheckin,
 }: CampaignDialogProps) {
   const isEditing = !!campaign;
 
@@ -206,10 +397,16 @@ export function CampaignDialog({
   const [budget, setBudget] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState("details");
+
   // Distribution selection state
-  const [selectedPlatformId, setSelectedPlatformId] = useState<string>("");
   const [selectedDistributionIds, setSelectedDistributionIds] = useState<Set<string>>(new Set());
   const [distributionSearch, setDistributionSearch] = useState("");
+  const [distributionFilters, setDistributionFilters] = useState<DistributionFilters>({
+    status: "all",
+    platformId: "",
+  });
 
   // Fetch data
   const { data: platforms = [] } = usePlatforms();
@@ -217,7 +414,7 @@ export function CampaignDialog({
     useAvailableDistributionsForCampaign(
       planId,
       campaign?.id,
-      selectedPlatformId || undefined
+      distributionFilters.platformId || undefined
     );
   const { data: linkedDistributions = [] } = useCampaignDistributions(campaign?.id || "");
 
@@ -228,6 +425,7 @@ export function CampaignDialog({
   useEffect(() => {
     if (open) {
       hasInitializedDistributions.current = false;
+      setActiveTab("details");
       if (campaign) {
         setName(campaign.name || "");
         setDescription(campaign.description || "");
@@ -236,7 +434,6 @@ export function CampaignDialog({
         setStartDate(campaign.start_date || "");
         setEndDate(campaign.end_date || "");
         setBudget(campaign.budget_allocated?.toString() || "");
-        setSelectedPlatformId(campaign.platform_id || "");
       } else {
         setName("");
         setDescription("");
@@ -245,10 +442,10 @@ export function CampaignDialog({
         setStartDate("");
         setEndDate("");
         setBudget("");
-        setSelectedPlatformId("");
         setSelectedDistributionIds(new Set());
       }
       setDistributionSearch("");
+      setDistributionFilters({ status: "all", platformId: "" });
     }
   }, [open, campaign]);
 
@@ -280,17 +477,33 @@ export function CampaignDialog({
     return Array.from(map.values());
   }, [availableDistributions, linkedDistributions]);
 
-  // Filter distributions by search
+  // Filter distributions by search and filters
   const filteredDistributions = useMemo(() => {
-    if (!distributionSearch.trim()) return allDistributions;
-
-    const search = distributionSearch.toLowerCase();
     return allDistributions.filter((d) => {
-      const postTitle = (d.post?.title || "").toLowerCase();
-      const accountName = (d.account?.account_name || "").toLowerCase();
-      return postTitle.includes(search) || accountName.includes(search);
+      // Search filter
+      if (distributionSearch.trim()) {
+        const search = distributionSearch.toLowerCase();
+        const postTitle = (d.post?.title || "").toLowerCase();
+        const accountName = (d.account?.account_name || "").toLowerCase();
+        if (!postTitle.includes(search) && !accountName.includes(search)) {
+          return false;
+        }
+      }
+
+      // Status filter
+      if (distributionFilters.status !== "all" && d.status !== distributionFilters.status) {
+        return false;
+      }
+
+      return true;
     });
-  }, [allDistributions, distributionSearch]);
+  }, [allDistributions, distributionSearch, distributionFilters]);
+
+  // Count active filters
+  const activeFiltersCount = [
+    distributionFilters.status !== "all" ? 1 : 0,
+    distributionFilters.platformId ? 1 : 0,
+  ].reduce((a, b) => a + b, 0);
 
   // Handle distribution toggle
   const handleToggleDistribution = useCallback((distributionId: string) => {
@@ -303,6 +516,12 @@ export function CampaignDialog({
       }
       return next;
     });
+  }, []);
+
+  // Clear filters
+  const handleClearFilters = useCallback(() => {
+    setDistributionFilters({ status: "all", platformId: "" });
+    setDistributionSearch("");
   }, []);
 
   // Handle submit
@@ -340,167 +559,232 @@ export function CampaignDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit Campaign" : "New Campaign"}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
-          {/* Name */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Campaign Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Q1 Product Launch"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Campaign goals and strategy..."
-              rows={2}
-            />
-          </div>
-
-          {/* Objective */}
-          <div className="space-y-2">
-            <Label htmlFor="objective">Objective</Label>
-            <Select
-              value={objective}
-              onValueChange={(value) => setObjective(value as ContentCampaignObjective)}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
+            <TabsTrigger
+              value="details"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent"
             >
-              <SelectTrigger id="objective">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {objectiveOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <div>
-                      <span className="font-medium">{option.label}</span>
-                      <p className="text-[10px] text-text-muted">{option.description}</p>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Status (only for editing) */}
-          {isEditing && (
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus(value as ContentCampaignStatus)}
+              Details
+            </TabsTrigger>
+            <TabsTrigger
+              value="distributions"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent"
+            >
+              Distributions
+              {selectedDistributionIds.size > 0 && (
+                <Badge variant="secondary" className="ml-2 text-[10px] px-1.5">
+                  {selectedDistributionIds.size}
+                </Badge>
+              )}
+            </TabsTrigger>
+            {isEditing && (
+              <TabsTrigger
+                value="metrics"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent"
               >
-                <SelectTrigger id="status">
-                  <SelectValue />
+                Metrics
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          {/* Details Tab */}
+          <TabsContent value="details" className="flex-1 overflow-y-auto mt-4 space-y-4">
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Campaign Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Q1 Product Launch"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Campaign goals and strategy..."
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Objective */}
+              <div className="space-y-2">
+                <Label htmlFor="objective">Objective</Label>
+                <Select
+                  value={objective}
+                  onValueChange={(value) => setObjective(value as ContentCampaignObjective)}
+                >
+                  <SelectTrigger id="objective">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {objectiveOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div>
+                          <span className="font-medium">{option.label}</span>
+                          <p className="text-[10px] text-text-muted">{option.description}</p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status (only for editing) */}
+              {isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <Select
+                    value={status}
+                    onValueChange={(value) => setStatus(value as ContentCampaignStatus)}
+                  >
+                    <SelectTrigger id="status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Date Range */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startDate">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate || undefined}
+                />
+              </div>
+            </div>
+
+            {/* Budget */}
+            <div className="space-y-2">
+              <Label htmlFor="budget">Budget (optional)</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
+                <Input
+                  id="budget"
+                  type="number"
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                  placeholder="0.00"
+                  className="pl-7"
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Distributions Tab */}
+          <TabsContent value="distributions" className="flex-1 overflow-hidden mt-4 flex flex-col">
+            {/* Filters Row */}
+            <div className="flex items-center gap-3 mb-3">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <Input
+                  placeholder="Search by post title or account..."
+                  value={distributionSearch}
+                  onChange={(e) => setDistributionSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <Select
+                value={distributionFilters.status}
+                onValueChange={(value) => setDistributionFilters((f) => ({ ...f, status: value as ContentDistributionStatus | "all" }))}
+              >
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {statusOptions.map((option) => (
+                  {distributionStatusOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
 
-          {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                min={startDate || undefined}
-              />
-            </div>
-          </div>
+              {/* Platform Filter */}
+              <Select
+                value={distributionFilters.platformId || "all"}
+                onValueChange={(value) => setDistributionFilters((f) => ({ ...f, platformId: value === "all" ? "" : value }))}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Platforms</SelectItem>
+                  {platforms.map((platform) => (
+                    <SelectItem key={platform.id} value={platform.id}>
+                      <div className="flex items-center gap-2">
+                        <PlatformIcon platformName={platform.name} size="sm" />
+                        <span>{platform.display_name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          {/* Budget */}
-          <div className="space-y-2">
-            <Label htmlFor="budget">Budget (optional)</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
-              <Input
-                id="budget"
-                type="number"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="0.00"
-                className="pl-7"
-              />
+              {/* Clear Filters */}
+              {(activeFiltersCount > 0 || distributionSearch) && (
+                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              )}
             </div>
-          </div>
 
-          {/* Platform Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="platform">Filter by Platform (optional)</Label>
-            <Select
-              value={selectedPlatformId || "all"}
-              onValueChange={(value) => setSelectedPlatformId(value === "all" ? "" : value)}
-            >
-              <SelectTrigger id="platform">
-                <SelectValue placeholder="All platforms" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All platforms</SelectItem>
-                {platforms.map((platform) => (
-                  <SelectItem key={platform.id} value={platform.id}>
-                    <div className="flex items-center gap-2">
-                      <PlatformIcon platformName={platform.name} size="sm" />
-                      <span>{platform.display_name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Distribution Selection */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Link Distributions</Label>
-              <span className="text-[11px] text-text-muted">
-                {selectedDistributionIds.size} selected
+            {/* Selected Count */}
+            <div className="flex items-center justify-between mb-2 text-small">
+              <span className="text-text-muted">
+                {filteredDistributions.length} distributions
+                {activeFiltersCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-[10px]">
+                    <Filter className="w-3 h-3 mr-1" />
+                    {activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""}
+                  </Badge>
+                )}
               </span>
-            </div>
-
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <Input
-                placeholder="Search distributions..."
-                value={distributionSearch}
-                onChange={(e) => setDistributionSearch(e.target.value)}
-                className="pl-9"
-              />
+              <span className="font-medium">{selectedDistributionIds.size} selected</span>
             </div>
 
             {/* Distribution List */}
-            <div className="h-[200px] border rounded-lg p-2 overflow-y-auto">
+            <div className="flex-1 border rounded-lg p-2 overflow-y-auto min-h-[300px]">
               {isLoadingDistributions ? (
                 <div className="flex items-center justify-center h-full">
                   <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
@@ -510,8 +794,8 @@ export function CampaignDialog({
                   <FileText className="w-8 h-8 mb-2 opacity-50" />
                   <p className="text-small">No distributions found</p>
                   <p className="text-[11px]">
-                    {selectedPlatformId
-                      ? "Try selecting a different platform"
+                    {activeFiltersCount > 0 || distributionSearch
+                      ? "Try adjusting your filters"
                       : "Create distributions for your posts first"}
                   </p>
                 </div>
@@ -528,8 +812,15 @@ export function CampaignDialog({
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* Metrics Tab */}
+          {isEditing && campaign && (
+            <TabsContent value="metrics" className="flex-1 overflow-y-auto mt-4">
+              <MetricsTab campaign={campaign} onAddCheckin={onAddCheckin} />
+            </TabsContent>
+          )}
+        </Tabs>
 
         <DialogFooter className="border-t pt-4">
           <Button
