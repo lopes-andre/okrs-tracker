@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useId } from "react";
-import { format as formatDate } from "date-fns";
+import { useState, useCallback, useId, useMemo, useEffect } from "react";
+import { format as formatDate, isPast } from "date-fns";
 import {
   ChevronDown,
   Calendar,
@@ -9,13 +9,13 @@ import {
   Clock,
   Edit,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -157,71 +157,79 @@ export function PendingDistributionAccordionItem({
   const contentId = useId();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
+  // Local state for date/time inputs to prevent erasing during typing
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+
   // Get platform info
   const platformName = account?.platform?.name?.toLowerCase() || "blog";
   const platformDisplayName = account?.platform?.display_name || "Platform";
   const accountName = account?.account_name || "Unknown Account";
-  const status = statusConfig[distribution.status];
-  const StatusIcon = status.icon;
   const formats = formatOptions[platformName] || [];
 
-  // Parse scheduled datetime
-  const getScheduledParts = () => {
-    if (!distribution.scheduledAt) return { date: "", time: "" };
-    try {
-      const dt = new Date(distribution.scheduledAt);
-      return {
-        date: formatDate(dt, "yyyy-MM-dd"),
-        time: formatDate(dt, "HH:mm"),
-      };
-    } catch {
-      return { date: "", time: "" };
+  // Initialize local state from distribution when it changes
+  useEffect(() => {
+    if (distribution.scheduledAt) {
+      try {
+        const dt = new Date(distribution.scheduledAt);
+        setScheduledDate(formatDate(dt, "yyyy-MM-dd"));
+        setScheduledTime(formatDate(dt, "HH:mm"));
+      } catch {
+        setScheduledDate("");
+        setScheduledTime("");
+      }
+    } else {
+      setScheduledDate("");
+      setScheduledTime("");
     }
-  };
-
-  const { date: scheduledDate, time: scheduledTime } = getScheduledParts();
+  }, [distribution.scheduledAt]);
 
   // Detected hashtags from caption
   const detectedHashtags = distribution.caption ? extractHashtags(distribution.caption) : [];
 
-  // Handle schedule change
+  // Check if scheduled datetime is in the past (based on local state for real-time updates)
+  const isScheduledInPast = useMemo(() => {
+    if (!scheduledDate || !scheduledTime) return false;
+    try {
+      return isPast(new Date(`${scheduledDate}T${scheduledTime}`));
+    } catch {
+      return false;
+    }
+  }, [scheduledDate, scheduledTime]);
+
+  // Compute effective status based on schedule datetime
+  const effectiveStatus = useMemo(() => {
+    if (scheduledDate && scheduledTime) {
+      return isScheduledInPast ? "posted" : "scheduled";
+    }
+    return "draft";
+  }, [scheduledDate, scheduledTime, isScheduledInPast]);
+
+  // Handle schedule change - update local state and parent when both fields are filled
   const handleScheduleChange = useCallback(
     (newDate: string, newTime: string) => {
-      let scheduledAt: string | null = null;
-      let newStatus = distribution.status;
+      // Always update local state
+      setScheduledDate(newDate);
+      setScheduledTime(newTime);
 
+      // Only update parent state when we have complete data or clearing
       if (newDate && newTime) {
-        scheduledAt = new Date(`${newDate}T${newTime}`).toISOString();
-        // If setting a schedule, mark as scheduled (unless already posted)
-        if (distribution.status === "draft") {
-          newStatus = "scheduled";
+        const scheduledDateTime = new Date(`${newDate}T${newTime}`);
+        const scheduledAt = scheduledDateTime.toISOString();
+
+        // Status is computed from datetime: past = posted, future = scheduled
+        if (isPast(scheduledDateTime)) {
+          onUpdate({ scheduledAt, status: "posted", postedAt: scheduledAt });
+        } else {
+          onUpdate({ scheduledAt, status: "scheduled", postedAt: null });
         }
-      } else if (!newDate && !newTime && distribution.status === "scheduled") {
-        // If clearing schedule, go back to draft
-        newStatus = "draft";
+      } else if (!newDate && !newTime) {
+        // Both cleared - reset to draft
+        onUpdate({ scheduledAt: null, status: "draft", postedAt: null });
       }
-
-      onUpdate({ scheduledAt, status: newStatus });
+      // If only one field is filled, keep local state but don't update parent yet
     },
-    [distribution.status, onUpdate]
-  );
-
-  // Handle mark as posted
-  const handleMarkAsPosted = useCallback(
-    (isPosted: boolean) => {
-      if (isPosted) {
-        onUpdate({
-          status: "posted",
-          postedAt: new Date().toISOString(),
-        });
-      } else {
-        onUpdate({
-          status: distribution.scheduledAt ? "scheduled" : "draft",
-          postedAt: null,
-        });
-      }
-    },
-    [distribution.scheduledAt, onUpdate]
+    [onUpdate]
   );
 
   // Handle keyboard
@@ -260,9 +268,12 @@ export function PendingDistributionAccordionItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="font-medium truncate">{accountName}</span>
-            <Badge variant="outline" className={cn("shrink-0 text-[10px]", status.color)}>
-              <StatusIcon className="w-3 h-3 mr-1" />
-              {status.label}
+            <Badge variant="outline" className={cn("shrink-0 text-[10px]", statusConfig[effectiveStatus].color)}>
+              {(() => {
+                const StatusIcon = statusConfig[effectiveStatus].icon;
+                return <StatusIcon className="w-3 h-3 mr-1" />;
+              })()}
+              {statusConfig[effectiveStatus].label}
             </Badge>
           </div>
           <div className="flex items-center gap-3 text-small text-text-muted">
@@ -277,17 +288,12 @@ export function PendingDistributionAccordionItem({
               <>
                 <span>•</span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {formatDate(new Date(distribution.scheduledAt), "MMM d 'at' h:mm a")}
-                </span>
-              </>
-            )}
-            {distribution.postedAt && (
-              <>
-                <span>•</span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3 text-green-600" />
-                  Posted {formatDate(new Date(distribution.postedAt), "MMM d, yyyy")}
+                  {isScheduledInPast ? (
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                  ) : (
+                    <Calendar className="w-3 h-3" />
+                  )}
+                  {isScheduledInPast ? "Shared" : ""} {formatDate(new Date(distribution.scheduledAt), "MMM d 'at' h:mm a")}
                 </span>
               </>
             )}
@@ -389,23 +395,47 @@ export function PendingDistributionAccordionItem({
                 value={scheduledDate}
                 onChange={(e) => handleScheduleChange(e.target.value, scheduledTime)}
                 className="bg-bg-0"
-                disabled={distribution.status === "posted"}
               />
               <Input
                 type="time"
                 value={scheduledTime}
                 onChange={(e) => handleScheduleChange(scheduledDate, e.target.value)}
                 className="bg-bg-0"
-                disabled={distribution.status === "posted"}
               />
             </div>
+
+            {/* Contextual tip based on schedule datetime */}
+            {scheduledDate && scheduledTime && (
+              <div className={cn(
+                "flex items-center gap-2 p-2 rounded-lg text-small",
+                isScheduledInPast
+                  ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                  : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
+              )}>
+                {isScheduledInPast ? (
+                  <>
+                    <CheckCircle className="w-4 h-4 shrink-0" />
+                    <span>This post will be marked as Posted</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>This post will be shared on {formatDate(new Date(`${scheduledDate}T${scheduledTime}`), "MMM d 'at' h:mm a")}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Post Link (for posted distributions) */}
-          {distribution.status === "posted" && (
+          {/* Post Link (shown when datetime is in the past) */}
+          {isScheduledInPast && (
             <div className="space-y-1.5">
-              <Label className="text-small">Post Link</Label>
+              <Label className="text-small flex items-center gap-2">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Post Link
+              </Label>
               <Input
+                type="url"
                 value={distribution.platformPostUrl || ""}
                 onChange={(e) => onUpdate({ platformPostUrl: e.target.value || null })}
                 placeholder="https://..."
@@ -425,18 +455,6 @@ export function PendingDistributionAccordionItem({
               rows={2}
               className="bg-bg-0"
             />
-          </div>
-
-          {/* Mark as posted checkbox */}
-          <div className="flex items-center gap-2 p-3 bg-bg-0 rounded-lg border border-border-soft">
-            <Checkbox
-              id={`${contentId}-posted`}
-              checked={distribution.status === "posted"}
-              onCheckedChange={(checked) => handleMarkAsPosted(checked === true)}
-            />
-            <Label htmlFor={`${contentId}-posted`} className="cursor-pointer">
-              Mark as already posted
-            </Label>
           </div>
         </div>
       </div>

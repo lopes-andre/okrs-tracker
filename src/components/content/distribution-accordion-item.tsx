@@ -36,7 +36,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PlatformIcon } from "./platform-icon";
-import { MarkPostedDialog } from "./mark-posted-dialog";
 import { useUpdateDistribution, useDeleteDistribution } from "@/features/content/hooks";
 import { useCreateTask } from "@/features/tasks/hooks";
 import { cn } from "@/lib/utils";
@@ -189,7 +188,6 @@ export function DistributionAccordionItem({
   const hasAutoUpdated = useRef(false);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showMarkPostedDialog, setShowMarkPostedDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -660,6 +658,14 @@ export function DistributionAccordionItem({
             </>
           )}
 
+          {/* Already posted tip */}
+          {effectiveStatus === "posted" && (
+            <div className="flex items-center gap-2 p-3 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 rounded-lg">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span className="text-small">This post was already shared</span>
+            </div>
+          )}
+
           {/* Schedule */}
           <div className="space-y-1.5">
             <Label className="text-small flex items-center gap-2">
@@ -686,6 +692,14 @@ export function DistributionAccordionItem({
                 className="bg-bg-0"
               />
             </div>
+
+            {/* Contextual tip based on schedule datetime */}
+            {scheduledDate && scheduledTime && effectiveStatus !== "posted" && (
+              <div className="flex items-center gap-2 p-2 rounded-lg text-small bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                <Clock className="w-4 h-4 shrink-0" />
+                <span>This post will be shared on {formatDate(new Date(`${scheduledDate}T${scheduledTime}`), "MMM d 'at' h:mm a")}</span>
+              </div>
+            )}
           </div>
 
           {/* Create performance check tasks toggle */}
@@ -736,19 +750,7 @@ export function DistributionAccordionItem({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-border-soft">
-            <div className="flex items-center gap-2">
-              {effectiveStatus !== "posted" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowMarkPostedDialog(true)}
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Mark as Posted
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center justify-end pt-2 border-t border-border-soft">
             {hasChanges && (
               <Button
                 size="sm"
@@ -787,14 +789,6 @@ export function DistributionAccordionItem({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Mark Posted Dialog */}
-      <MarkPostedDialog
-        open={showMarkPostedDialog}
-        onOpenChange={setShowMarkPostedDialog}
-        distribution={distribution}
-        planId={planId}
-      />
     </div>
   );
 }
