@@ -12,8 +12,9 @@ import {
   Eye,
   MousePointer,
   Target,
-  Filter,
   X,
+  SlidersHorizontal,
+  Star,
 } from "lucide-react";
 import {
   Dialog,
@@ -36,9 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { PlatformIcon } from "./platform-icon";
 import {
   usePlatforms,
+  useGoals,
+  useAccountsWithPlatform,
   useCampaignDistributions,
   useAvailableDistributionsForCampaign,
   useCampaignCheckins,
@@ -51,6 +59,7 @@ import type {
   ContentDistribution,
   ContentDistributionStatus,
   ContentCampaignCheckin,
+  ContentAccountWithPlatform,
 } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -77,12 +86,20 @@ export interface CampaignFormData {
   distributionIds: string[];
 }
 
-// Extended distribution type with post info
+// Extended distribution type with post info including goals
 interface DistributionWithPost extends ContentDistribution {
   post?: {
     id: string;
     title: string;
     plan_id: string;
+    is_favorite?: boolean;
+    goals?: Array<{
+      goal: {
+        id: string;
+        name: string;
+        color: string | null;
+      };
+    }>;
   };
   account?: {
     id: string;
@@ -98,6 +115,9 @@ interface DistributionWithPost extends ContentDistribution {
 interface DistributionFilters {
   status: ContentDistributionStatus | "all";
   platformId: string;
+  goalIds: string[];
+  accountIds: string[];
+  isFavorite: boolean | null;
 }
 
 // ============================================================================
@@ -406,10 +426,16 @@ export function CampaignDialog({
   const [distributionFilters, setDistributionFilters] = useState<DistributionFilters>({
     status: "all",
     platformId: "",
+    goalIds: [],
+    accountIds: [],
+    isFavorite: null,
   });
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   // Fetch data
   const { data: platforms = [] } = usePlatforms();
+  const { data: goals = [] } = useGoals(planId);
+  const { data: accounts = [] } = useAccountsWithPlatform(planId);
   const { data: availableDistributions = [], isLoading: isLoadingDistributions } =
     useAvailableDistributionsForCampaign(
       planId,
@@ -445,7 +471,7 @@ export function CampaignDialog({
         setSelectedDistributionIds(new Set());
       }
       setDistributionSearch("");
-      setDistributionFilters({ status: "all", platformId: "" });
+      setDistributionFilters({ status: "all", platformId: "", goalIds: [], accountIds: [], isFavorite: null });
     }
   }, [open, campaign]);
 
@@ -477,6 +503,18 @@ export function CampaignDialog({
     return Array.from(map.values());
   }, [availableDistributions, linkedDistributions]);
 
+  // Group accounts by platform for filter UI
+  const accountsByPlatform = useMemo(() => {
+    return accounts.reduce((acc, account) => {
+      const platformName = account.platform?.display_name || "Other";
+      if (!acc[platformName]) {
+        acc[platformName] = [];
+      }
+      acc[platformName].push(account);
+      return acc;
+    }, {} as Record<string, ContentAccountWithPlatform[]>);
+  }, [accounts]);
+
   // Filter distributions by search and filters
   const filteredDistributions = useMemo(() => {
     return allDistributions.filter((d) => {
@@ -495,15 +533,38 @@ export function CampaignDialog({
         return false;
       }
 
+      // Favorites filter
+      if (distributionFilters.isFavorite === true && !d.post?.is_favorite) {
+        return false;
+      }
+
+      // Goals filter
+      if (distributionFilters.goalIds.length > 0) {
+        const postGoalIds = d.post?.goals?.map((g) => g.goal.id) || [];
+        const hasMatchingGoal = distributionFilters.goalIds.some((id) => postGoalIds.includes(id));
+        if (!hasMatchingGoal) {
+          return false;
+        }
+      }
+
+      // Accounts filter
+      if (distributionFilters.accountIds.length > 0) {
+        if (!d.account?.id || !distributionFilters.accountIds.includes(d.account.id)) {
+          return false;
+        }
+      }
+
       return true;
     });
   }, [allDistributions, distributionSearch, distributionFilters]);
 
   // Count active filters
-  const activeFiltersCount = [
-    distributionFilters.status !== "all" ? 1 : 0,
-    distributionFilters.platformId ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  const activeFiltersCount =
+    (distributionFilters.status !== "all" ? 1 : 0) +
+    (distributionFilters.platformId ? 1 : 0) +
+    distributionFilters.goalIds.length +
+    distributionFilters.accountIds.length +
+    (distributionFilters.isFavorite === true ? 1 : 0);
 
   // Handle distribution toggle
   const handleToggleDistribution = useCallback((distributionId: string) => {
@@ -518,9 +579,34 @@ export function CampaignDialog({
     });
   }, []);
 
+  // Toggle goal filter
+  const toggleGoal = useCallback((goalId: string) => {
+    setDistributionFilters((f) => ({
+      ...f,
+      goalIds: f.goalIds.includes(goalId)
+        ? f.goalIds.filter((id) => id !== goalId)
+        : [...f.goalIds, goalId],
+    }));
+  }, []);
+
+  // Toggle account filter
+  const toggleAccount = useCallback((accountId: string) => {
+    setDistributionFilters((f) => ({
+      ...f,
+      accountIds: f.accountIds.includes(accountId)
+        ? f.accountIds.filter((id) => id !== accountId)
+        : [...f.accountIds, accountId],
+    }));
+  }, []);
+
+  // Toggle favorites filter
+  const toggleFavorites = useCallback((value: boolean | null) => {
+    setDistributionFilters((f) => ({ ...f, isFavorite: value }));
+  }, []);
+
   // Clear filters
   const handleClearFilters = useCallback(() => {
-    setDistributionFilters({ status: "all", platformId: "" });
+    setDistributionFilters({ status: "all", platformId: "", goalIds: [], accountIds: [], isFavorite: null });
     setDistributionSearch("");
   }, []);
 
@@ -720,65 +806,260 @@ export function CampaignDialog({
                   onChange={(e) => setDistributionSearch(e.target.value)}
                   className="pl-9"
                 />
+                {distributionSearch && (
+                  <button
+                    onClick={() => setDistributionSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
-              {/* Status Filter */}
-              <Select
-                value={distributionFilters.status}
-                onValueChange={(value) => setDistributionFilters((f) => ({ ...f, status: value as ContentDistributionStatus | "all" }))}
-              >
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {distributionStatusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Filter Popover */}
+              <Popover open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "gap-2",
+                      activeFiltersCount > 0 && "border-accent text-accent"
+                    )}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Filters
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Filters</h4>
+                      {activeFiltersCount > 0 && (
+                        <button
+                          onClick={handleClearFilters}
+                          className="text-small text-text-muted hover:text-text"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
 
-              {/* Platform Filter */}
-              <Select
-                value={distributionFilters.platformId || "all"}
-                onValueChange={(value) => setDistributionFilters((f) => ({ ...f, platformId: value === "all" ? "" : value }))}
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Platform" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Platforms</SelectItem>
-                  {platforms.map((platform) => (
-                    <SelectItem key={platform.id} value={platform.id}>
-                      <div className="flex items-center gap-2">
-                        <PlatformIcon platformName={platform.name} size="sm" />
-                        <span>{platform.display_name}</span>
+                    {/* Quick Filters */}
+                    <div className="space-y-2">
+                      <Label className="text-small font-medium">Quick Filters</Label>
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <Checkbox
+                            checked={distributionFilters.isFavorite === true}
+                            onCheckedChange={(checked) =>
+                              toggleFavorites(checked ? true : null)
+                            }
+                          />
+                          <Star className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="text-small">Favorites only</span>
+                        </label>
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </div>
 
-              {/* Clear Filters */}
-              {(activeFiltersCount > 0 || distributionSearch) && (
-                <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                  <X className="w-4 h-4 mr-1" />
-                  Clear
-                </Button>
-              )}
+                    {/* Distribution Status */}
+                    <div className="space-y-2">
+                      <Label className="text-small font-medium">Distribution Status</Label>
+                      <Select
+                        value={distributionFilters.status}
+                        onValueChange={(value) => setDistributionFilters((f) => ({ ...f, status: value as ContentDistributionStatus | "all" }))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {distributionStatusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Platform Filter */}
+                    <div className="space-y-2">
+                      <Label className="text-small font-medium">Platform</Label>
+                      <Select
+                        value={distributionFilters.platformId || "all"}
+                        onValueChange={(value) => setDistributionFilters((f) => ({ ...f, platformId: value === "all" ? "" : value }))}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="All Platforms" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Platforms</SelectItem>
+                          {platforms.map((platform) => (
+                            <SelectItem key={platform.id} value={platform.id}>
+                              <div className="flex items-center gap-2">
+                                <PlatformIcon platformName={platform.name} size="sm" />
+                                <span>{platform.display_name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Goals Filter */}
+                    {goals.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-small font-medium">Goals</Label>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                          {goals.map((goal) => (
+                            <label
+                              key={goal.id}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={distributionFilters.goalIds.includes(goal.id)}
+                                onCheckedChange={() => toggleGoal(goal.id)}
+                              />
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: goal.color || "#888" }}
+                              />
+                              <span className="text-small truncate">{goal.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Accounts Filter */}
+                    {accounts.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-small font-medium">Accounts</Label>
+                        <div className="space-y-3 max-h-48 overflow-y-auto">
+                          {Object.entries(accountsByPlatform).map(([platformName, platformAccounts]) => (
+                            <div key={platformName}>
+                              <p className="text-xs text-text-muted mb-1.5">{platformName}</p>
+                              <div className="space-y-1.5">
+                                {platformAccounts.map((account) => (
+                                  <label
+                                    key={account.id}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Checkbox
+                                      checked={distributionFilters.accountIds.includes(account.id)}
+                                      onCheckedChange={() => toggleAccount(account.id)}
+                                    />
+                                    <PlatformIcon
+                                      platformName={account.platform?.name || "blog"}
+                                      size="sm"
+                                    />
+                                    <span className="text-small truncate">
+                                      {account.account_name}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {/* Active Filter Tags */}
+            {activeFiltersCount > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                {distributionFilters.isFavorite === true && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Star className="w-3 h-3 text-amber-500" />
+                    Favorites
+                    <button
+                      onClick={() => toggleFavorites(null)}
+                      className="ml-1 hover:text-status-danger"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {distributionFilters.status !== "all" && (
+                  <Badge variant="secondary" className="gap-1 capitalize">
+                    {distributionFilters.status}
+                    <button
+                      onClick={() => setDistributionFilters((f) => ({ ...f, status: "all" }))}
+                      className="ml-1 hover:text-status-danger"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {distributionFilters.platformId && (
+                  <Badge variant="secondary" className="gap-1">
+                    <PlatformIcon
+                      platformName={platforms.find((p) => p.id === distributionFilters.platformId)?.name || "blog"}
+                      size="sm"
+                    />
+                    {platforms.find((p) => p.id === distributionFilters.platformId)?.display_name}
+                    <button
+                      onClick={() => setDistributionFilters((f) => ({ ...f, platformId: "" }))}
+                      className="ml-1 hover:text-status-danger"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {distributionFilters.goalIds.map((goalId) => {
+                  const goal = goals.find((g) => g.id === goalId);
+                  if (!goal) return null;
+                  return (
+                    <Badge key={goalId} variant="secondary" className="gap-1">
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: goal.color || "#888" }}
+                      />
+                      {goal.name}
+                      <button
+                        onClick={() => toggleGoal(goalId)}
+                        className="ml-1 hover:text-status-danger"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+                {distributionFilters.accountIds.map((accountId) => {
+                  const account = accounts.find((a) => a.id === accountId);
+                  if (!account) return null;
+                  return (
+                    <Badge key={accountId} variant="secondary" className="gap-1">
+                      <PlatformIcon
+                        platformName={account.platform?.name || "blog"}
+                        size="sm"
+                      />
+                      {account.account_name}
+                      <button
+                        onClick={() => toggleAccount(accountId)}
+                        className="ml-1 hover:text-status-danger"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Selected Count */}
             <div className="flex items-center justify-between mb-2 text-small">
               <span className="text-text-muted">
-                {filteredDistributions.length} distributions
-                {activeFiltersCount > 0 && (
-                  <Badge variant="secondary" className="ml-2 text-[10px]">
-                    <Filter className="w-3 h-3 mr-1" />
-                    {activeFiltersCount} filter{activeFiltersCount > 1 ? "s" : ""}
-                  </Badge>
-                )}
+                {filteredDistributions.length} distribution{filteredDistributions.length !== 1 ? "s" : ""}
               </span>
               <span className="font-medium">{selectedDistributionIds.size} selected</span>
             </div>

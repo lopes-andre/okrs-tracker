@@ -916,7 +916,7 @@ export async function getCampaignDistributions(campaignId: string): Promise<Cont
 
   const distributionIds = links.map((l) => l.distribution_id);
 
-  // Get distributions with account and post info
+  // Get distributions with account and post info (including goals)
   return handleSupabaseError(
     supabase
       .from("content_distributions")
@@ -926,7 +926,15 @@ export async function getCampaignDistributions(campaignId: string): Promise<Cont
           *,
           platform:content_platforms(*)
         ),
-        post:content_posts(id, title, plan_id)
+        post:content_posts(
+          id,
+          title,
+          plan_id,
+          is_favorite,
+          goals:content_post_goals(
+            goal:content_goals(id, name, color)
+          )
+        )
       `)
       .in("id", distributionIds)
   );
@@ -982,7 +990,7 @@ export async function getAvailableDistributionsForCampaign(
     existingDistributionIds = links?.map((l) => l.distribution_id) || [];
   }
 
-  // Get all distributions for this plan
+  // Get all distributions for this plan (including post goals for filtering)
   let query = supabase
     .from("content_distributions")
     .select(`
@@ -991,7 +999,15 @@ export async function getAvailableDistributionsForCampaign(
         *,
         platform:content_platforms(*)
       ),
-      post:content_posts(id, title, plan_id)
+      post:content_posts(
+        id,
+        title,
+        plan_id,
+        is_favorite,
+        goals:content_post_goals(
+          goal:content_goals(id, name, color)
+        )
+      )
     `)
     .not("post", "is", null);
 
