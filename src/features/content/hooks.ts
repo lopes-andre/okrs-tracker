@@ -7,6 +7,7 @@ import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage } from "@/lib/toast-utils";
 import { createClient } from "@/lib/supabase/client";
+import { logger } from "@/lib/logger";
 import * as api from "./api";
 import type {
   ContentAccountInsert,
@@ -344,7 +345,7 @@ export function useAutoUpdateOverdueDistributions(planId: string, posts: Content
           });
           updatedCount++;
         } catch (err) {
-          console.error(`Failed to auto-update distribution ${dist.id}:`, err);
+          logger.error("Failed to auto-update distribution", { distributionId: dist.id, error: err });
         }
       }
 

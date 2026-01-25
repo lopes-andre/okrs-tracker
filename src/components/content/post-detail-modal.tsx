@@ -447,8 +447,8 @@ export function PostDetailModal({
         for (const distributionId of deletedDistributionIds) {
           try {
             await deleteDistributionMutation.mutateAsync(distributionId);
-          } catch (err) {
-            console.error("Failed to delete distribution:", err);
+          } catch {
+            // Error handled by mutation's onError callback
           }
         }
 
@@ -609,8 +609,8 @@ export function PostDetailModal({
                 // Non-critical
               }
             }
-          } catch (err) {
-            console.error("Failed to update distribution:", err);
+          } catch {
+            // Error handled by mutation's onError callback
           }
         }
 
@@ -642,7 +642,6 @@ export function PostDetailModal({
             await uploadMedia.mutateAsync({ postId: newPost.id, file });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error";
-            console.error("Failed to upload media:", errorMessage, err);
             failures.push(`Media "${file.name}": ${errorMessage}`);
           }
         }
@@ -657,7 +656,6 @@ export function PostDetailModal({
             });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error";
-            console.error("Failed to add video link:", errorMessage, err);
             failures.push(`Video "${videoLink.title}": ${errorMessage}`);
           }
         }
@@ -672,7 +670,6 @@ export function PostDetailModal({
             });
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error";
-            console.error("Failed to add link:", errorMessage, err);
             failures.push(`Link "${link.title || link.url}": ${errorMessage}`);
           }
         }
@@ -771,7 +768,6 @@ export function PostDetailModal({
             }
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error";
-            console.error("Failed to create distribution:", errorMessage, err);
             failures.push(`Distribution: ${errorMessage}`);
           }
         }

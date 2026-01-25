@@ -32,7 +32,7 @@ function getMediaIcon(fileType: string) {
   // file_type is stored as category: "image", "pdf", or "other"
   // Also support MIME type format for backwards compatibility
   if (fileType === "image" || fileType.startsWith("image/")) {
-    return Image;
+    return ImageIcon;
   } else if (fileType === "video" || fileType.startsWith("video/")) {
     return Video;
   }

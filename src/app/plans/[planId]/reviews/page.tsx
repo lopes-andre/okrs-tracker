@@ -379,8 +379,8 @@ export default function ReviewsPage({
     try {
       const review = await getOrCreate.mutateAsync({ planId, year, weekNumber: week });
       router.push(`/plans/${planId}/reviews/${review.id}`);
-    } catch (error) {
-      console.error("Failed to open review:", error);
+    } catch {
+      // Error handled by mutation's onError callback
     }
   };
 
@@ -401,8 +401,8 @@ export default function ReviewsPage({
       await deleteReview.mutateAsync({ reviewId: reviewToDelete.id, planId });
       setDeleteDialogOpen(false);
       setReviewToDelete(null);
-    } catch (error) {
-      console.error("Failed to delete review:", error);
+    } catch {
+      // Error handled by mutation's onError callback
     }
   };
 

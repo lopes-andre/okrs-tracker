@@ -46,7 +46,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 function getMediaIcon(fileType: string) {
   if (fileType.startsWith("image/")) {
-    return Image;
+    return ImageIcon;
   } else if (fileType.startsWith("video/")) {
     return Video;
   }

@@ -349,9 +349,8 @@ export default function ReviewWizardPage({
         },
       });
       router.push(`/plans/${planId}/reviews`);
-    } catch (error) {
-      // Error is handled by the mutation's onError callback
-      console.error("Failed to complete review:", error);
+    } catch {
+      // Error handled by mutation's onError callback
     }
   };
 
