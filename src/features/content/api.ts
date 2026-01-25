@@ -937,28 +937,34 @@ export async function uploadMediaFile(
     throw new StorageError(errorMessage || "Failed to upload file to storage.");
   }
 
-  // Get current max sort_order for this post
+  // Get current max display_order for this post
   const { data: existingMedia } = await supabase
     .from("content_post_media")
-    .select("sort_order")
+    .select("display_order")
     .eq("post_id", postId)
-    .order("sort_order", { ascending: false })
+    .order("display_order", { ascending: false })
     .limit(1);
 
-  const nextSortOrder = existingMedia && existingMedia.length > 0
-    ? (existingMedia[0].sort_order || 0) + 1
+  const nextDisplayOrder = existingMedia && existingMedia.length > 0
+    ? (existingMedia[0].display_order || 0) + 1
     : 0;
+
+  // Determine file type category (image, pdf, video_link)
+  const fileTypeCategory = file.type.startsWith("image/") ? "image"
+    : file.type === "application/pdf" ? "pdf"
+    : "other";
 
   // Create database record
   const { data: mediaRecord, error: insertError } = await supabase
     .from("content_post_media")
     .insert({
       post_id: postId,
-      storage_path: data.path,
+      file_url: data.path,
       file_name: file.name,
-      file_type: file.type,
+      file_type: fileTypeCategory,
       file_size: file.size,
-      sort_order: nextSortOrder,
+      mime_type: file.type,
+      display_order: nextDisplayOrder,
     })
     .select()
     .single();
@@ -994,20 +1000,20 @@ export async function getMediaSignedUrl(path: string): Promise<string> {
 export async function deleteMediaFile(mediaId: string): Promise<void> {
   const supabase = createClient();
 
-  // Get the media record first to get the storage path
+  // Get the media record first to get the file URL (storage path)
   const { data: mediaRecord, error: fetchError } = await supabase
     .from("content_post_media")
-    .select("storage_path")
+    .select("file_url")
     .eq("id", mediaId)
     .single();
 
   if (fetchError) throw fetchError;
 
   // Delete from storage
-  if (mediaRecord?.storage_path) {
+  if (mediaRecord?.file_url) {
     await supabase.storage
       .from("content-media")
-      .remove([mediaRecord.storage_path]);
+      .remove([mediaRecord.file_url]);
   }
 
   // Delete the database record

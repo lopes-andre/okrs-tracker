@@ -465,11 +465,13 @@ export interface ContentPostGoal {
 export interface ContentPostMedia {
   id: string;
   post_id: string;
-  storage_path: string;
-  file_name: string;
   file_type: string;
-  file_size: number;
-  sort_order: number;
+  file_name: string;
+  file_url: string;
+  file_size: number | null;
+  mime_type: string | null;
+  display_order: number;
+  alt_text: string | null;
   created_at: string;
 }
 
@@ -627,7 +629,7 @@ export type ContentGoalUpdate = Partial<Omit<ContentGoal, 'id' | 'plan_id' | 'cr
 export type ContentPostInsert = Omit<ContentPost, 'id' | 'created_at' | 'updated_at'>;
 export type ContentPostUpdate = Partial<Omit<ContentPost, 'id' | 'plan_id' | 'created_by' | 'created_at' | 'updated_at'>>;
 
-export type ContentPostMediaInsert = Omit<ContentPostMedia, 'id' | 'created_at'>;
+export type ContentPostMediaInsert = Omit<ContentPostMedia, 'id' | 'created_at' | 'display_order'>;
 export type ContentPostLinkInsert = Omit<ContentPostLink, 'id' | 'created_at' | 'display_order'>;
 export type ContentPostLinkUpdate = Partial<Pick<ContentPostLink, 'url' | 'title' | 'description'>>;
 

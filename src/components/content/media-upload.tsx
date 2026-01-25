@@ -20,7 +20,7 @@ interface MediaUploadProps {
 }
 
 interface MediaThumbnailProps {
-  storagePath: string;
+  fileUrl: string;
   alt: string;
 }
 
@@ -29,9 +29,11 @@ interface MediaThumbnailProps {
 // ============================================================================
 
 function getMediaIcon(fileType: string) {
-  if (fileType.startsWith("image/")) {
+  // file_type is stored as category: "image", "pdf", or "other"
+  // Also support MIME type format for backwards compatibility
+  if (fileType === "image" || fileType.startsWith("image/")) {
     return Image;
-  } else if (fileType.startsWith("video/")) {
+  } else if (fileType === "video" || fileType.startsWith("video/")) {
     return Video;
   }
   return FileText;
@@ -49,7 +51,7 @@ function formatFileSize(bytes: number): string {
 // MEDIA THUMBNAIL COMPONENT
 // ============================================================================
 
-function MediaThumbnail({ storagePath, alt }: MediaThumbnailProps) {
+function MediaThumbnail({ fileUrl, alt }: MediaThumbnailProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,7 +60,7 @@ function MediaThumbnail({ storagePath, alt }: MediaThumbnailProps) {
 
     async function fetchUrl() {
       try {
-        const url = await getMediaSignedUrl(storagePath);
+        const url = await getMediaSignedUrl(fileUrl);
         if (!cancelled) {
           setImageUrl(url);
           setIsLoading(false);
@@ -75,7 +77,7 @@ function MediaThumbnail({ storagePath, alt }: MediaThumbnailProps) {
     return () => {
       cancelled = true;
     };
-  }, [storagePath]);
+  }, [fileUrl]);
 
   if (isLoading) {
     return (
@@ -223,7 +225,7 @@ export function MediaUpload({
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {media.map((item) => {
             const Icon = getMediaIcon(item.file_type);
-            const isImage = item.file_type.startsWith("image/");
+            const isImage = item.file_type === "image" || item.file_type.startsWith("image/");
 
             return (
               <div
@@ -231,7 +233,7 @@ export function MediaUpload({
                 className="relative group rounded-lg border border-border-soft overflow-hidden bg-bg-1"
               >
                 {isImage ? (
-                  <MediaThumbnail storagePath={item.storage_path} alt={item.file_name} />
+                  <MediaThumbnail fileUrl={item.file_url} alt={item.file_name} />
                 ) : (
                   <div className="w-full h-24 flex items-center justify-center">
                     <Icon className="w-8 h-8 text-text-muted" />
@@ -258,7 +260,7 @@ export function MediaUpload({
                 {/* File info */}
                 <div className="p-2 border-t border-border-soft">
                   <p className="text-xs text-text-muted truncate" title={item.file_name}>
-                    {formatFileSize(item.file_size)}
+                    {item.file_size ? formatFileSize(item.file_size) : item.file_name}
                   </p>
                 </div>
               </div>

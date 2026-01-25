@@ -47,6 +47,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useCreateDistribution } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
 import { PostDistributionsTab } from "./post-distributions-tab";
 import { PostMetricsTab } from "./post-metrics-tab";
 import { MediaUpload } from "./media-upload";
@@ -126,6 +127,7 @@ export function PostDetailModal({
   const deletePostLink = useDeletePostLink(planId);
   const uploadMedia = useUploadMedia(planId);
   const createDistribution = useCreateDistribution(planId);
+  const { toast } = useToast();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -278,12 +280,17 @@ export function PostDetailModal({
           goalIds: selectedGoalIds,
         });
 
+        // Track failures to show summary
+        const failures: string[] = [];
+
         // Upload pending media files
         for (const file of pendingMediaFiles) {
           try {
             await uploadMedia.mutateAsync({ postId: newPost.id, file });
           } catch (err) {
-            console.error("Failed to upload media:", err);
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            console.error("Failed to upload media:", errorMessage, err);
+            failures.push(`Media "${file.name}": ${errorMessage}`);
           }
         }
 
@@ -296,7 +303,9 @@ export function PostDetailModal({
               title: link.title || null,
             });
           } catch (err) {
-            console.error("Failed to add link:", err);
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            console.error("Failed to add link:", errorMessage, err);
+            failures.push(`Link "${link.title || link.url}": ${errorMessage}`);
           }
         }
 
@@ -317,8 +326,19 @@ export function PostDetailModal({
             };
             await createDistribution.mutateAsync(distributionData);
           } catch (err) {
-            console.error("Failed to create distribution:", err);
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            console.error("Failed to create distribution:", errorMessage, err);
+            failures.push(`Distribution: ${errorMessage}`);
           }
+        }
+
+        // Show warning if some items failed but post was created
+        if (failures.length > 0) {
+          toast({
+            title: "Post created with some issues",
+            description: `${failures.length} item(s) could not be added. Check the post details.`,
+            variant: "warning",
+          });
         }
 
         onOpenChange(false);
@@ -326,7 +346,7 @@ export function PostDetailModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution]);
+  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution, toast]);
 
   // Handle delete
   const handleDelete = useCallback(async () => {
