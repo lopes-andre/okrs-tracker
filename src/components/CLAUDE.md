@@ -14,6 +14,7 @@ src/components/
 ├── tags/            # Tag management components
 ├── activity/        # Activity feed components
 ├── analytics/       # Charts and data visualization
+├── content/         # Content Planner (see content/CLAUDE.md)
 ├── import-export/   # Import/export settings & dialogs
 └── weekly-review/   # Weekly review components
 ```

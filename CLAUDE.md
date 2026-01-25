@@ -67,6 +67,8 @@ okrs-tracker/
 │   │           ├── tasks/        # Task management
 │   │           │   └── logbook/  # Completed tasks
 │   │           ├── analytics/    # Charts & insights
+│   │           ├── content/      # Content Planner
+│   │           │   └── logbook/  # Completed posts archive
 │   │           ├── reviews/      # Weekly reviews
 │   │           │   └── [reviewId]/ # Review wizard
 │   │           ├── timeline/     # Activity feed
@@ -81,6 +83,7 @@ okrs-tracker/
 │   │   ├── tags/                 # Tag management
 │   │   ├── activity/             # Activity timeline
 │   │   ├── analytics/            # Charts and data viz
+│   │   ├── content/              # Content Planner (40+ components)
 │   │   ├── comments/             # Comment system
 │   │   ├── import-export/        # Import/export UI
 │   │   └── weekly-review/        # Review components
@@ -404,9 +407,11 @@ supabase migration new X # Create new migration
 - [Database](./docs/database.md) - Schema documentation
 - [Testing](./docs/testing.md) - Testing guide
 - [Deployment](./docs/deployment.md) - Production setup
+- [Content Planner](./docs/content-planner.md) - Content management feature
 
 ### Domain-Specific Instructions
 - [Components](./src/components/CLAUDE.md)
+- [Content Components](./src/components/content/CLAUDE.md)
 - [Features](./src/features/CLAUDE.md)
 - [Library](./src/lib/CLAUDE.md)
 - [Supabase](./supabase/CLAUDE.md)

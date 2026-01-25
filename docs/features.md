@@ -414,6 +414,42 @@ Receive alerts when:
 
 ---
 
+## Content Planner
+
+The Content Planner helps you manage content across multiple social media platforms.
+
+> For detailed documentation, see [Content Planner Documentation](./content-planner.md)
+
+### Quick Overview
+
+| Feature | Description |
+|---------|-------------|
+| **Kanban Board** | Visual workflow (Backlog → Tagged → Ongoing → Complete) |
+| **Multi-Platform** | 8 platforms (Instagram, LinkedIn, YouTube, etc.) |
+| **Distributions** | Schedule content to multiple accounts |
+| **Calendar** | Month, week, day, and list views |
+| **Campaigns** | Track paid advertising |
+| **Analytics** | Performance metrics |
+
+### Content Workflow
+
+1. Create posts in **Backlog**
+2. Add distributions → moves to **Tagged**
+3. Schedule distributions → moves to **Ongoing**
+4. All posted → moves to **Complete**
+
+### Key Features
+
+- **Drag and drop** reordering within columns
+- **Multi-select** for bulk operations
+- **Debounced search** (300ms delay)
+- **Load more** pattern for large lists
+- **Content Logbook** for completed posts archive
+- **Video links** with thumbnails
+- **Account-KR linking** for goal tracking
+
+---
+
 ## Tips for Success
 
 ### Setting Good OKRs
