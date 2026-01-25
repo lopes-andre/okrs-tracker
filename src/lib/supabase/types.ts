@@ -463,6 +463,8 @@ export interface ContentPostGoal {
   goal_id: string;
 }
 
+export type ContentMediaType = 'image' | 'pdf' | 'video' | 'video_link' | 'file';
+
 export interface ContentPostMedia {
   id: string;
   post_id: string;
@@ -473,6 +475,9 @@ export interface ContentPostMedia {
   mime_type: string | null;
   display_order: number;
   alt_text: string | null;
+  media_type: ContentMediaType;
+  is_external: boolean;
+  thumbnail_url: string | null;
   created_at: string;
 }
 

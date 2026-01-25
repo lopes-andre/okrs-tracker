@@ -50,7 +50,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { PostDistributionsTab } from "./post-distributions-tab";
 import { PostMetricsTab } from "./post-metrics-tab";
-import { MediaUpload } from "./media-upload";
+import { MediaSection } from "./media-section";
 import { PendingMediaUpload } from "./pending-media-upload";
 import { PendingDistributionsTab } from "./pending-distributions-tab";
 import type {
@@ -489,18 +489,6 @@ export function PostDetailModal({
               {isEditing && (
                 <>
                   <TabsTrigger
-                    value="media"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
-                  >
-                    <ImageIcon className="w-4 h-4 mr-2" />
-                    Media
-                    {post?.media && post.media.length > 0 && (
-                      <Badge variant="secondary" className="ml-2 text-[10px] px-1.5">
-                        {post.media.length}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                  <TabsTrigger
                     value="metrics"
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-4 py-3"
                   >
@@ -587,211 +575,162 @@ export function PostDetailModal({
                   </div>
                 )}
 
-                {/* Media & Links */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Media */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" />
-                      Media
-                      {(isEditing ? post?.media?.length : pendingMediaFiles.length) ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {isEditing ? post?.media?.length : pendingMediaFiles.length}
-                        </Badge>
-                      ) : null}
-                    </Label>
-                    {isEditing ? (
-                      // Editing mode - show existing media
-                      post?.media && post.media.length > 0 ? (
-                        <div className="border border-border rounded-lg p-4 space-y-3">
-                          <div className="space-y-2">
-                            {post.media.slice(0, 3).map((media) => (
-                              <div
-                                key={media.id}
-                                className="flex items-center gap-2 text-small"
-                              >
-                                {media.file_type?.startsWith("image/") ? (
-                                  <ImageIcon className="w-4 h-4 text-text-muted shrink-0" />
-                                ) : (
-                                  <FileText className="w-4 h-4 text-text-muted shrink-0" />
-                                )}
-                                <span className="truncate text-text-muted">
-                                  {media.file_name || "File"}
-                                </span>
-                              </div>
-                            ))}
-                            {post.media.length > 3 && (
-                              <p className="text-small text-text-muted">
-                                +{post.media.length - 3} more files
-                              </p>
-                            )}
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setActiveTab("media")}
+                {/* Media Section */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Media & Video Links
+                    {(isEditing ? post?.media?.length : pendingMediaFiles.length) ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {isEditing ? post?.media?.length : pendingMediaFiles.length}
+                      </Badge>
+                    ) : null}
+                  </Label>
+                  {isEditing && post ? (
+                    <MediaSection
+                      postId={post.id}
+                      planId={planId}
+                      media={post.media || []}
+                    />
+                  ) : (
+                    <PendingMediaUpload
+                      files={pendingMediaFiles}
+                      onAddFiles={handleAddPendingMedia}
+                      onRemoveFile={handleRemovePendingMedia}
+                    />
+                  )}
+                </div>
+
+                {/* Reference Links */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Reference Links
+                    {(isEditing ? post?.links?.length : pendingLinks.length) ? (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {isEditing ? post?.links?.length : pendingLinks.length}
+                      </Badge>
+                    ) : null}
+                  </Label>
+                  <div className="border border-border rounded-lg p-4 space-y-3">
+                    {/* Existing links (edit mode) */}
+                    {isEditing && post?.links && post.links.length > 0 && (
+                      <div className="space-y-2">
+                        {post.links.map((link) => (
+                          <div
+                            key={link.id}
+                            className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
                           >
-                            Manage Media
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="border border-dashed border-border rounded-lg p-6 text-center">
-                          <ImageIcon className="w-8 h-8 mx-auto mb-2 text-text-muted" />
-                          <p className="text-small text-text-muted mb-2">
-                            Upload images and files for this post
-                          </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setActiveTab("media")}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Media
-                          </Button>
-                        </div>
-                      )
-                    ) : (
-                      // New post mode - show pending media upload
-                      <PendingMediaUpload
-                        files={pendingMediaFiles}
-                        onAddFiles={handleAddPendingMedia}
-                        onRemoveFile={handleRemovePendingMedia}
-                      />
-                    )}
-                  </div>
-
-                  {/* Links */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <Link2 className="w-4 h-4" />
-                      Reference Links
-                      {(isEditing ? post?.links?.length : pendingLinks.length) ? (
-                        <Badge variant="secondary" className="text-[10px]">
-                          {isEditing ? post?.links?.length : pendingLinks.length}
-                        </Badge>
-                      ) : null}
-                    </Label>
-                    <div className="border border-border rounded-lg p-4 space-y-3">
-                      {/* Existing links (edit mode) */}
-                      {isEditing && post?.links && post.links.length > 0 && (
-                        <div className="space-y-2">
-                          {post.links.map((link) => (
-                            <div
-                              key={link.id}
-                              className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
+                            <Link2 className="w-4 h-4 text-text-muted shrink-0" />
+                            <a
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 min-w-0 text-small hover:text-accent truncate"
                             >
-                              <Link2 className="w-4 h-4 text-text-muted shrink-0" />
-                              <a
-                                href={link.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex-1 min-w-0 text-small hover:text-accent truncate"
-                              >
-                                {link.title || link.url}
-                              </a>
-                              <ExternalLink className="w-3 h-3 text-text-muted shrink-0" />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                onClick={() => handleDeleteLink(link.id)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Pending links (new mode) */}
-                      {!isEditing && pendingLinks.length > 0 && (
-                        <div className="space-y-2">
-                          {pendingLinks.map((link) => (
-                            <div
-                              key={link.id}
-                              className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
-                            >
-                              <Link2 className="w-4 h-4 text-text-muted shrink-0" />
-                              <span className="flex-1 min-w-0 text-small truncate">
-                                {link.title || link.url}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                onClick={() => handleRemovePendingLink(link.id)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Add link form */}
-                      {showAddLinkForm ? (
-                        <div className="space-y-2">
-                          <Input
-                            placeholder="https://..."
-                            value={newLinkUrl}
-                            onChange={(e) => setNewLinkUrl(e.target.value)}
-                            autoFocus
-                          />
-                          <Input
-                            placeholder="Link title (optional)"
-                            value={newLinkTitle}
-                            onChange={(e) => setNewLinkTitle(e.target.value)}
-                          />
-                          <div className="flex gap-2">
+                              {link.title || link.url}
+                            </a>
+                            <ExternalLink className="w-3 h-3 text-text-muted shrink-0" />
                             <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => {
-                                setShowAddLinkForm(false);
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              onClick={() => handleDeleteLink(link.id)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Pending links (new mode) */}
+                    {!isEditing && pendingLinks.length > 0 && (
+                      <div className="space-y-2">
+                        {pendingLinks.map((link) => (
+                          <div
+                            key={link.id}
+                            className="flex items-center gap-2 p-2 bg-bg-1 rounded-md group"
+                          >
+                            <Link2 className="w-4 h-4 text-text-muted shrink-0" />
+                            <span className="flex-1 min-w-0 text-small truncate">
+                              {link.title || link.url}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                              onClick={() => handleRemovePendingLink(link.id)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add link form */}
+                    {showAddLinkForm ? (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="https://..."
+                          value={newLinkUrl}
+                          onChange={(e) => setNewLinkUrl(e.target.value)}
+                          autoFocus
+                        />
+                        <Input
+                          placeholder="Link title (optional)"
+                          value={newLinkTitle}
+                          onChange={(e) => setNewLinkTitle(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              setShowAddLinkForm(false);
+                              setNewLinkUrl("");
+                              setNewLinkTitle("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => {
+                              if (isEditing) {
+                                handleAddLink();
+                              } else {
+                                // Add to pending links
+                                handleAddPendingLink(newLinkUrl.trim(), newLinkTitle.trim());
                                 setNewLinkUrl("");
                                 setNewLinkTitle("");
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => {
-                                if (isEditing) {
-                                  handleAddLink();
-                                } else {
-                                  // Add to pending links
-                                  handleAddPendingLink(newLinkUrl.trim(), newLinkTitle.trim());
-                                  setNewLinkUrl("");
-                                  setNewLinkTitle("");
-                                  setShowAddLinkForm(false);
-                                }
-                              }}
-                              disabled={!newLinkUrl.trim() || (isEditing && addPostLink.isPending)}
-                            >
-                              {isEditing && addPostLink.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                "Add"
-                              )}
-                            </Button>
-                          </div>
+                                setShowAddLinkForm(false);
+                              }
+                            }}
+                            disabled={!newLinkUrl.trim() || (isEditing && addPostLink.isPending)}
+                          >
+                            {isEditing && addPostLink.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Add"
+                            )}
+                          </Button>
                         </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => setShowAddLinkForm(true)}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Link
-                        </Button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setShowAddLinkForm(true)}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Link
+                      </Button>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -814,17 +753,6 @@ export function PostDetailModal({
                   />
                 )}
               </TabsContent>
-
-              {/* Media Tab */}
-              {isEditing && post && (
-                <TabsContent value="media" className="p-6 m-0">
-                  <MediaUpload
-                    postId={post.id}
-                    planId={planId}
-                    media={post.media || []}
-                  />
-                </TabsContent>
-              )}
 
               {/* Metrics Tab */}
               {isEditing && post && (

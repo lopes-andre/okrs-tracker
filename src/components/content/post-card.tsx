@@ -31,18 +31,43 @@ interface PostCardProps {
 // COVER IMAGE COMPONENT
 // ============================================================================
 
+/**
+ * Cover photo priority:
+ * 1. First uploaded IMAGE in the media list
+ * 2. First video_link with a thumbnail_url
+ * 3. If no images or video thumbnails, no cover photo
+ * PDFs and video links without thumbnails are NOT used as cover photos
+ */
 function CoverImage({ post }: { post: ContentPostWithDetails }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // Find the first image media
-  const firstImage = post.media?.find(
-    (m) => m.file_type === "image" || m.mime_type?.startsWith("image/")
+  // Sort by display_order and find the best cover image candidate
+  const sortedMedia = [...(post.media || [])].sort((a, b) => a.display_order - b.display_order);
+
+  // First priority: uploaded images
+  const firstImage = sortedMedia.find(
+    (m) => {
+      const isImage = m.media_type === "image" || m.file_type === "image" || m.mime_type?.startsWith("image/");
+      const isExternal = m.is_external || m.media_type === "video_link";
+      return isImage && !isExternal;
+    }
   );
 
+  // Second priority: video_link with thumbnail
+  const videoWithThumbnail = !firstImage ? sortedMedia.find(
+    (m) => (m.media_type === "video_link" || m.is_external) && m.thumbnail_url
+  ) : null;
+
+  // Determine what to display
+  const coverCandidate = firstImage || videoWithThumbnail;
+  const urlToFetch = firstImage
+    ? firstImage.file_url
+    : (videoWithThumbnail?.thumbnail_url || null);
+
   useEffect(() => {
-    if (!firstImage) {
+    if (!urlToFetch) {
       setIsLoading(false);
       return;
     }
@@ -51,7 +76,7 @@ function CoverImage({ post }: { post: ContentPostWithDetails }) {
 
     async function fetchUrl() {
       try {
-        const url = await getMediaSignedUrl(firstImage!.file_url);
+        const url = await getMediaSignedUrl(urlToFetch!);
         if (!cancelled) {
           setImageUrl(url);
           setIsLoading(false);
@@ -69,9 +94,9 @@ function CoverImage({ post }: { post: ContentPostWithDetails }) {
     return () => {
       cancelled = true;
     };
-  }, [firstImage]);
+  }, [urlToFetch]);
 
-  if (!firstImage || hasError) {
+  if (!coverCandidate || hasError) {
     return null;
   }
 
@@ -203,10 +228,16 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
   const postedCount = post.posted_count || 0;
   const scheduledCount = post.scheduled_count || 0;
 
-  // Check if post has media images for cover
-  const hasImageMedia = post.media?.some(
-    (m) => m.file_type === "image" || m.mime_type?.startsWith("image/")
-  );
+  // Check if post has any valid cover image (uploaded image or video_link with thumbnail)
+  const hasImageMedia = post.media?.some((m) => {
+    const isImage = m.media_type === "image" || m.file_type === "image" || m.mime_type?.startsWith("image/");
+    const isExternal = m.is_external || m.media_type === "video_link";
+    // Uploaded images always qualify
+    if (isImage && !isExternal) return true;
+    // Video links with thumbnails qualify
+    if ((m.media_type === "video_link" || isExternal) && m.thumbnail_url) return true;
+    return false;
+  });
 
   const handleFavoriteClick = useCallback(
     (e: React.MouseEvent) => {

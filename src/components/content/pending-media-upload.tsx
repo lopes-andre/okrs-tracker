@@ -162,7 +162,7 @@ export function PendingMediaUpload({
             Drag and drop files here, or click to browse
           </p>
           <p className="text-xs text-text-muted">
-            jpg, png, webp, gif, pdf (max 10MB each)
+            Supported: jpg, png, webp, gif, pdf
           </p>
         </div>
       </div>

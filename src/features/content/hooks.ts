@@ -777,6 +777,34 @@ export function useDeleteMedia(planId: string) {
   });
 }
 
+/**
+ * Add a video link as media
+ */
+export function useAddVideoLink(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ postId, url, title, thumbnailFile }: {
+      postId: string;
+      url: string;
+      title: string;
+      thumbnailFile?: File;
+    }) => api.addVideoLink(postId, url, title, thumbnailFile, planId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      toast({
+        title: "Video link added",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
 // ============================================================================
 // LINKS HOOKS
 // ============================================================================

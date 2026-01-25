@@ -1018,20 +1018,27 @@ export async function getMediaSignedUrl(path: string): Promise<string> {
 export async function deleteMediaFile(mediaId: string): Promise<void> {
   const supabase = createClient();
 
-  // Get the media record first to get the file URL (storage path)
+  // Get the media record first to get the file URL (storage path) and check if external
   const { data: mediaRecord, error: fetchError } = await supabase
     .from("content_post_media")
-    .select("file_url")
+    .select("file_url, is_external, thumbnail_url")
     .eq("id", mediaId)
     .single();
 
   if (fetchError) throw fetchError;
 
-  // Delete from storage
-  if (mediaRecord?.file_url) {
+  // Delete from storage (only for non-external files)
+  if (mediaRecord && !mediaRecord.is_external && mediaRecord.file_url) {
     await supabase.storage
       .from("content-media")
       .remove([mediaRecord.file_url]);
+  }
+
+  // Also delete thumbnail if it exists (for video links)
+  if (mediaRecord?.thumbnail_url) {
+    await supabase.storage
+      .from("content-media")
+      .remove([mediaRecord.thumbnail_url]);
   }
 
   // Delete the database record
@@ -1041,6 +1048,78 @@ export async function deleteMediaFile(mediaId: string): Promise<void> {
     .eq("id", mediaId);
 
   if (deleteError) throw deleteError;
+}
+
+/**
+ * Add a video link as media
+ */
+export async function addVideoLink(
+  postId: string,
+  url: string,
+  title: string,
+  thumbnailFile?: File,
+  planId?: string
+): Promise<ContentPostMedia> {
+  const supabase = createClient();
+
+  // Get current max display_order for this post
+  const { data: existingMedia } = await supabase
+    .from("content_post_media")
+    .select("display_order")
+    .eq("post_id", postId)
+    .order("display_order", { ascending: false })
+    .limit(1);
+
+  const nextDisplayOrder = existingMedia && existingMedia.length > 0
+    ? (existingMedia[0].display_order || 0) + 1
+    : 0;
+
+  // Upload thumbnail if provided
+  let thumbnailUrl: string | null = null;
+  if (thumbnailFile && planId) {
+    const ext = thumbnailFile.name.split(".").pop();
+    const fileName = `thumb_${Date.now()}.${ext}`;
+    const storagePath = `${planId}/${postId}/${fileName}`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("content-media")
+      .upload(storagePath, thumbnailFile, {
+        contentType: thumbnailFile.type,
+        upsert: false,
+      });
+
+    if (!uploadError && uploadData) {
+      thumbnailUrl = uploadData.path;
+    }
+  }
+
+  // Create database record
+  const { data: mediaRecord, error: insertError } = await supabase
+    .from("content_post_media")
+    .insert({
+      post_id: postId,
+      file_url: url,
+      file_name: title || url,
+      file_type: "video",
+      file_size: null,
+      mime_type: null,
+      display_order: nextDisplayOrder,
+      media_type: "video_link",
+      is_external: true,
+      thumbnail_url: thumbnailUrl,
+    })
+    .select()
+    .single();
+
+  if (insertError) {
+    // Clean up thumbnail if it was uploaded
+    if (thumbnailUrl) {
+      await supabase.storage.from("content-media").remove([thumbnailUrl]);
+    }
+    throw insertError;
+  }
+
+  return mediaRecord;
 }
 
 // ============================================================================
