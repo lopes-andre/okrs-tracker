@@ -1,7 +1,7 @@
 "use client";
 
 import { format, parseISO, isPast, isToday } from "date-fns";
-import { Check, Clock } from "lucide-react";
+import { Check, Clock, Megaphone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -87,17 +87,23 @@ export function CalendarEntry({
       className={cn(
         "flex items-center gap-2 rounded-md border cursor-pointer transition-all hover:shadow-sm",
         statusStyles,
+        entry.campaign_id && "ring-1 ring-accent/50",
         variant === "compact" && "px-1.5 py-0.5 text-[10px]",
         variant === "default" && "px-2 py-1 text-small",
         variant === "expanded" && "px-3 py-2"
       )}
       onClick={onClick}
     >
-      {/* Platform Icon */}
-      <PlatformIcon
-        platformName={entry.platform_name}
-        size={variant === "compact" ? "sm" : "sm"}
-              />
+      {/* Campaign indicator + Platform Icon */}
+      <div className="flex items-center gap-1 shrink-0">
+        {entry.campaign_id && (
+          <Megaphone className="w-3 h-3 text-accent" />
+        )}
+        <PlatformIcon
+          platformName={entry.platform_name}
+          size={variant === "compact" ? "sm" : "sm"}
+        />
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -142,13 +148,19 @@ export function CalendarEntry({
               <PlatformIcon
                 platformName={entry.platform_name}
                 size="sm"
-                              />
+              />
               <span>{entry.account_name}</span>
             </div>
             {time && (
               <p className="text-small text-text-muted flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {time}
+              </p>
+            )}
+            {entry.campaign_name && (
+              <p className="text-small text-accent flex items-center gap-1">
+                <Megaphone className="w-3 h-3" />
+                {entry.campaign_name}
               </p>
             )}
             <Badge
@@ -208,6 +220,7 @@ export function CalendarEntryGroup({
           const time = firstEntry.scheduled_at
             ? format(parseISO(firstEntry.scheduled_at), "h:mm a")
             : null;
+          const hasCampaign = group.some((e) => e.campaign_id);
 
           return (
             <div
@@ -215,27 +228,33 @@ export function CalendarEntryGroup({
               className={cn(
                 "flex items-center gap-2 rounded-md border cursor-pointer transition-all hover:shadow-sm",
                 statusStyles,
+                hasCampaign && "ring-1 ring-accent/50",
                 variant === "compact" && "px-1.5 py-0.5",
                 variant === "default" && "px-2 py-1",
                 variant === "expanded" && "px-3 py-2"
               )}
               onClick={() => onClick?.(firstEntry)}
             >
-              {/* Multiple Platform Icons */}
-              <div className="flex -space-x-1">
-                {group.slice(0, 3).map((entry, i) => (
-                  <PlatformIcon
-                    key={entry.distribution_id}
-                    platformName={entry.platform_name}
-                    size="sm"
-                                        className={i > 0 ? "ring-1 ring-white rounded-full" : ""}
-                  />
-                ))}
-                {group.length > 3 && (
-                  <span className="text-[10px] text-text-muted ml-1">
-                    +{group.length - 3}
-                  </span>
+              {/* Campaign indicator + Multiple Platform Icons */}
+              <div className="flex items-center gap-1 shrink-0">
+                {hasCampaign && (
+                  <Megaphone className="w-3 h-3 text-accent" />
                 )}
+                <div className="flex -space-x-1">
+                  {group.slice(0, 3).map((entry, i) => (
+                    <PlatformIcon
+                      key={entry.distribution_id}
+                      platformName={entry.platform_name}
+                      size="sm"
+                      className={i > 0 ? "ring-1 ring-white rounded-full" : ""}
+                    />
+                  ))}
+                  {group.length > 3 && (
+                    <span className="text-[10px] text-text-muted ml-1">
+                      +{group.length - 3}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Content */}

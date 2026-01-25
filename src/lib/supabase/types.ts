@@ -535,9 +535,10 @@ export interface ContentCampaign {
 }
 
 export interface ContentCampaignPost {
+  id: string;
   campaign_id: string;
-  post_id: string;
-  sort_order: number;
+  distribution_id: string;
+  created_at: string;
 }
 
 export interface ContentCampaignCheckin {
@@ -794,6 +795,7 @@ export interface ContentPostWithDetails extends ContentPost {
   posted_count: number;
   media_count: number;
   link_count: number;
+  has_campaign?: boolean;
   created_by_user?: Profile;
 }
 
@@ -822,6 +824,24 @@ export interface ContentCalendarEntry {
   status: ContentDistributionStatus;
   scheduled_at: string | null;
   posted_at: string | null;
+  campaign_id: string | null;
+  campaign_name: string | null;
+}
+
+// Distribution with campaign info
+export interface ContentDistributionWithCampaign extends ContentDistribution {
+  account: ContentAccountWithPlatform;
+  latest_metrics?: ContentDistributionMetrics | null;
+  campaign?: {
+    id: string;
+    name: string;
+    description: string | null;
+    objective: ContentCampaignObjective;
+    status: ContentCampaignStatus;
+    budget_spent: number | null;
+    start_date: string | null;
+    end_date: string | null;
+  } | null;
 }
 
 // Content stats for dashboard

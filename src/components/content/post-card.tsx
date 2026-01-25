@@ -6,6 +6,7 @@ import {
   Calendar,
   Image as ImageIcon,
   Link2,
+  Megaphone,
   Send,
   Star,
   Loader2,
@@ -471,6 +472,22 @@ export const PostCard = memo(function PostCard({
 
         {/* Metadata Row */}
         <div className="flex items-center gap-3 text-text-muted">
+          {/* Campaign indicator */}
+          {post.has_campaign && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center">
+                    <Megaphone className="w-3.5 h-3.5 text-accent" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs">Part of a campaign</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
           {/* Media count */}
           {post.media && post.media.length > 0 && (
             <div className="flex items-center gap-1">

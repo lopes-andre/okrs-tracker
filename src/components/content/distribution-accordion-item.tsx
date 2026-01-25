@@ -11,6 +11,10 @@ import {
   Trash2,
   ExternalLink,
   Loader2,
+  Megaphone,
+  Target,
+  DollarSign,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PlatformIcon } from "./platform-icon";
-import { useUpdateDistribution, useDeleteDistribution } from "@/features/content/hooks";
+import { useUpdateDistribution, useDeleteDistribution, useDistributionCampaign } from "@/features/content/hooks";
 import { useCreateTask } from "@/features/tasks/hooks";
 import { cn } from "@/lib/utils";
 import type {
@@ -206,6 +210,9 @@ export function DistributionAccordionItem({
   const deleteDistribution = useDeleteDistribution(planId);
   const createTask = useCreateTask(planId);
   const hasAutoUpdated = useRef(false);
+
+  // Fetch campaign info for this distribution
+  const { data: campaign } = useDistributionCampaign(distribution.id);
 
   // Controlled mode: changes go to parent via onUpdate
   const isControlled = !!onUpdate;
@@ -505,6 +512,9 @@ export function DistributionAccordionItem({
               <StatusIcon className="w-3 h-3 mr-1" />
               {status.label}
             </Badge>
+            {campaign && (
+              <Megaphone className="w-3.5 h-3.5 text-accent shrink-0" />
+            )}
           </div>
           <div className="flex items-center gap-3 text-small text-text-muted">
             <span>{platformDisplayName}</span>
@@ -570,6 +580,46 @@ export function DistributionAccordionItem({
         )}
       >
         <div className="p-4 space-y-4 bg-bg-1/50">
+          {/* Campaign Info (read-only) */}
+          {campaign && (
+            <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Megaphone className="w-4 h-4 text-accent" />
+                <span className="font-medium text-small">{campaign.name}</span>
+              </div>
+              {campaign.description && (
+                <p className="text-small text-text-muted mb-3">{campaign.description}</p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <Target className="w-3.5 h-3.5" />
+                  <span className="capitalize">{campaign.objective}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                    {campaign.status}
+                  </Badge>
+                </div>
+                {campaign.budget_spent !== null && campaign.budget_spent > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>${campaign.budget_spent.toLocaleString()} spent</span>
+                  </div>
+                )}
+                {(campaign.start_date || campaign.end_date) && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    <span>
+                      {campaign.start_date && formatDate(new Date(campaign.start_date), "MMM d")}
+                      {campaign.start_date && campaign.end_date && " - "}
+                      {campaign.end_date && formatDate(new Date(campaign.end_date), "MMM d")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Format */}
           {formats.length > 0 && (
             <div className="space-y-1.5">

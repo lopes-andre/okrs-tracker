@@ -206,6 +206,17 @@ export const queryKeys = {
       list: (planId: string, filters?: object) =>
         [...queryKeys.content.campaigns.all, "list", planId, filters] as const,
       detail: (campaignId: string) => [...queryKeys.content.campaigns.all, "detail", campaignId] as const,
+      distributions: (campaignId: string) =>
+        [...queryKeys.content.campaigns.all, "distributions", campaignId] as const,
+      availableDistributions: (planId: string, campaignId?: string, platformId?: string) =>
+        [...queryKeys.content.campaigns.all, "availableDistributions", planId, campaignId, platformId] as const,
+    },
+    campaignDistributions: {
+      all: ["content", "campaignDistributions"] as const,
+      byCampaign: (campaignId: string) =>
+        [...queryKeys.content.campaignDistributions.all, "byCampaign", campaignId] as const,
+      byDistribution: (distributionId: string) =>
+        [...queryKeys.content.campaignDistributions.all, "byDistribution", distributionId] as const,
     },
     stats: (planId: string) => [...queryKeys.content.all, "stats", planId] as const,
   },

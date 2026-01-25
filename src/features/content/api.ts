@@ -289,6 +289,14 @@ export async function getPostsWithDetails(planId: string): Promise<ContentPostWi
   const posts = result.data || [];
   const postsWithDetails: ContentPostWithDetails[] = [];
 
+  // Get all campaign-distribution links for efficiency
+  const { data: allCampaignLinks } = await supabase
+    .from("content_campaign_posts")
+    .select("distribution_id");
+  const distributionsInCampaigns = new Set(
+    allCampaignLinks?.map((l) => l.distribution_id) || []
+  );
+
   for (const post of posts) {
     // Get media
     const { data: media } = await supabase
@@ -315,6 +323,11 @@ export async function getPostsWithDetails(planId: string): Promise<ContentPostWi
       `)
       .eq("post_id", post.id);
 
+    // Check if any distribution is in a campaign
+    const hasCampaign = distributions?.some((d) =>
+      distributionsInCampaigns.has(d.id)
+    ) || false;
+
     postsWithDetails.push({
       ...post,
       media: media || [],
@@ -323,6 +336,7 @@ export async function getPostsWithDetails(planId: string): Promise<ContentPostWi
       // Use counts from RPC if available, otherwise calculate from fetched arrays
       media_count: post.media_count ?? (media?.length || 0),
       link_count: post.link_count ?? (links?.length || 0),
+      has_campaign: hasCampaign,
     });
   }
 
@@ -603,7 +617,46 @@ export async function getCalendarData(
   });
 
   if (result.error) throw result.error;
-  return result.data || [];
+
+  const entries = result.data || [];
+  if (entries.length === 0) return [];
+
+  // Get distribution IDs from entries
+  const distributionIds = entries.map((e: ContentCalendarEntry) => e.distribution_id);
+
+  // Get campaign links for these distributions
+  const { data: campaignLinks } = await supabase
+    .from("content_campaign_posts")
+    .select(`
+      distribution_id,
+      campaign:content_campaigns(id, name)
+    `)
+    .in("distribution_id", distributionIds);
+
+  // Build map of distribution_id -> campaign info
+  const campaignMap = new Map<string, { id: string; name: string }>();
+  if (campaignLinks) {
+    for (const link of campaignLinks) {
+      if (link.campaign) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const campaign = link.campaign as any;
+        campaignMap.set(link.distribution_id, {
+          id: campaign.id,
+          name: campaign.name,
+        });
+      }
+    }
+  }
+
+  // Add campaign info to entries
+  return entries.map((entry: ContentCalendarEntry) => {
+    const campaign = campaignMap.get(entry.distribution_id);
+    return {
+      ...entry,
+      campaign_id: campaign?.id || null,
+      campaign_name: campaign?.name || null,
+    };
+  });
 }
 
 /**
@@ -842,30 +895,207 @@ export async function deleteCampaign(campaignId: string): Promise<void> {
   );
 }
 
+// ============================================================================
+// CAMPAIGN-DISTRIBUTION LINKING API
+// ============================================================================
+
 /**
- * Add posts to a campaign
+ * Get distributions linked to a campaign
  */
-export async function addPostsToCampaign(campaignId: string, postIds: string[]): Promise<void> {
+export async function getCampaignDistributions(campaignId: string): Promise<ContentDistribution[]> {
   const supabase = createClient();
-  await supabase.from("content_campaign_posts").insert(
-    postIds.map((postId, index) => ({
-      campaign_id: campaignId,
-      post_id: postId,
-      sort_order: index,
-    }))
+
+  // Get the distribution IDs from junction table
+  const { data: links, error: linksError } = await supabase
+    .from("content_campaign_posts")
+    .select("distribution_id")
+    .eq("campaign_id", campaignId);
+
+  if (linksError) throw linksError;
+  if (!links || links.length === 0) return [];
+
+  const distributionIds = links.map((l) => l.distribution_id);
+
+  // Get distributions with account info
+  return handleSupabaseError(
+    supabase
+      .from("content_distributions")
+      .select(`
+        *,
+        account:content_accounts(
+          *,
+          platform:content_platforms(*)
+        )
+      `)
+      .in("id", distributionIds)
   );
 }
 
 /**
- * Remove post from a campaign
+ * Get campaign for a distribution (if any)
  */
-export async function removePostFromCampaign(campaignId: string, postId: string): Promise<void> {
+export async function getDistributionCampaign(distributionId: string): Promise<ContentCampaign | null> {
   const supabase = createClient();
-  await supabase
+
+  // Get the campaign link
+  const { data: link, error: linkError } = await supabase
+    .from("content_campaign_posts")
+    .select("campaign_id")
+    .eq("distribution_id", distributionId)
+    .maybeSingle();
+
+  if (linkError) throw linkError;
+  if (!link) return null;
+
+  // Get campaign details
+  return handleSupabaseQuery(
+    supabase
+      .from("content_campaigns")
+      .select(`
+        *,
+        platform:content_platforms(*)
+      `)
+      .eq("id", link.campaign_id)
+      .single()
+  );
+}
+
+/**
+ * Get distributions available for linking to a campaign
+ * Returns distributions that are not already linked to this campaign
+ */
+export async function getAvailableDistributionsForCampaign(
+  planId: string,
+  campaignId?: string,
+  platformId?: string
+): Promise<ContentDistribution[]> {
+  const supabase = createClient();
+
+  // Get distributions already linked to this campaign
+  let existingDistributionIds: string[] = [];
+  if (campaignId) {
+    const { data: links } = await supabase
+      .from("content_campaign_posts")
+      .select("distribution_id")
+      .eq("campaign_id", campaignId);
+    existingDistributionIds = links?.map((l) => l.distribution_id) || [];
+  }
+
+  // Get all distributions for this plan
+  let query = supabase
+    .from("content_distributions")
+    .select(`
+      *,
+      account:content_accounts(
+        *,
+        platform:content_platforms(*)
+      ),
+      post:content_posts(id, title, plan_id)
+    `)
+    .not("post", "is", null);
+
+  // Filter by platform if specified
+  if (platformId) {
+    // We need to filter by account's platform_id
+    const { data: accounts } = await supabase
+      .from("content_accounts")
+      .select("id")
+      .eq("plan_id", planId)
+      .eq("platform_id", platformId);
+
+    if (accounts && accounts.length > 0) {
+      const accountIds = accounts.map((a) => a.id);
+      query = query.in("account_id", accountIds);
+    } else {
+      return []; // No accounts for this platform
+    }
+  } else {
+    // Filter by plan through accounts
+    const { data: accounts } = await supabase
+      .from("content_accounts")
+      .select("id")
+      .eq("plan_id", planId);
+
+    if (accounts && accounts.length > 0) {
+      const accountIds = accounts.map((a) => a.id);
+      query = query.in("account_id", accountIds);
+    } else {
+      return []; // No accounts
+    }
+  }
+
+  const { data: distributions, error } = await query;
+
+  if (error) throw error;
+  if (!distributions) return [];
+
+  // Filter out distributions already in this campaign
+  return distributions.filter((d) => !existingDistributionIds.includes(d.id));
+}
+
+/**
+ * Add distributions to a campaign
+ */
+export async function addDistributionsToCampaign(
+  campaignId: string,
+  distributionIds: string[]
+): Promise<void> {
+  if (distributionIds.length === 0) return;
+
+  const supabase = createClient();
+  const { error } = await supabase.from("content_campaign_posts").insert(
+    distributionIds.map((distributionId) => ({
+      campaign_id: campaignId,
+      distribution_id: distributionId,
+    }))
+  );
+
+  if (error) throw error;
+}
+
+/**
+ * Remove distribution from a campaign
+ */
+export async function removeDistributionFromCampaign(
+  campaignId: string,
+  distributionId: string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
     .from("content_campaign_posts")
     .delete()
     .eq("campaign_id", campaignId)
-    .eq("post_id", postId);
+    .eq("distribution_id", distributionId);
+
+  if (error) throw error;
+}
+
+/**
+ * Set distributions for a campaign (replaces all existing)
+ */
+export async function setCampaignDistributions(
+  campaignId: string,
+  distributionIds: string[]
+): Promise<void> {
+  const supabase = createClient();
+
+  // Delete all existing links
+  await supabase
+    .from("content_campaign_posts")
+    .delete()
+    .eq("campaign_id", campaignId);
+
+  // Add new links
+  if (distributionIds.length > 0) {
+    const { error } = await supabase.from("content_campaign_posts").insert(
+      distributionIds.map((distributionId) => ({
+        campaign_id: campaignId,
+        distribution_id: distributionId,
+      }))
+    );
+
+    if (error) throw error;
+  }
 }
 
 // ============================================================================

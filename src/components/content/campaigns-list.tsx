@@ -23,6 +23,7 @@ import {
   useDeleteCampaign,
   useCampaignCheckins,
   useAddCampaignCheckin,
+  useSetCampaignDistributions,
 } from "@/features/content/hooks";
 import type {
   ContentCampaign,
@@ -53,6 +54,7 @@ export function CampaignsList({ planId }: CampaignsListProps) {
   const updateCampaign = useUpdateCampaign(planId);
   const deleteCampaign = useDeleteCampaign(planId);
   const addCampaignCheckin = useAddCampaignCheckin(planId);
+  const setCampaignDistributions = useSetCampaignDistributions(planId);
 
   // UI state
   const [showCampaignDialog, setShowCampaignDialog] = useState(false);
@@ -108,7 +110,7 @@ export function CampaignsList({ planId }: CampaignsListProps) {
 
   // Handlers
   const handleCreate = async (data: CampaignFormData) => {
-    await createCampaign.mutateAsync({
+    const campaign = await createCampaign.mutateAsync({
       name: data.name,
       description: data.description,
       objective: data.objective,
@@ -117,6 +119,14 @@ export function CampaignsList({ planId }: CampaignsListProps) {
       end_date: data.end_date,
       budget_allocated: data.budget_allocated,
     });
+
+    // Link distributions to the new campaign
+    if (data.distributionIds && data.distributionIds.length > 0) {
+      await setCampaignDistributions.mutateAsync({
+        campaignId: campaign.id,
+        distributionIds: data.distributionIds,
+      });
+    }
   };
 
   const handleUpdate = async (data: CampaignFormData) => {
@@ -133,6 +143,14 @@ export function CampaignsList({ planId }: CampaignsListProps) {
         budget_allocated: data.budget_allocated,
       },
     });
+
+    // Update distribution links
+    if (data.distributionIds) {
+      await setCampaignDistributions.mutateAsync({
+        campaignId: editingCampaign.id,
+        distributionIds: data.distributionIds,
+      });
+    }
   };
 
   const handleDelete = async (campaignId: string) => {
@@ -193,6 +211,7 @@ export function CampaignsList({ planId }: CampaignsListProps) {
         <CampaignDialog
           open={showCampaignDialog}
           onOpenChange={setShowCampaignDialog}
+          planId={planId}
           onSubmit={handleCreate}
         />
       </>
@@ -343,6 +362,7 @@ export function CampaignsList({ planId }: CampaignsListProps) {
           setShowCampaignDialog(open);
           if (!open) setEditingCampaign(null);
         }}
+        planId={planId}
         campaign={editingCampaign}
         onSubmit={editingCampaign ? handleUpdate : handleCreate}
       />

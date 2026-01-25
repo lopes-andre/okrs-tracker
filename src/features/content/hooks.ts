@@ -800,32 +800,121 @@ export function useDeleteCampaign(_planId: string) {
   });
 }
 
+// ============================================================================
+// CAMPAIGN-DISTRIBUTION LINKING HOOKS
+// ============================================================================
+
 /**
- * Add posts to a campaign
+ * Get distributions linked to a campaign
  */
-export function useAddPostsToCampaign(_planId: string) {
+export function useCampaignDistributions(campaignId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.campaigns.distributions(campaignId),
+    queryFn: () => api.getCampaignDistributions(campaignId),
+    enabled: !!campaignId,
+  });
+}
+
+/**
+ * Get campaign for a distribution (if any)
+ */
+export function useDistributionCampaign(distributionId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.campaignDistributions.byDistribution(distributionId),
+    queryFn: () => api.getDistributionCampaign(distributionId),
+    enabled: !!distributionId,
+  });
+}
+
+/**
+ * Get distributions available for linking to a campaign
+ */
+export function useAvailableDistributionsForCampaign(
+  planId: string,
+  campaignId?: string,
+  platformId?: string
+) {
+  return useQuery({
+    queryKey: queryKeys.content.campaigns.availableDistributions(planId, campaignId, platformId),
+    queryFn: () => api.getAvailableDistributionsForCampaign(planId, campaignId, platformId),
+    enabled: !!planId,
+  });
+}
+
+/**
+ * Add distributions to a campaign
+ */
+export function useAddDistributionsToCampaign(planId: string) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ campaignId, postIds }: { campaignId: string; postIds: string[] }) =>
-      api.addPostsToCampaign(campaignId, postIds),
+    mutationFn: ({ campaignId, distributionIds }: { campaignId: string; distributionIds: string[] }) =>
+      api.addDistributionsToCampaign(campaignId, distributionIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.campaigns.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.campaignDistributions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.distributions.all });
+      toast({
+        title: "Distributions linked",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
     },
   });
 }
 
 /**
- * Remove post from a campaign
+ * Remove distribution from a campaign
  */
-export function useRemovePostFromCampaign(_planId: string) {
+export function useRemoveDistributionFromCampaign(planId: string) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
-    mutationFn: ({ campaignId, postId }: { campaignId: string; postId: string }) =>
-      api.removePostFromCampaign(campaignId, postId),
+    mutationFn: ({ campaignId, distributionId }: { campaignId: string; distributionId: string }) =>
+      api.removeDistributionFromCampaign(campaignId, distributionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.campaigns.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.campaignDistributions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.distributions.all });
+      toast({
+        title: "Distribution unlinked",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Set distributions for a campaign (replaces all existing)
+ */
+export function useSetCampaignDistributions(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ campaignId, distributionIds }: { campaignId: string; distributionIds: string[] }) =>
+      api.setCampaignDistributions(campaignId, distributionIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.campaigns.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.campaignDistributions.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.withDetails(planId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.content.distributions.all });
+      toast({
+        title: "Campaign updated",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
     },
   });
 }
