@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,9 +16,10 @@ interface KanbanColumnProps {
   description: string;
   count: number;
   children: React.ReactNode;
+  emptyMessage: string;
   onAddPost?: () => void;
-  /** Render content above the cards (e.g., quick capture input) */
-  headerContent?: React.ReactNode;
+  /** Whether to show the add button in header and empty state */
+  showAddButton?: boolean;
 }
 
 // ============================================================================
@@ -59,23 +59,18 @@ export function KanbanColumn({
   description,
   count,
   children,
+  emptyMessage,
   onAddPost,
-  headerContent,
+  showAddButton = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
-    id,
-  });
-
   const colors = statusColors[id];
 
   return (
     <div
-      ref={setNodeRef}
       className={cn(
         "flex flex-col rounded-lg border min-h-[400px]",
         colors.bg,
-        colors.border,
-        isOver && "ring-2 ring-accent ring-offset-2"
+        colors.border
       )}
     >
       {/* Column Header */}
@@ -92,7 +87,7 @@ export function KanbanColumn({
               {count}
             </span>
           </div>
-          {onAddPost && (
+          {showAddButton && onAddPost && (
             <Button
               variant="ghost"
               size="icon"
@@ -109,18 +104,13 @@ export function KanbanColumn({
 
       {/* Column Content */}
       <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-        {/* Header content (e.g., quick capture) */}
-        {headerContent && (
-          <div className="mb-2">{headerContent}</div>
-        )}
-
         {children}
 
         {/* Empty state */}
-        {count === 0 && !headerContent && (
+        {count === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <p className="text-small text-text-muted mb-2">No posts yet</p>
-            {onAddPost && (
+            <p className="text-small text-text-muted mb-2">{emptyMessage}</p>
+            {showAddButton && onAddPost && (
               <Button
                 variant="outline"
                 size="sm"
@@ -128,7 +118,7 @@ export function KanbanColumn({
                 className="text-small"
               >
                 <Plus className="w-3 h-3 mr-1" />
-                Add post
+                Add Post
               </Button>
             )}
           </div>
