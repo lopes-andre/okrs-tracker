@@ -40,7 +40,6 @@ interface ActivityEventCardProps {
 }
 
 // Icons for different event types (kept for potential future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _eventTypeIcons: Record<EventType, React.ElementType> = {
   created: Edit3,
   updated: Edit3,
@@ -142,7 +141,6 @@ const getEntityName = (event: ActivityEventWithUser): string => {
 };
 
 // Format value changes for display (kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _formatValueChange = (key: string, oldVal: unknown, newVal: unknown): string => {
   if (key === "status") {
     return `${oldVal || "none"} → ${newVal}`;

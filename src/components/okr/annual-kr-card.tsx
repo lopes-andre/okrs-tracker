@@ -70,7 +70,6 @@ interface AnnualKrCardProps {
 }
 
 // KR type labels (kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _krTypeLabels: Record<string, string> = {
   metric: "Metric",
   count: "Count",
@@ -232,9 +231,7 @@ export function AnnualKrCard({
     : null;
   
   // Current quarter data (kept for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _currentQuarter = getCurrentQuarter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _currentQuarterData = quarterProgress.find(q => q.isCurrent);
 
   // Handle card click (expand/collapse)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, Image, Video, FileText, AlertCircle, Link2, Plus } from "lucide-react";
+import { Upload, X, Image, Video, FileText, AlertCircle, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

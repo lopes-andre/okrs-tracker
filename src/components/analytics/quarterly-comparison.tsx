@@ -56,7 +56,6 @@ const QUARTER_COLORS = {
 export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparisonProps) {
   const quarterData = useMemo(() => {
     const now = new Date();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _currentQuarter = getQuarter(now);
     const quarters: QuarterData[] = [];
 
@@ -119,7 +118,6 @@ export function QuarterlyComparison({ krs, checkIns, year }: QuarterlyComparison
   }, [krs, checkIns, year]);
 
   // Calculate YoY equivalent (if we had previous year data, we'd compare)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _currentQ = quarterData.find((q) => q.isCurrent);
   const completedQuarters = quarterData.filter((q) => q.isPast);
   
