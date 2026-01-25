@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Search, SlidersHorizontal, X, Star, Image, Link2 } from "lucide-react";
+import { Search, SlidersHorizontal, X, Star, Image, Link2, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,7 @@ export interface KanbanFilters {
   hasDistributions: boolean | null;
   isFavorite: boolean | null;
   hasMedia: boolean | null;
+  hasVideoLinks: boolean | null;
   hasLinks: boolean | null;
 }
 
@@ -44,6 +45,7 @@ export const defaultFilters: KanbanFilters = {
   hasDistributions: null,
   isFavorite: null,
   hasMedia: null,
+  hasVideoLinks: null,
   hasLinks: null,
 };
 
@@ -66,6 +68,7 @@ export function KanbanFilters({
     (filters.hasDistributions !== null ? 1 : 0) +
     (filters.isFavorite === true ? 1 : 0) +
     (filters.hasMedia !== null ? 1 : 0) +
+    (filters.hasVideoLinks !== null ? 1 : 0) +
     (filters.hasLinks !== null ? 1 : 0);
 
   // Handle search change
@@ -118,6 +121,14 @@ export function KanbanFilters({
   const toggleHasMedia = useCallback(
     (value: boolean | null) => {
       onFiltersChange({ ...filters, hasMedia: value });
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Toggle hasVideoLinks filter
+  const toggleHasVideoLinks = useCallback(
+    (value: boolean | null) => {
+      onFiltersChange({ ...filters, hasVideoLinks: value });
     },
     [filters, onFiltersChange]
   );
@@ -234,6 +245,16 @@ export function KanbanFilters({
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
+                    checked={filters.hasVideoLinks === true}
+                    onCheckedChange={(checked) =>
+                      toggleHasVideoLinks(checked ? true : null)
+                    }
+                  />
+                  <Video className="w-3.5 h-3.5" />
+                  <span className="text-small">Has video links</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
                     checked={filters.hasLinks === true}
                     onCheckedChange={(checked) =>
                       toggleHasLinks(checked ? true : null)
@@ -244,12 +265,12 @@ export function KanbanFilters({
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
-                    checked={filters.hasMedia === false && filters.hasLinks === false}
+                    checked={filters.hasMedia === false && filters.hasVideoLinks === false && filters.hasLinks === false}
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        onFiltersChange({ ...filters, hasMedia: false, hasLinks: false });
+                        onFiltersChange({ ...filters, hasMedia: false, hasVideoLinks: false, hasLinks: false });
                       } else {
-                        onFiltersChange({ ...filters, hasMedia: null, hasLinks: null });
+                        onFiltersChange({ ...filters, hasMedia: null, hasVideoLinks: null, hasLinks: null });
                       }
                     }}
                   />
@@ -368,6 +389,18 @@ export function KanbanFilters({
               </button>
             </Badge>
           )}
+          {filters.hasVideoLinks === true && (
+            <Badge variant="secondary" className="gap-1">
+              <Video className="w-3 h-3" />
+              Has video links
+              <button
+                onClick={() => toggleHasVideoLinks(null)}
+                className="ml-1 hover:text-status-danger"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
           {filters.hasLinks === true && (
             <Badge variant="secondary" className="gap-1">
               <Link2 className="w-3 h-3" />
@@ -380,12 +413,12 @@ export function KanbanFilters({
               </button>
             </Badge>
           )}
-          {filters.hasMedia === false && filters.hasLinks === false && (
+          {filters.hasMedia === false && filters.hasVideoLinks === false && filters.hasLinks === false && (
             <Badge variant="secondary" className="gap-1">
               No attachments
               <button
                 onClick={() => {
-                  onFiltersChange({ ...filters, hasMedia: null, hasLinks: null });
+                  onFiltersChange({ ...filters, hasMedia: null, hasVideoLinks: null, hasLinks: null });
                 }}
                 className="ml-1 hover:text-status-danger"
               >

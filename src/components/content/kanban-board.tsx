@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { KanbanColumn } from "./kanban-column";
@@ -57,6 +58,9 @@ const COLUMNS: Column[] = [
   },
 ];
 
+// Maximum visible completed posts in kanban (rest go to Content Logbook)
+const MAX_VISIBLE_COMPLETED = 10;
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -91,6 +95,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
       filters.hasDistributions !== null ||
       filters.isFavorite === true ||
       filters.hasMedia !== null ||
+      filters.hasVideoLinks !== null ||
       filters.hasLinks !== null
     );
   }, [filters]);
@@ -134,14 +139,25 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         if (!filters.hasDistributions && distributionCount > 0) return false;
       }
 
-      // Has media filter
+      // Has media filter (non-video media files)
       if (filters.hasMedia !== null) {
-        const mediaCount = post.media?.length || 0;
-        if (filters.hasMedia && mediaCount === 0) return false;
-        if (!filters.hasMedia && mediaCount > 0) return false;
+        const nonVideoMediaCount = post.media?.filter(
+          m => m.media_type !== "video_link" && !m.is_external
+        ).length || 0;
+        if (filters.hasMedia && nonVideoMediaCount === 0) return false;
+        if (!filters.hasMedia && nonVideoMediaCount > 0) return false;
       }
 
-      // Has links filter
+      // Has video links filter
+      if (filters.hasVideoLinks !== null) {
+        const videoLinkCount = post.media?.filter(
+          m => m.media_type === "video_link" || m.is_external
+        ).length || 0;
+        if (filters.hasVideoLinks && videoLinkCount === 0) return false;
+        if (!filters.hasVideoLinks && videoLinkCount > 0) return false;
+      }
+
+      // Has links filter (reference links, not video links)
       if (filters.hasLinks !== null) {
         const linkCount = post.links?.length || 0;
         if (filters.hasLinks && linkCount === 0) return false;
@@ -153,7 +169,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   }, [posts, filters]);
 
   // Organize filtered posts by status
-  const postsByStatus = useMemo(() => {
+  const { postsByStatus, totalCompletedCount } = useMemo(() => {
     const grouped: Record<ContentPostStatus, ContentPostWithDetails[]> = {
       backlog: [],
       tagged: [],
@@ -172,7 +188,13 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
       );
     });
 
-    return grouped;
+    // For complete column, sort by most recently updated and limit to MAX_VISIBLE_COMPLETED
+    const totalCompleted = grouped.complete.length;
+    grouped.complete = grouped.complete
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, MAX_VISIBLE_COMPLETED);
+
+    return { postsByStatus: grouped, totalCompletedCount: totalCompleted };
   }, [filteredPosts]);
 
   // Handle creating a new post (only in backlog)
@@ -224,6 +246,11 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         {COLUMNS.map((column) => {
           const columnPosts = postsByStatus[column.id];
           const isBacklog = column.id === "backlog";
+          const isComplete = column.id === "complete";
+
+          // For Complete column, show total count in header, visible count in footer
+          const headerCount = isComplete ? totalCompletedCount : columnPosts.length;
+          const showViewAll = isComplete && totalCompletedCount > MAX_VISIBLE_COMPLETED;
 
           return (
             <KanbanColumn
@@ -231,7 +258,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
               id={column.id}
               title={column.title}
               description={column.description}
-              count={columnPosts.length}
+              count={headerCount}
               emptyMessage={
                 hasActiveFilters
                   ? "No posts match your filters"
@@ -248,6 +275,22 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
                   onToggleFavorite={handleToggleFavorite}
                 />
               ))}
+
+              {/* View All footer for Complete column */}
+              {showViewAll && (
+                <div className="pt-2 pb-1 text-center border-t border-border-soft mt-2">
+                  <p className="text-small text-text-muted">
+                    Showing {columnPosts.length} of {totalCompletedCount}
+                    {" • "}
+                    <Link
+                      href={`/plans/${planId}/content/logbook`}
+                      className="text-accent hover:underline"
+                    >
+                      View All
+                    </Link>
+                  </p>
+                </div>
+              )}
             </KanbanColumn>
           );
         })}
