@@ -110,6 +110,11 @@ interface PendingDistribution {
 // TYPES
 // ============================================================================
 
+interface PositionInfo {
+  currentPosition: number; // 1-based position
+  totalInStatus: number;
+}
+
 interface PostDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -118,6 +123,8 @@ interface PostDetailModalProps {
   goals: ContentGoal[];
   accounts: ContentAccountWithPlatform[];
   initialStatus?: ContentPostStatus;
+  positionInfo?: PositionInfo; // Position info for reordering
+  onPositionChange?: (newPosition: number) => void; // Callback when position changes
 }
 
 // ============================================================================
@@ -143,6 +150,8 @@ export function PostDetailModal({
   goals,
   accounts,
   initialStatus = "backlog",
+  positionInfo,
+  onPositionChange,
 }: PostDetailModalProps) {
   const isEditing = !!postId;
   const { data: post, isLoading: isLoadingPost } = usePost(postId || "");
@@ -169,11 +178,13 @@ export function PostDetailModal({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ContentPostStatus>(initialStatus);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+  const [position, setPosition] = useState<number>(1);
 
   // Initial values for change tracking (edit mode)
   const [initialTitle, setInitialTitle] = useState("");
   const [initialDescription, setInitialDescription] = useState("");
   const [initialGoalIds, setInitialGoalIds] = useState<string[]>([]);
+  const [initialPosition, setInitialPosition] = useState<number>(1);
 
   // Link form state (for existing posts)
   const [showAddLinkForm, setShowAddLinkForm] = useState(false);
@@ -197,21 +208,25 @@ export function PostDetailModal({
         const postTitle = post.title || "";
         const postDescription = post.description || "";
         const postGoalIds = post.goals?.map((g) => g.id) || [];
+        const postPosition = positionInfo?.currentPosition || 1;
 
         setTitle(postTitle);
         setDescription(postDescription);
         setStatus(post.status);
         setSelectedGoalIds(postGoalIds);
+        setPosition(postPosition);
 
         // Store initial values for change tracking
         setInitialTitle(postTitle);
         setInitialDescription(postDescription);
         setInitialGoalIds(postGoalIds);
+        setInitialPosition(postPosition);
       } else if (!isEditing) {
         setTitle("");
         setDescription("");
         setStatus(initialStatus);
         setSelectedGoalIds([]);
+        setPosition(1);
         // Reset pending state for new posts
         setPendingMediaFiles([]);
         setPendingVideoLinks([]);
@@ -221,6 +236,7 @@ export function PostDetailModal({
         setInitialTitle("");
         setInitialDescription("");
         setInitialGoalIds([]);
+        setInitialPosition(1);
       }
       setActiveTab("overview");
       setShowAddLinkForm(false);
@@ -230,7 +246,7 @@ export function PostDetailModal({
       setEditedDistributions({});
       setDeletedDistributionIds([]);
     }
-  }, [open, post, isEditing, initialStatus]);
+  }, [open, post, isEditing, initialStatus, positionInfo]);
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = useMemo(() => {
@@ -239,6 +255,7 @@ export function PostDetailModal({
       const titleChanged = title !== initialTitle;
       const descriptionChanged = description !== initialDescription;
       const goalsChanged = JSON.stringify([...selectedGoalIds].sort()) !== JSON.stringify([...initialGoalIds].sort());
+      const positionChanged = position !== initialPosition;
       const hasDistributionDeletes = deletedDistributionIds.length > 0;
 
       // Check if any distribution has actual changes (compare edited values against original)
@@ -274,7 +291,7 @@ export function PostDetailModal({
         }
       }
 
-      return titleChanged || descriptionChanged || goalsChanged || hasDistributionEdits || hasDistributionDeletes;
+      return titleChanged || descriptionChanged || goalsChanged || positionChanged || hasDistributionEdits || hasDistributionDeletes;
     } else {
       // For new posts: check if any content has been added
       const hasTitle = title.trim().length > 0;
@@ -286,7 +303,7 @@ export function PostDetailModal({
       const hasDistributions = pendingDistributions.length > 0;
       return hasTitle || hasDescription || hasGoals || hasMedia || hasVideoLinks || hasLinks || hasDistributions;
     }
-  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, editedDistributions, deletedDistributionIds, post?.distributions]);
+  }, [isEditing, title, description, selectedGoalIds, position, initialTitle, initialDescription, initialGoalIds, initialPosition, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, editedDistributions, deletedDistributionIds, post?.distributions]);
 
   // Handle close request (intercept to check for unsaved changes)
   const handleCloseRequest = useCallback((openState: boolean) => {
@@ -597,6 +614,11 @@ export function PostDetailModal({
           }
         }
 
+        // Handle position change if it was modified
+        if (position !== initialPosition && onPositionChange) {
+          onPositionChange(position);
+        }
+
         // Close the modal after saving
         onOpenChange(false);
       } else {
@@ -768,7 +790,7 @@ export function PostDetailModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, uploadMedia, addVideoLink, addPostLink, createDistribution, createTask, accounts, toast, deletedDistributionIds, editedDistributions, deleteDistributionMutation, updateDistribution, post?.distributions]);
+  }, [title, description, status, selectedGoalIds, position, initialPosition, onPositionChange, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, uploadMedia, addVideoLink, addPostLink, createDistribution, createTask, accounts, toast, deletedDistributionIds, editedDistributions, deleteDistributionMutation, updateDistribution, post?.distributions]);
 
   // Handle save and close (called from confirmation dialog)
   const handleSaveAndClose = useCallback(async () => {
@@ -846,6 +868,26 @@ export function PostDetailModal({
                     >
                       {currentStatus.label}
                     </Badge>
+                  )}
+                  {isEditing && positionInfo && positionInfo.totalInStatus > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-small text-text-muted">#</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={positionInfo.totalInStatus}
+                        value={position}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val)) {
+                            setPosition(Math.max(1, Math.min(val, positionInfo.totalInStatus)));
+                          }
+                        }}
+                        className="w-14 h-7 px-2 text-center text-small"
+                        title={`Position in ${currentStatus?.label || "column"} (1-${positionInfo.totalInStatus})`}
+                      />
+                      <span className="text-small text-text-muted">/ {positionInfo.totalInStatus}</span>
+                    </div>
                   )}
                 </div>
                 {isEditing && post && (

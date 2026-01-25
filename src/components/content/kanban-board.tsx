@@ -394,6 +394,56 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
     setDialogOpen(true);
   }, []);
 
+  // Calculate position info for the selected post
+  const positionInfo = useMemo(() => {
+    if (!selectedPostId) return undefined;
+
+    // Find the post and its status
+    const post = filteredPosts.find(p => p.id === selectedPostId);
+    if (!post) return undefined;
+
+    // Get all posts in the same status (not limited by visibleCounts)
+    const postsInStatus = filteredPosts
+      .filter(p => p.status === post.status)
+      .sort((a, b) => a.display_order - b.display_order);
+
+    const currentPosition = postsInStatus.findIndex(p => p.id === selectedPostId) + 1;
+    const totalInStatus = postsInStatus.length;
+
+    if (currentPosition === 0 || totalInStatus === 0) return undefined;
+
+    return { currentPosition, totalInStatus };
+  }, [selectedPostId, filteredPosts]);
+
+  // Handle position change from modal
+  const handlePositionChange = useCallback((newPosition: number) => {
+    if (!selectedPostId || !positionInfo) return;
+
+    const post = filteredPosts.find(p => p.id === selectedPostId);
+    if (!post) return;
+
+    // Get all posts in the same status, sorted by display_order
+    const postsInStatus = filteredPosts
+      .filter(p => p.status === post.status)
+      .sort((a, b) => a.display_order - b.display_order);
+
+    const currentIndex = postsInStatus.findIndex(p => p.id === selectedPostId);
+    const newIndex = newPosition - 1; // Convert 1-based to 0-based
+
+    if (currentIndex === newIndex || currentIndex === -1) return;
+
+    // Reorder the array
+    const reordered = [...postsInStatus];
+    const [removed] = reordered.splice(currentIndex, 1);
+    reordered.splice(newIndex, 0, removed);
+
+    // Call the reorder API
+    reorderPosts.mutate({
+      postIds: reordered.map(p => p.id),
+      status: post.status,
+    });
+  }, [selectedPostId, positionInfo, filteredPosts, reorderPosts]);
+
   // Handle drag end for reordering
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -632,6 +682,8 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         goals={goals}
         accounts={accounts}
         initialStatus={initialStatus}
+        positionInfo={positionInfo}
+        onPositionChange={handlePositionChange}
       />
     </>
   );
