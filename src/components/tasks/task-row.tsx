@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -209,7 +210,7 @@ const variantStyles: Record<DueDateDisplay["variant"], string> = {
   "completed-late": "text-status-warning",
 };
 
-export function TaskRow({
+export const TaskRow = memo(function TaskRow({
   task,
   role,
   onStatusChange,
@@ -227,17 +228,17 @@ export function TaskRow({
   const isCompleted = task.status === "completed";
   const dueDate = formatDueDate(task.due_date, task.due_time, isCompleted, task.completed_at);
 
-  function handleToggleComplete() {
+  const handleToggleComplete = useCallback(() => {
     if (!canEdit) return;
     onStatusChange(isCompleted ? "pending" : "completed");
-  }
+  }, [canEdit, isCompleted, onStatusChange]);
 
-  function handleSelectToggle(e: React.MouseEvent) {
+  const handleSelectToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (onSelectChange) {
       onSelectChange(!selected);
     }
-  }
+  }, [onSelectChange, selected]);
 
   return (
     <div
@@ -537,4 +538,4 @@ export function TaskRow({
       )}
     </div>
   );
-}
+});

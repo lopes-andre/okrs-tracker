@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useId, useRef } from "react";
+import { useState, useEffect, useCallback, useId, useRef, useMemo, memo } from "react";
 import { format as formatDate, isPast } from "date-fns";
 import {
   ChevronDown,
@@ -195,7 +195,7 @@ const statusConfig: Record<ContentDistributionStatus, { label: string; icon: typ
 // COMPONENT
 // ============================================================================
 
-export function DistributionAccordionItem({
+export const DistributionAccordionItem = memo(function DistributionAccordionItem({
   distribution,
   planId,
   postTitle,
@@ -277,6 +277,12 @@ export function DistributionAccordionItem({
   const platformData = isControlled && editedValues?.platformData !== undefined ? editedValues.platformData : localPlatformData;
   const platformPostUrl = isControlled && editedValues?.platformPostUrl !== undefined ? editedValues.platformPostUrl || "" : localPlatformPostUrl;
   const createPerformanceCheckTasks = isControlled && editedValues?.createPerformanceCheckTasks !== undefined ? editedValues.createPerformanceCheckTasks : localCreatePerformanceCheckTasks;
+
+  // Memoize hashtag detection (expensive regex operation)
+  const detectedHashtags = useMemo(
+    () => (caption ? caption.match(/#[a-zA-Z0-9_]+/g) || [] : []),
+    [caption]
+  );
 
   // Initialize local form state when distribution changes or accordion expands (uncontrolled mode only)
   useEffect(() => {
@@ -712,24 +718,20 @@ export function DistributionAccordionItem({
                 />
               </div>
               {/* Detected Hashtags */}
-              {caption && (() => {
-                const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
-                if (detectedHashtags.length === 0) return null;
-                return (
-                  <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
-                    <p className="text-xs text-text-muted mb-2">
-                      Detected hashtags ({detectedHashtags.length}/15):
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {detectedHashtags.map((tag, idx) => (
-                        <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+              {detectedHashtags.length > 0 && (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}/15):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                );
-              })()}
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-small">Visibility</Label>
                 <Select
@@ -770,24 +772,20 @@ export function DistributionAccordionItem({
                 />
               </div>
               {/* Detected Hashtags */}
-              {caption && (() => {
-                const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
-                if (detectedHashtags.length === 0) return null;
-                return (
-                  <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
-                    <p className="text-xs text-text-muted mb-2">
-                      Detected hashtags ({detectedHashtags.length}):
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {detectedHashtags.map((tag, idx) => (
-                        <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
+              {detectedHashtags.length > 0 && (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                );
-              })()}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-small">Season #</Label>
@@ -831,26 +829,19 @@ export function DistributionAccordionItem({
               </div>
 
               {/* Detected Hashtags (auto-extracted from caption) */}
-              {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok" || platformName === "x" || platformName === "twitter") && caption && (
-                (() => {
-                  const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
-                  if (detectedHashtags.length === 0) return null;
-                  const maxHashtags = platformName === "instagram" ? 30 : undefined;
-                  return (
-                    <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
-                      <p className="text-xs text-text-muted mb-2">
-                        Detected hashtags ({detectedHashtags.length}{maxHashtags ? `/${maxHashtags}` : ""}):
-                      </p>
-                      <div className="flex flex-wrap gap-1">
-                        {detectedHashtags.map((tag, idx) => (
-                          <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()
+              {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok" || platformName === "x" || platformName === "twitter") && detectedHashtags.length > 0 && (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : ""}):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </>
           )}
@@ -986,4 +977,4 @@ export function DistributionAccordionItem({
       </AlertDialog>
     </div>
   );
-}
+});

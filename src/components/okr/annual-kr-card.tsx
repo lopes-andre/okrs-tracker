@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -172,7 +172,7 @@ function SimplePaceIndicator({ paceStatus, expectedValue, currentValue, unit }: 
   );
 }
 
-export function AnnualKrCard({
+export const AnnualKrCard = memo(function AnnualKrCard({
   kr,
   role,
   onEdit,
@@ -191,15 +191,18 @@ export function AnnualKrCard({
   // Use real-time current value from progress engine if available, otherwise fallback to database value
   const hasProgressEngine = !!progressResult;
   const currentValue = hasProgressEngine ? progressResult.currentValue : kr.current_value;
-  
-  // Calculate progress (fallback if progressResult not provided)
-  const range = kr.target_value - kr.start_value;
-  const basicProgress = range > 0 
-    ? Math.min(Math.max(((currentValue - kr.start_value) / range) * 100, 0), 100)
-    : currentValue >= kr.target_value ? 100 : 0;
-  
-  // Use progressResult if available
-  const progress = progressResult ? progressResult.progress * 100 : basicProgress;
+
+  // Memoize progress calculation
+  const { progress, basicProgress } = useMemo(() => {
+    const range = kr.target_value - kr.start_value;
+    const basic = range > 0
+      ? Math.min(Math.max(((currentValue - kr.start_value) / range) * 100, 0), 100)
+      : currentValue >= kr.target_value ? 100 : 0;
+    return {
+      basicProgress: basic,
+      progress: progressResult ? progressResult.progress * 100 : basic,
+    };
+  }, [kr.target_value, kr.start_value, currentValue, progressResult]);
 
   // Type-specific icon (prioritize KR type, fallback to direction)
   const KrTypeIcon = krTypeIcons[kr.kr_type] || directionIcons[kr.direction] || Target;
@@ -210,46 +213,49 @@ export function AnnualKrCard({
   const isComplete = isMilestone ? currentValue >= 1 : progress >= 100;
 
   // Format values
-  const formatValue = (value: number) => formatValueWithUnit(value, kr.unit, kr.kr_type);
-  
+  const formatValue = useCallback(
+    (value: number) => formatValueWithUnit(value, kr.unit, kr.kr_type),
+    [kr.unit, kr.kr_type]
+  );
+
   // Format display for collapsed view - special handling for milestone
-  const getCollapsedValueDisplay = () => {
+  const collapsedValueDisplay = useMemo(() => {
     if (isMilestone) {
       return isComplete ? "Completed" : "Not completed";
     }
     return `${formatValue(currentValue)} / ${formatValue(kr.target_value)}`;
-  };
+  }, [isMilestone, isComplete, formatValue, currentValue, kr.target_value]);
 
   const hasQuarterTargets = kr.quarter_targets && kr.quarter_targets.length > 0;
-  
-  // Compute quarter progress
-  const quarterProgress = hasQuarterTargets 
-    ? computeAllQuartersProgress(kr.quarter_targets!, kr, checkIns, planYear)
-    : [];
-  
-  const quarterSummary = hasQuarterTargets
-    ? getQuarterProgressSummary(kr.quarter_targets!, kr, checkIns, planYear)
-    : null;
-  
-  // Current quarter data (kept for future use)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _currentQuarter = getCurrentQuarter();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _currentQuarterData = quarterProgress.find(q => q.isCurrent);
+
+  // Memoize quarter progress computation (expensive)
+  const quarterProgress = useMemo(() =>
+    hasQuarterTargets
+      ? computeAllQuartersProgress(kr.quarter_targets!, kr, checkIns, planYear)
+      : [],
+    [hasQuarterTargets, kr, checkIns, planYear]
+  );
+
+  const quarterSummary = useMemo(() =>
+    hasQuarterTargets
+      ? getQuarterProgressSummary(kr.quarter_targets!, kr, checkIns, planYear)
+      : null,
+    [hasQuarterTargets, kr, checkIns, planYear]
+  );
 
   // Handle card click (expand/collapse)
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = useCallback((e: React.MouseEvent) => {
     // Don't expand if clicking on buttons or dropdown
     const target = e.target as HTMLElement;
     if (
-      target.closest('button') || 
+      target.closest('button') ||
       target.closest('[role="menu"]') ||
       target.closest('[data-radix-popper-content-wrapper]')
     ) {
       return;
     }
-    setIsExpanded(!isExpanded);
-  };
+    setIsExpanded(prev => !prev);
+  }, []);
 
   return (
     <div
@@ -283,7 +289,7 @@ export function AnnualKrCard({
             "text-small",
             isMilestone && isComplete ? "text-status-success font-medium" : "text-text-muted"
           )}>
-            {getCollapsedValueDisplay()}
+            {collapsedValueDisplay}
           </p>
         </div>
 
@@ -852,4 +858,4 @@ export function AnnualKrCard({
       )}
     </div>
   );
-}
+});
