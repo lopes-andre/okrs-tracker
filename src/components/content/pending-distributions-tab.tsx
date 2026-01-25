@@ -45,7 +45,7 @@ export function PendingDistributionsTab({
 }: PendingDistributionsTabProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Get accounts that haven't been added yet
   const availableAccounts = useMemo(() => {
@@ -106,9 +106,17 @@ export function PendingDistributionsTab({
     }
   }, [selectedAccountIds, onAddDistribution]);
 
-  // Toggle accordion expansion
+  // Toggle accordion expansion (allows multiple expanded)
   const handleToggle = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   }, []);
 
   return (
@@ -148,7 +156,7 @@ export function PendingDistributionsTab({
                 key={distribution.id}
                 distribution={distribution}
                 account={getAccountInfo(distribution.accountId)}
-                isExpanded={expandedId === distribution.id}
+                isExpanded={expandedIds.has(distribution.id)}
                 onToggle={() => handleToggle(distribution.id)}
                 onUpdate={(updates) => onUpdateDistribution(distribution.id, updates)}
                 onRemove={() => onRemoveDistribution(distribution.id)}

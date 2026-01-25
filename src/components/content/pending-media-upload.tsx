@@ -1,18 +1,29 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, Image, Video, FileText, AlertCircle } from "lucide-react";
+import { Upload, X, Image, Video, FileText, AlertCircle, Link2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
+export interface PendingVideoLink {
+  id: string;
+  url: string;
+  title: string;
+}
+
 interface PendingMediaUploadProps {
   files: File[];
   onAddFiles: (files: File[]) => void;
   onRemoveFile: (index: number) => void;
+  videoLinks?: PendingVideoLink[];
+  onAddVideoLink?: (url: string, title: string) => void;
+  onRemoveVideoLink?: (id: string) => void;
 }
 
 // ============================================================================
@@ -60,6 +71,18 @@ function validateFile(file: File): string | null {
   return null;
 }
 
+function getVideoPlatform(url: string): string {
+  if (url.includes("youtube.com") || url.includes("youtu.be")) return "YouTube";
+  if (url.includes("vimeo.com")) return "Vimeo";
+  if (url.includes("sharepoint.com")) return "SharePoint";
+  if (url.includes("loom.com")) return "Loom";
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return "Video";
+  }
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -68,10 +91,16 @@ export function PendingMediaUpload({
   files,
   onAddFiles,
   onRemoveFile,
+  videoLinks = [],
+  onAddVideoLink,
+  onRemoveVideoLink,
 }: PendingMediaUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [showVideoForm, setShowVideoForm] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
 
   // Handle file selection
   const handleFileSelect = useCallback(
@@ -132,40 +161,115 @@ export function PendingMediaUpload({
     return null;
   }, []);
 
+  // Handle video link submission
+  const handleAddVideoLink = useCallback(() => {
+    if (!videoUrl.trim() || !onAddVideoLink) return;
+    onAddVideoLink(videoUrl.trim(), videoTitle.trim() || getVideoPlatform(videoUrl.trim()));
+    setVideoUrl("");
+    setVideoTitle("");
+    setShowVideoForm(false);
+  }, [videoUrl, videoTitle, onAddVideoLink]);
+
   return (
     <div className="space-y-4">
-      {/* Drop Zone */}
-      <div
-        className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-          isDragging
-            ? "border-accent bg-accent/5"
-            : "border-border-soft hover:border-border"
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={ALLOWED_TYPES.join(",")}
-          multiple
-          className="hidden"
-          onChange={(e) => handleFileSelect(e.target.files)}
-        />
+      {/* Upload area and actions */}
+      <div className="flex gap-3">
+        {/* Drop Zone */}
+        <div
+          className={cn(
+            "flex-1 border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer",
+            isDragging
+              ? "border-accent bg-accent/5"
+              : "border-border-soft hover:border-border"
+          )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ALLOWED_TYPES.join(",")}
+            multiple
+            className="hidden"
+            onChange={(e) => handleFileSelect(e.target.files)}
+          />
 
-        <div className="flex flex-col items-center gap-2">
-          <Upload className="w-8 h-8 text-text-muted" />
-          <p className="text-small text-text-muted">
-            Drag and drop files here, or click to browse
-          </p>
-          <p className="text-xs text-text-muted">
-            Supported: jpg, png, webp, gif, pdf
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <Upload className="w-5 h-5 text-text-muted" />
+            <span className="text-small text-text-muted">
+              Drop files or click to upload
+            </span>
+          </div>
         </div>
+
+        {/* Add video link button */}
+        {onAddVideoLink && (
+          <Button
+            variant="outline"
+            className="shrink-0"
+            onClick={() => setShowVideoForm(true)}
+            disabled={showVideoForm}
+          >
+            <Link2 className="w-4 h-4 mr-2" />
+            Add Video Link
+          </Button>
+        )}
       </div>
+
+      {/* Video link form */}
+      {showVideoForm && onAddVideoLink && (
+        <div className="space-y-3 p-4 border border-border rounded-lg bg-bg-1">
+          <div className="space-y-1.5">
+            <Label htmlFor="pending-video-url" className="text-small">Video URL</Label>
+            <Input
+              id="pending-video-url"
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://youtube.com/watch?v=..."
+              autoFocus
+            />
+            <p className="text-xs text-text-muted">
+              YouTube, Vimeo, SharePoint, Loom, or any video URL
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pending-video-title" className="text-small">Title (optional)</Label>
+            <Input
+              id="pending-video-title"
+              value={videoTitle}
+              onChange={(e) => setVideoTitle(e.target.value)}
+              placeholder="Video title"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => {
+                setShowVideoForm(false);
+                setVideoUrl("");
+                setVideoTitle("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="flex-1"
+              onClick={handleAddVideoLink}
+              disabled={!videoUrl.trim()}
+            >
+              Add Video
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Error messages */}
       {errors.length > 0 && (
@@ -182,9 +286,10 @@ export function PendingMediaUpload({
         </div>
       )}
 
-      {/* File Grid */}
-      {files.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {/* Media Grid (Files + Video Links) */}
+      {(files.length > 0 || videoLinks.length > 0) ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {/* Files */}
           {files.map((file, index) => {
             const Icon = getMediaIcon(file.type);
             const isImage = file.type.startsWith("image/");
@@ -192,7 +297,7 @@ export function PendingMediaUpload({
 
             return (
               <div
-                key={`${file.name}-${index}`}
+                key={`file-${file.name}-${index}`}
                 className="relative group rounded-lg border border-border-soft overflow-hidden bg-bg-1"
               >
                 {isImage && previewUrl ? (
@@ -235,14 +340,57 @@ export function PendingMediaUpload({
               </div>
             );
           })}
-        </div>
-      )}
 
-      {/* Empty state */}
-      {files.length === 0 && (
-        <p className="text-center text-small text-text-muted py-2">
-          No files selected
-        </p>
+          {/* Video Links */}
+          {videoLinks.map((link) => (
+            <div
+              key={`video-${link.id}`}
+              className="relative group rounded-lg border border-border-soft overflow-hidden bg-bg-1"
+            >
+              <div className="w-full h-24 flex flex-col items-center justify-center">
+                <Video className="w-8 h-8 text-text-muted" />
+                <span className="text-[10px] text-text-muted mt-1">
+                  {getVideoPlatform(link.url)}
+                </span>
+              </div>
+
+              {/* Video link badge */}
+              <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-black/60 rounded text-[9px] text-white font-medium">
+                Link
+              </div>
+
+              {/* Overlay with delete button */}
+              {onRemoveVideoLink && (
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveVideoLink(link.id);
+                    }}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Link info */}
+              <div className="p-2 border-t border-border-soft">
+                <p className="text-xs text-text-muted truncate" title={link.title || link.url}>
+                  {link.title || link.url}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6 text-text-muted">
+          <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-small">No media attached</p>
+          <p className="text-xs">Upload images, PDFs, or add video links</p>
+        </div>
       )}
     </div>
   );

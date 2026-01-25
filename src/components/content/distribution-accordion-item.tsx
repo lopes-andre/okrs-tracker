@@ -639,50 +639,9 @@ export function DistributionAccordionItem({
                 />
               </div>
             </>
-          ) : (
-            <div className="space-y-1.5">
-              <Label className="text-small">
-                {platformName === "twitter" || platformName === "x" ? "Tweet" : "Caption"}
-              </Label>
-              <Textarea
-                value={caption}
-                onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
-                placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
-                rows={3}
-                maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
-                className="bg-bg-0"
-              />
-              {(platformName === "twitter" || platformName === "x") && (
-                <p className="text-xs text-text-muted text-right">{caption.length}/280</p>
-              )}
-            </div>
-          )}
-
-          {/* Detected Hashtags (auto-extracted from caption) */}
-          {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok" || platformName === "youtube" || platformName === "spotify" || platformName === "x" || platformName === "twitter") && caption && (
-            (() => {
-              const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
-              if (detectedHashtags.length === 0) return null;
-              const maxHashtags = platformName === "instagram" ? 30 : platformName === "youtube" ? 15 : undefined;
-              return (
-                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
-                  <p className="text-xs text-text-muted mb-2">
-                    Detected hashtags ({detectedHashtags.length}{maxHashtags ? `/${maxHashtags}` : ""}):
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {detectedHashtags.map((tag, idx) => (
-                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()
-          )}
-
-          {platformName === "youtube" && (
+          ) : platformName === "youtube" ? (
             <>
+              {/* YouTube: Video Title first, then Description */}
               <div className="space-y-1.5">
                 <Label className="text-small">Video Title</Label>
                 <Input
@@ -692,6 +651,35 @@ export function DistributionAccordionItem({
                   className="bg-bg-0"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Description</Label>
+                <Textarea
+                  value={caption}
+                  onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
+                  placeholder="Video description..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+              {/* Detected Hashtags */}
+              {caption && (() => {
+                const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
+                if (detectedHashtags.length === 0) return null;
+                return (
+                  <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                    <p className="text-xs text-text-muted mb-2">
+                      Detected hashtags ({detectedHashtags.length}/15):
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {detectedHashtags.map((tag, idx) => (
+                        <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="space-y-1.5">
                 <Label className="text-small">Visibility</Label>
                 <Select
@@ -709,11 +697,9 @@ export function DistributionAccordionItem({
                 </Select>
               </div>
             </>
-          )}
-
-
-          {(platformName === "spotify" || platformName === "podcast") && (
+          ) : (platformName === "spotify" || platformName === "podcast") ? (
             <>
+              {/* Spotify/Podcast: Episode Title first, then Description */}
               <div className="space-y-1.5">
                 <Label className="text-small">Episode Title</Label>
                 <Input
@@ -723,6 +709,35 @@ export function DistributionAccordionItem({
                   className="bg-bg-0"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Description</Label>
+                <Textarea
+                  value={caption}
+                  onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
+                  placeholder="Episode description..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+              {/* Detected Hashtags */}
+              {caption && (() => {
+                const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
+                if (detectedHashtags.length === 0) return null;
+                return (
+                  <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                    <p className="text-xs text-text-muted mb-2">
+                      Detected hashtags ({detectedHashtags.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {detectedHashtags.map((tag, idx) => (
+                        <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-small">Season #</Label>
@@ -745,6 +760,48 @@ export function DistributionAccordionItem({
                   />
                 </div>
               </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-small">
+                  {platformName === "twitter" || platformName === "x" ? "Tweet" : "Caption"}
+                </Label>
+                <Textarea
+                  value={caption}
+                  onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
+                  placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
+                  rows={3}
+                  maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
+                  className="bg-bg-0"
+                />
+                {(platformName === "twitter" || platformName === "x") && (
+                  <p className="text-xs text-text-muted text-right">{caption.length}/280</p>
+                )}
+              </div>
+
+              {/* Detected Hashtags (auto-extracted from caption) */}
+              {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok" || platformName === "x" || platformName === "twitter") && caption && (
+                (() => {
+                  const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
+                  if (detectedHashtags.length === 0) return null;
+                  const maxHashtags = platformName === "instagram" ? 30 : undefined;
+                  return (
+                    <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                      <p className="text-xs text-text-muted mb-2">
+                        Detected hashtags ({detectedHashtags.length}{maxHashtags ? `/${maxHashtags}` : ""}):
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {detectedHashtags.map((tag, idx) => (
+                          <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
             </>
           )}
 

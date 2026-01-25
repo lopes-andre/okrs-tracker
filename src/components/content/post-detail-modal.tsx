@@ -47,7 +47,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { format as formatDate, isPast } from "date-fns";
-import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useCreateDistribution, useUpdateDistribution, useDeleteDistribution } from "@/features/content/hooks";
+import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useAddVideoLink, useCreateDistribution, useUpdateDistribution, useDeleteDistribution } from "@/features/content/hooks";
 import { useCreateTask } from "@/features/tasks/hooks";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -69,6 +69,12 @@ import type {
 // ============================================================================
 
 interface PendingLink {
+  id: string;
+  url: string;
+  title: string;
+}
+
+interface PendingVideoLink {
   id: string;
   url: string;
   title: string;
@@ -146,6 +152,7 @@ export function PostDetailModal({
   const addPostLink = useAddPostLink(planId);
   const deletePostLink = useDeletePostLink(planId);
   const uploadMedia = useUploadMedia(planId);
+  const addVideoLink = useAddVideoLink(planId);
   const createDistribution = useCreateDistribution(planId);
   const updateDistribution = useUpdateDistribution(planId);
   const deleteDistributionMutation = useDeleteDistribution(planId);
@@ -175,6 +182,7 @@ export function PostDetailModal({
 
   // Pending state for new posts (stored locally until post is created)
   const [pendingMediaFiles, setPendingMediaFiles] = useState<File[]>([]);
+  const [pendingVideoLinks, setPendingVideoLinks] = useState<PendingVideoLink[]>([]);
   const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
   const [pendingDistributions, setPendingDistributions] = useState<PendingDistribution[]>([]);
 
@@ -206,6 +214,7 @@ export function PostDetailModal({
         setSelectedGoalIds([]);
         // Reset pending state for new posts
         setPendingMediaFiles([]);
+        setPendingVideoLinks([]);
         setPendingLinks([]);
         setPendingDistributions([]);
         // Reset initial values
@@ -272,11 +281,12 @@ export function PostDetailModal({
       const hasDescription = description.trim().length > 0;
       const hasGoals = selectedGoalIds.length > 0;
       const hasMedia = pendingMediaFiles.length > 0;
+      const hasVideoLinks = pendingVideoLinks.length > 0;
       const hasLinks = pendingLinks.length > 0;
       const hasDistributions = pendingDistributions.length > 0;
-      return hasTitle || hasDescription || hasGoals || hasMedia || hasLinks || hasDistributions;
+      return hasTitle || hasDescription || hasGoals || hasMedia || hasVideoLinks || hasLinks || hasDistributions;
     }
-  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingLinks, pendingDistributions, editedDistributions, deletedDistributionIds, post?.distributions]);
+  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, editedDistributions, deletedDistributionIds, post?.distributions]);
 
   // Handle close request (intercept to check for unsaved changes)
   const handleCloseRequest = useCallback((openState: boolean) => {
@@ -316,6 +326,15 @@ export function PostDetailModal({
 
   const handleRemovePendingMedia = useCallback((index: number) => {
     setPendingMediaFiles(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // Handlers for pending video links
+  const handleAddPendingVideoLink = useCallback((url: string, title: string) => {
+    setPendingVideoLinks(prev => [...prev, { id: crypto.randomUUID(), url, title }]);
+  }, []);
+
+  const handleRemovePendingVideoLink = useCallback((id: string) => {
+    setPendingVideoLinks(prev => prev.filter(v => v.id !== id));
   }, []);
 
   // Handlers for pending links
@@ -606,6 +625,21 @@ export function PostDetailModal({
           }
         }
 
+        // Add pending video links
+        for (const videoLink of pendingVideoLinks) {
+          try {
+            await addVideoLink.mutateAsync({
+              postId: newPost.id,
+              url: videoLink.url,
+              title: videoLink.title,
+            });
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : "Unknown error";
+            console.error("Failed to add video link:", errorMessage, err);
+            failures.push(`Video "${videoLink.title}": ${errorMessage}`);
+          }
+        }
+
         // Add pending links
         for (const link of pendingLinks) {
           try {
@@ -734,7 +768,7 @@ export function PostDetailModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution, createTask, accounts, toast, deletedDistributionIds, editedDistributions, deleteDistributionMutation, updateDistribution, post?.distributions]);
+  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingVideoLinks, pendingLinks, pendingDistributions, uploadMedia, addVideoLink, addPostLink, createDistribution, createTask, accounts, toast, deletedDistributionIds, editedDistributions, deleteDistributionMutation, updateDistribution, post?.distributions]);
 
   // Handle save and close (called from confirmation dialog)
   const handleSaveAndClose = useCallback(async () => {
@@ -974,11 +1008,16 @@ export function PostDetailModal({
                   <Label className="flex items-center gap-2">
                     <ImageIcon className="w-4 h-4" />
                     Media & Video Links
-                    {(isEditing ? post?.media?.length : pendingMediaFiles.length) ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        {isEditing ? post?.media?.length : pendingMediaFiles.length}
-                      </Badge>
-                    ) : null}
+                    {(() => {
+                      const count = isEditing
+                        ? (post?.media?.length || 0)
+                        : (pendingMediaFiles.length + pendingVideoLinks.length);
+                      return count > 0 ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {count}
+                        </Badge>
+                      ) : null;
+                    })()}
                   </Label>
                   {isEditing && post ? (
                     <MediaSection
@@ -991,6 +1030,9 @@ export function PostDetailModal({
                       files={pendingMediaFiles}
                       onAddFiles={handleAddPendingMedia}
                       onRemoveFile={handleRemovePendingMedia}
+                      videoLinks={pendingVideoLinks}
+                      onAddVideoLink={handleAddPendingVideoLink}
+                      onRemoveVideoLink={handleRemovePendingVideoLink}
                     />
                   )}
                 </div>

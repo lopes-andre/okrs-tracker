@@ -416,6 +416,120 @@ export function PendingDistributionAccordionItem({
                 />
               </div>
             </>
+          ) : platformName === "youtube" ? (
+            <>
+              {/* YouTube: Video Title first, then Caption/Description */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Video Title</Label>
+                <Input
+                  value={distribution.platformData?.video_title || ""}
+                  onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, video_title: e.target.value || undefined } })}
+                  placeholder="Video title..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Description</Label>
+                <Textarea
+                  value={distribution.caption || ""}
+                  onChange={(e) => onUpdate({ caption: e.target.value || null })}
+                  placeholder="Video description..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+              {/* Detected Hashtags */}
+              {detectedHashtags.length > 0 && (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}/15):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-small">Visibility</Label>
+                <Select
+                  value={distribution.platformData?.visibility || "public"}
+                  onValueChange={(v) => onUpdate({ platformData: { ...distribution.platformData, visibility: v as "public" | "unlisted" | "private" } })}
+                >
+                  <SelectTrigger className="bg-bg-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">Public</SelectItem>
+                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                    <SelectItem value="private">Private</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          ) : platformName === "spotify" || platformName === "podcast" ? (
+            <>
+              {/* Spotify/Podcast: Episode Title first, then Caption/Description */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Episode Title</Label>
+                <Input
+                  value={distribution.platformData?.episode_title || ""}
+                  onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, episode_title: e.target.value || undefined } })}
+                  placeholder="Episode title..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Description</Label>
+                <Textarea
+                  value={distribution.caption || ""}
+                  onChange={(e) => onUpdate({ caption: e.target.value || null })}
+                  placeholder="Episode description..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+              {/* Detected Hashtags */}
+              {detectedHashtags.length > 0 && (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-small">Season #</Label>
+                  <Input
+                    type="number"
+                    value={distribution.platformData?.season_number || ""}
+                    onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, season_number: parseInt(e.target.value) || undefined } })}
+                    placeholder="1"
+                    className="bg-bg-0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-small">Episode #</Label>
+                  <Input
+                    type="number"
+                    value={distribution.platformData?.episode_number || ""}
+                    onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, episode_number: parseInt(e.target.value) || undefined } })}
+                    placeholder="1"
+                    className="bg-bg-0"
+                  />
+                </div>
+              </div>
+            </>
           ) : (
             <>
               <div className="space-y-1.5">
@@ -439,7 +553,7 @@ export function PendingDistributionAccordionItem({
               {detectedHashtags.length > 0 && (
                 <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
                   <p className="text-xs text-text-muted mb-2">
-                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : platformName === "youtube" ? "/15" : ""}):
+                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : ""}):
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {detectedHashtags.map((tag, idx) => (
