@@ -62,7 +62,7 @@ export function KrSelector({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -110,7 +110,8 @@ export function KrSelector({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={true}>
+        {/* Use key to force remount Command on open - ensures clean state after parent re-renders */}
+        <Command key={open ? "open" : "closed"} shouldFilter={true}>
           <CommandInput placeholder="Search Key Results..." />
           <CommandList>
             <CommandEmpty>No Key Results found.</CommandEmpty>
