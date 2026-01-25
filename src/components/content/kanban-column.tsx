@@ -102,8 +102,8 @@ export function KanbanColumn({
         <p className="text-small text-text-muted">{description}</p>
       </div>
 
-      {/* Column Content - max height with scroll for long lists */}
-      <div className="p-2 space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+      {/* Column Content - grows with content, page scrolls */}
+      <div className="p-2 space-y-2">
         {children}
 
         {/* Empty state */}
