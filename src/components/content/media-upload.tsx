@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, X, Image, Video, FileText, Loader2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUploadMedia, useDeleteMedia } from "@/features/content/hooks";
@@ -90,7 +90,7 @@ function MediaThumbnail({ fileUrl, alt }: MediaThumbnailProps) {
   if (!imageUrl) {
     return (
       <div className="w-full h-24 flex items-center justify-center">
-        <Image className="w-8 h-8 text-text-muted" />
+        <ImageIcon className="w-8 h-8 text-text-muted" />
       </div>
     );
   }

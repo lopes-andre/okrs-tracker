@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Upload, X, Image, Video, FileText, AlertCircle, Link2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video, FileText, AlertCircle, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -387,7 +387,7 @@ export function PendingMediaUpload({
         </div>
       ) : (
         <div className="text-center py-6 text-text-muted">
-          <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-small">No media attached</p>
           <p className="text-xs">Upload images, PDFs, or add video links</p>
         </div>
