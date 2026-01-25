@@ -915,7 +915,10 @@ export function CampaignDialog({
                     {goals.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-small font-medium">Goals</Label>
-                        <div className="space-y-1.5 max-h-32 overflow-y-auto overscroll-contain">
+                        <div
+                          className="space-y-1.5 max-h-32 overflow-y-auto overscroll-contain"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
                           {goals.map((goal) => (
                             <label
                               key={goal.id}
@@ -940,7 +943,10 @@ export function CampaignDialog({
                     {accounts.length > 0 && (
                       <div className="space-y-2">
                         <Label className="text-small font-medium">Accounts</Label>
-                        <div className="space-y-3 max-h-48 overflow-y-auto overscroll-contain">
+                        <div
+                          className="space-y-3 max-h-48 overflow-y-auto overscroll-contain"
+                          onWheel={(e) => e.stopPropagation()}
+                        >
                           {Object.entries(accountsByPlatform).map(([platformName, platformAccounts]) => (
                             <div key={platformName}>
                               <p className="text-xs text-text-muted mb-1.5">{platformName}</p>

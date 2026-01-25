@@ -23,6 +23,7 @@ import type {
   ContentDistributionMetrics,
   ContentDistributionMetricsInsert,
   ContentCampaign,
+  ContentCampaignWithCount,
   ContentCampaignUpdate,
   ContentCampaignCheckin,
   ContentCampaignCheckinInsert,
@@ -763,11 +764,14 @@ export async function addDistributionMetrics(
 export async function getCampaigns(
   planId: string,
   filters?: ContentCampaignFilters
-): Promise<ContentCampaign[]> {
+): Promise<ContentCampaignWithCount[]> {
   const supabase = createClient();
   let query = supabase
     .from("content_campaigns")
-    .select("*")
+    .select(`
+      *,
+      content_campaign_posts(count)
+    `)
     .eq("plan_id", planId);
 
   if (filters?.status) {
@@ -784,7 +788,13 @@ export async function getCampaigns(
     query = query.in("objective", objectives);
   }
 
-  return handleSupabaseError(query.order("created_at", { ascending: false }));
+  const data = await handleSupabaseError(query.order("created_at", { ascending: false }));
+
+  // Transform to include distribution_count
+  return data.map((campaign: ContentCampaign & { content_campaign_posts: Array<{ count: number }> }) => ({
+    ...campaign,
+    distribution_count: campaign.content_campaign_posts?.[0]?.count || 0,
+  }));
 }
 
 /**

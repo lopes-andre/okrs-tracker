@@ -27,6 +27,7 @@ import {
 } from "@/features/content/hooks";
 import type {
   ContentCampaign,
+  ContentCampaignWithCount,
   ContentCampaignStatus,
   ContentCampaignObjective,
   ContentCampaignCheckinInsert,
@@ -59,8 +60,8 @@ export function CampaignsList({ planId }: CampaignsListProps) {
   // UI state
   const [showCampaignDialog, setShowCampaignDialog] = useState(false);
   const [showCheckinDialog, setShowCheckinDialog] = useState(false);
-  const [editingCampaign, setEditingCampaign] = useState<ContentCampaign | null>(null);
-  const [checkinCampaign, setCheckinCampaign] = useState<ContentCampaign | null>(null);
+  const [editingCampaign, setEditingCampaign] = useState<ContentCampaignWithCount | null>(null);
+  const [checkinCampaign, setCheckinCampaign] = useState<ContentCampaignWithCount | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,7 +95,7 @@ export function CampaignsList({ planId }: CampaignsListProps) {
 
   // Group campaigns by status
   const groupedCampaigns = useMemo(() => {
-    const groups: Record<ContentCampaignStatus, ContentCampaign[]> = {
+    const groups: Record<ContentCampaignStatus, ContentCampaignWithCount[]> = {
       active: [],
       paused: [],
       draft: [],
@@ -168,12 +169,12 @@ export function CampaignsList({ planId }: CampaignsListProps) {
     await addCampaignCheckin.mutateAsync(data);
   };
 
-  const openEditDialog = (campaign: ContentCampaign) => {
+  const openEditDialog = (campaign: ContentCampaignWithCount) => {
     setEditingCampaign(campaign);
     setShowCampaignDialog(true);
   };
 
-  const openCheckinDialog = (campaign: ContentCampaign) => {
+  const openCheckinDialog = (campaign: ContentCampaignWithCount) => {
     setCheckinCampaign(campaign);
     setShowCheckinDialog(true);
   };
@@ -389,11 +390,11 @@ export function CampaignsList({ planId }: CampaignsListProps) {
 
 interface CampaignGroupProps {
   title: string;
-  campaigns: ContentCampaign[];
-  onEdit: (campaign: ContentCampaign) => void;
+  campaigns: ContentCampaignWithCount[];
+  onEdit: (campaign: ContentCampaignWithCount) => void;
   onDelete: (campaignId: string) => void;
   onStatusChange: (campaignId: string, status: ContentCampaignStatus) => void;
-  onAddCheckin: (campaign: ContentCampaign) => void;
+  onAddCheckin: (campaign: ContentCampaignWithCount) => void;
 }
 
 function CampaignGroup({
@@ -414,6 +415,7 @@ function CampaignGroup({
           <CampaignCard
             key={campaign.id}
             campaign={campaign}
+            postCount={campaign.distribution_count}
             onClick={() => onEdit(campaign)}
             onEdit={() => onEdit(campaign)}
             onDelete={() => onDelete(campaign.id)}

@@ -813,6 +813,10 @@ export interface ContentCampaignWithDetails extends ContentCampaign {
   created_by_user?: Profile;
 }
 
+export interface ContentCampaignWithCount extends ContentCampaign {
+  distribution_count: number;
+}
+
 // Calendar view type
 export interface ContentCalendarEntry {
   distribution_id: string;
