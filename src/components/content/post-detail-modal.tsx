@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Loader2,
   X,
@@ -15,6 +15,7 @@ import {
   Plus,
   ExternalLink,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -131,6 +132,7 @@ export function PostDetailModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCloseConfirmDialog, setShowCloseConfirmDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Form state
@@ -138,6 +140,11 @@ export function PostDetailModal({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ContentPostStatus>(initialStatus);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+
+  // Initial values for change tracking (edit mode)
+  const [initialTitle, setInitialTitle] = useState("");
+  const [initialDescription, setInitialDescription] = useState("");
+  const [initialGoalIds, setInitialGoalIds] = useState<string[]>([]);
 
   // Link form state (for existing posts)
   const [showAddLinkForm, setShowAddLinkForm] = useState(false);
@@ -153,10 +160,19 @@ export function PostDetailModal({
   useEffect(() => {
     if (open) {
       if (post) {
-        setTitle(post.title || "");
-        setDescription(post.description || "");
+        const postTitle = post.title || "";
+        const postDescription = post.description || "";
+        const postGoalIds = post.goals?.map((g) => g.id) || [];
+
+        setTitle(postTitle);
+        setDescription(postDescription);
         setStatus(post.status);
-        setSelectedGoalIds(post.goals?.map((g) => g.id) || []);
+        setSelectedGoalIds(postGoalIds);
+
+        // Store initial values for change tracking
+        setInitialTitle(postTitle);
+        setInitialDescription(postDescription);
+        setInitialGoalIds(postGoalIds);
       } else if (!isEditing) {
         setTitle("");
         setDescription("");
@@ -166,6 +182,10 @@ export function PostDetailModal({
         setPendingMediaFiles([]);
         setPendingLinks([]);
         setPendingDistributions([]);
+        // Reset initial values
+        setInitialTitle("");
+        setInitialDescription("");
+        setInitialGoalIds([]);
       }
       setActiveTab("overview");
       setShowAddLinkForm(false);
@@ -173,6 +193,42 @@ export function PostDetailModal({
       setNewLinkTitle("");
     }
   }, [open, post, isEditing, initialStatus]);
+
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (isEditing) {
+      // For editing: compare current values with initial values
+      const titleChanged = title !== initialTitle;
+      const descriptionChanged = description !== initialDescription;
+      const goalsChanged = JSON.stringify([...selectedGoalIds].sort()) !== JSON.stringify([...initialGoalIds].sort());
+      return titleChanged || descriptionChanged || goalsChanged;
+    } else {
+      // For new posts: check if any content has been added
+      const hasTitle = title.trim().length > 0;
+      const hasDescription = description.trim().length > 0;
+      const hasGoals = selectedGoalIds.length > 0;
+      const hasMedia = pendingMediaFiles.length > 0;
+      const hasLinks = pendingLinks.length > 0;
+      const hasDistributions = pendingDistributions.length > 0;
+      return hasTitle || hasDescription || hasGoals || hasMedia || hasLinks || hasDistributions;
+    }
+  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingLinks, pendingDistributions]);
+
+  // Handle close request (intercept to check for unsaved changes)
+  const handleCloseRequest = useCallback((openState: boolean) => {
+    if (!openState && hasUnsavedChanges) {
+      // User is trying to close, but there are unsaved changes
+      setShowCloseConfirmDialog(true);
+    } else {
+      onOpenChange(openState);
+    }
+  }, [hasUnsavedChanges, onOpenChange]);
+
+  // Handle discard changes
+  const handleDiscardChanges = useCallback(() => {
+    setShowCloseConfirmDialog(false);
+    onOpenChange(false);
+  }, [onOpenChange]);
 
   // Compute status for new posts based on pending distributions
   const computedStatus = useCallback((): ContentPostStatus => {
@@ -268,6 +324,8 @@ export function PostDetailModal({
           },
           goalIds: selectedGoalIds,
         });
+        // Close the modal after saving
+        onOpenChange(false);
       } else {
         // Create new post with computed status
         const newStatus = computedStatus();
@@ -348,6 +406,12 @@ export function PostDetailModal({
     }
   }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution, toast]);
 
+  // Handle save and close (called from confirmation dialog)
+  const handleSaveAndClose = useCallback(async () => {
+    setShowCloseConfirmDialog(false);
+    await handleSave();
+  }, [handleSave]);
+
   // Handle delete
   const handleDelete = useCallback(async () => {
     if (!postId) return;
@@ -401,7 +465,7 @@ export function PostDetailModal({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleCloseRequest}>
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] flex flex-col p-0">
           {/* Header */}
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-border-soft">
@@ -780,7 +844,7 @@ export function PostDetailModal({
           <div className="px-6 py-4 border-t border-border-soft flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleCloseRequest(false)}
               disabled={isSubmitting}
             >
               {isEditing ? "Close" : "Cancel"}
@@ -790,7 +854,7 @@ export function PostDetailModal({
               disabled={isSubmitting || !title.trim()}
             >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? "Save Changes" : "Create Post"}
+              {isEditing ? "Save & Close" : "Create Post"}
             </Button>
           </div>
         </DialogContent>
@@ -816,6 +880,44 @@ export function PostDetailModal({
             >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unsaved Changes Confirmation */}
+      <AlertDialog open={showCloseConfirmDialog} onOpenChange={setShowCloseConfirmDialog}>
+        <AlertDialogContent className="sm:max-w-[425px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Unsaved Changes
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Would you like to save them before leaving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+            <AlertDialogCancel
+              onClick={() => setShowCloseConfirmDialog(false)}
+              className="sm:order-1"
+            >
+              Continue Editing
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={handleDiscardChanges}
+              className="text-status-danger hover:bg-status-danger/10 sm:order-2"
+            >
+              Discard
+            </Button>
+            <AlertDialogAction
+              onClick={handleSaveAndClose}
+              disabled={isSubmitting || !title.trim()}
+              className="sm:order-3"
+            >
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

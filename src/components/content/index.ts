@@ -20,6 +20,7 @@ export { KanbanColumn } from "./kanban-column";
 export { PostCard } from "./post-card";
 export { QuickCapture } from "./quick-capture";
 export { PostDistributionsTab } from "./post-distributions-tab";
+export { DistributionAccordionItem } from "./distribution-accordion-item";
 export { KanbanFilters, defaultFilters, type KanbanFilters as KanbanFiltersType } from "./kanban-filters";
 export { MediaUpload } from "./media-upload";
 
