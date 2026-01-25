@@ -1123,10 +1123,18 @@ export async function addCampaignCheckin(
   checkin: ContentCampaignCheckinInsert
 ): Promise<ContentCampaignCheckin> {
   const supabase = createClient();
+
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
   return handleSupabaseError(
     supabase
       .from("content_campaign_checkins")
-      .insert(checkin)
+      .insert({
+        ...checkin,
+        checked_by: user.id,
+      })
       .select()
       .single()
   );

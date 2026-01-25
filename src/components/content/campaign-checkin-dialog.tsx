@@ -46,7 +46,8 @@ export function CampaignCheckinDialog({
   const [impressions, setImpressions] = useState("");
   const [clicks, setClicks] = useState("");
   const [conversions, setConversions] = useState("");
-  const [spend, setSpend] = useState("");
+  const [amountSpent, setAmountSpent] = useState("");
+  const [costPerResult, setCostPerResult] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -57,7 +58,8 @@ export function CampaignCheckinDialog({
       setImpressions(previousCheckin?.impressions?.toString() || "");
       setClicks(previousCheckin?.clicks?.toString() || "");
       setConversions(previousCheckin?.conversions?.toString() || "");
-      setSpend(previousCheckin?.spend?.toString() || "");
+      setAmountSpent(previousCheckin?.amount_spent?.toString() || "");
+      setCostPerResult(previousCheckin?.cost_per_result?.toString() || "");
       setNotes("");
     }
   }, [open, previousCheckin]);
@@ -68,19 +70,21 @@ export function CampaignCheckinDialog({
     try {
       await onSubmit({
         campaign_id: campaign.id,
+        checked_at: new Date().toISOString(),
+        checked_by: "", // Will be set by the API using auth.uid()
+        amount_spent: amountSpent ? parseFloat(amountSpent) : 0,
         impressions: impressions ? parseInt(impressions, 10) : null,
         clicks: clicks ? parseInt(clicks, 10) : null,
         conversions: conversions ? parseInt(conversions, 10) : null,
-        spend: spend ? parseFloat(spend) : null,
+        cost_per_result: costPerResult ? parseFloat(costPerResult) : null,
         notes: notes.trim() || null,
-        checked_at: new Date().toISOString(),
       });
 
       onOpenChange(false);
     } finally {
       setIsSubmitting(false);
     }
-  }, [campaign.id, impressions, clicks, conversions, spend, notes, onSubmit, onOpenChange]);
+  }, [campaign.id, impressions, clicks, conversions, amountSpent, costPerResult, notes, onSubmit, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -177,25 +181,25 @@ export function CampaignCheckinDialog({
               <p className="text-[10px] text-text-muted">Sign-ups, purchases, etc.</p>
             </div>
 
-            {/* Spend */}
+            {/* Amount Spent */}
             <div className="space-y-1">
-              <Label htmlFor="spend" className="text-small">
+              <Label htmlFor="amountSpent" className="text-small">
                 Amount Spent
               </Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
                 <Input
-                  id="spend"
+                  id="amountSpent"
                   type="number"
                   step="0.01"
-                  value={spend}
-                  onChange={(e) => setSpend(e.target.value)}
+                  value={amountSpent}
+                  onChange={(e) => setAmountSpent(e.target.value)}
                   placeholder="0.00"
                   className="pl-7 pr-16"
                 />
-                {previousCheckin?.spend != null && (
+                {previousCheckin?.amount_spent != null && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">
-                    prev: ${previousCheckin.spend.toLocaleString()}
+                    prev: ${previousCheckin.amount_spent.toLocaleString()}
                   </span>
                 )}
               </div>

@@ -544,12 +544,14 @@ export interface ContentCampaignPost {
 export interface ContentCampaignCheckin {
   id: string;
   campaign_id: string;
+  checked_at: string;
+  checked_by: string;
+  amount_spent: number;
   impressions: number | null;
   clicks: number | null;
   conversions: number | null;
-  spend: number | null;
+  cost_per_result: number | null;
   notes: string | null;
-  checked_at: string;
   created_at: string;
 }
 
