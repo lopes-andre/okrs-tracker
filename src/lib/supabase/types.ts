@@ -479,7 +479,7 @@ export interface ContentPostLink {
   url: string;
   title: string | null;
   description: string | null;
-  link_type: string | null;
+  display_order: number;
   created_at: string;
 }
 
@@ -628,8 +628,8 @@ export type ContentPostInsert = Omit<ContentPost, 'id' | 'created_at' | 'updated
 export type ContentPostUpdate = Partial<Omit<ContentPost, 'id' | 'plan_id' | 'created_by' | 'created_at' | 'updated_at'>>;
 
 export type ContentPostMediaInsert = Omit<ContentPostMedia, 'id' | 'created_at'>;
-export type ContentPostLinkInsert = Omit<ContentPostLink, 'id' | 'created_at'>;
-export type ContentPostLinkUpdate = Partial<Pick<ContentPostLink, 'url' | 'title' | 'description' | 'link_type'>>;
+export type ContentPostLinkInsert = Omit<ContentPostLink, 'id' | 'created_at' | 'display_order'>;
+export type ContentPostLinkUpdate = Partial<Pick<ContentPostLink, 'url' | 'title' | 'description'>>;
 
 export type ContentDistributionInsert = Omit<ContentDistribution, 'id' | 'created_at' | 'updated_at'>;
 export type ContentDistributionUpdate = Partial<Omit<ContentDistribution, 'id' | 'post_id' | 'account_id' | 'created_at' | 'updated_at'>>;

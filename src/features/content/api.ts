@@ -889,6 +889,16 @@ export async function addCampaignCheckin(
 // ============================================================================
 
 /**
+ * Storage error with better messaging
+ */
+class StorageError extends Error {
+  constructor(message: string, public readonly originalError?: unknown) {
+    super(message);
+    this.name = "StorageError";
+  }
+}
+
+/**
  * Upload media file for a content post
  */
 export async function uploadMediaFile(
@@ -911,7 +921,21 @@ export async function uploadMediaFile(
       upsert: false,
     });
 
-  if (error) throw error;
+  if (error) {
+    // Provide better error messages for common storage issues
+    const errorMessage = error.message || String(error);
+    if (errorMessage.includes("Bucket not found") || errorMessage.includes("bucket")) {
+      throw new StorageError(
+        "Storage bucket 'content-media' not found. Please create it in the Supabase Dashboard."
+      );
+    }
+    if (errorMessage.includes("not allowed") || errorMessage.includes("permission")) {
+      throw new StorageError(
+        "Permission denied. Please check storage bucket policies."
+      );
+    }
+    throw new StorageError(errorMessage || "Failed to upload file to storage.");
+  }
 
   // Get current max sort_order for this post
   const { data: existingMedia } = await supabase
@@ -957,7 +981,10 @@ export async function getMediaSignedUrl(path: string): Promise<string> {
     .from("content-media")
     .createSignedUrl(path, 60 * 60); // 1 hour
 
-  if (error) throw error;
+  if (error) {
+    const errorMessage = error.message || String(error);
+    throw new StorageError(errorMessage || "Failed to get signed URL.");
+  }
   return data.signedUrl;
 }
 

@@ -780,7 +780,6 @@ export function useAddPostLink(planId: string) {
         url: link.url,
         title: link.title ?? null,
         description: null,
-        link_type: null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
