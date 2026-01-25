@@ -220,7 +220,7 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
         {COLUMNS.map((column) => {
           const columnPosts = postsByStatus[column.id];
           const isBacklog = column.id === "backlog";

@@ -68,7 +68,7 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-lg border min-h-[400px]",
+        "flex flex-col rounded-lg border",
         colors.bg,
         colors.border
       )}
@@ -102,8 +102,8 @@ export function KanbanColumn({
         <p className="text-small text-text-muted">{description}</p>
       </div>
 
-      {/* Column Content */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+      {/* Column Content - max height with scroll for long lists */}
+      <div className="p-2 space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
         {children}
 
         {/* Empty state */}

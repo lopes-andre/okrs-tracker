@@ -206,7 +206,7 @@ function CoverImage({ post }: { post: ContentPostWithDetails }) {
 
   if (isLoading) {
     return (
-      <div className="w-full h-[120px] bg-bg-1 flex items-center justify-center rounded-t-card -mt-3 -mx-3 mb-3">
+      <div className="w-full h-[120px] bg-bg-1 flex items-center justify-center">
         <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
       </div>
     );
@@ -217,15 +217,13 @@ function CoverImage({ post }: { post: ContentPostWithDetails }) {
   }
 
   return (
-    <div className="w-full h-[120px] -mt-3 -mx-3 mb-3 overflow-hidden rounded-t-card">
-      <img
-        src={imageUrl}
-        alt={post.title}
-        className="w-full h-full object-cover"
-        loading="lazy"
-        onError={() => setHasError(true)}
-      />
-    </div>
+    <img
+      src={imageUrl}
+      alt={post.title}
+      className="w-full h-[120px] object-cover"
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
   );
 }
 
@@ -356,110 +354,116 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
   return (
     <div
       className={cn(
-        "bg-bg-0 rounded-card border border-border-soft",
-        "hover:border-border hover:shadow-sm transition-all cursor-pointer",
-        "p-3"
+        "bg-bg-0 rounded-card border border-border-soft overflow-hidden",
+        "hover:border-border hover:shadow-sm transition-all cursor-pointer"
       )}
       onClick={onClick}
     >
-      {/* Cover Image (if has image media) */}
-      {hasImageMedia && <CoverImage post={post} />}
-
-      {/* Title Row with Favorite Star */}
-      <div className="flex items-start gap-2 mb-2">
-        <h4 className="flex-1 font-medium text-body-sm line-clamp-2">
-          {post.title || "Untitled Post"}
-        </h4>
-        <FavoriteStar
-          isFavorite={post.is_favorite}
-          onToggle={handleToggleFavorite}
-        />
-      </div>
-
-      {/* Description preview */}
-      {post.description && (
-        <p className="text-small text-text-muted line-clamp-2 mb-3">
-          {post.description}
-        </p>
-      )}
-
-      {/* Goals */}
-      {post.goals && post.goals.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {post.goals.map((goal) => (
-            <Badge
-              key={goal.id}
-              variant="outline"
-              className="text-[10px] px-1.5 py-0"
-              style={{
-                borderColor: goal.color || undefined,
-                color: goal.color || undefined,
-              }}
-            >
-              {goal.name}
-            </Badge>
-          ))}
+      {/* Cover Image - full width, no padding */}
+      {hasImageMedia && (
+        <div className="w-full">
+          <CoverImage post={post} />
         </div>
       )}
 
-      {/* Metadata Row */}
-      <div className="flex items-center gap-3 text-text-muted">
-        {/* Media count */}
-        {post.media && post.media.length > 0 && (
-          <div className="flex items-center gap-1">
-            <ImageIcon className="w-3 h-3" />
-            <span className="text-small">{post.media.length}</span>
-          </div>
+      {/* Card Content - has padding */}
+      <div className="p-3">
+        {/* Title Row with Favorite Star */}
+        <div className="flex items-start gap-2 mb-2">
+          <h4 className="flex-1 font-medium text-body-sm line-clamp-2">
+            {post.title || "Untitled Post"}
+          </h4>
+          <FavoriteStar
+            isFavorite={post.is_favorite}
+            onToggle={handleToggleFavorite}
+          />
+        </div>
+
+        {/* Description preview */}
+        {post.description && (
+          <p className="text-small text-text-muted line-clamp-2 mb-3">
+            {post.description}
+          </p>
         )}
 
-        {/* Links count */}
-        {post.links && post.links.length > 0 && (
-          <div className="flex items-center gap-1">
-            <Link2 className="w-3 h-3" />
-            <span className="text-small">{post.links.length}</span>
-          </div>
-        )}
-
-        {/* All Scheduled dates */}
-        <ScheduledDatesDisplay distributions={post.distributions} />
-      </div>
-
-      {/* Distributions */}
-      {totalDistributions > 0 && (
-        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-soft">
-          {/* Platform icons with count badges */}
-          <div className="flex items-center gap-1.5">
-            {platforms.slice(0, 4).map((platform, index) => (
-              <PlatformIconWithBadge
-                key={index}
-                platformName={platform.name}
-                count={platform.count}
-              />
+        {/* Goals */}
+        {post.goals && post.goals.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {post.goals.map((goal) => (
+              <Badge
+                key={goal.id}
+                variant="outline"
+                className="text-[10px] px-1.5 py-0"
+                style={{
+                  borderColor: goal.color || undefined,
+                  color: goal.color || undefined,
+                }}
+              >
+                {goal.name}
+              </Badge>
             ))}
-            {platforms.length > 4 && (
-              <span className="text-small text-text-muted ml-1">
-                +{platforms.length - 4}
-              </span>
-            )}
           </div>
+        )}
 
-          {/* Distribution status */}
-          <div className="flex items-center gap-2 text-small">
-            {scheduledCount > 0 && (
-              <div className="flex items-center gap-1 text-amber-600">
-                <Calendar className="w-3 h-3" />
-                <span>{scheduledCount}</span>
-              </div>
-            )}
-            {postedCount > 0 && (
-              <div className="flex items-center gap-1 text-green-600">
-                <Send className="w-3 h-3" />
-                <span>{postedCount}</span>
-              </div>
-            )}
-          </div>
+        {/* Metadata Row */}
+        <div className="flex items-center gap-3 text-text-muted">
+          {/* Media count */}
+          {post.media && post.media.length > 0 && (
+            <div className="flex items-center gap-1">
+              <ImageIcon className="w-3 h-3" />
+              <span className="text-small">{post.media.length}</span>
+            </div>
+          )}
+
+          {/* Links count */}
+          {post.links && post.links.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Link2 className="w-3 h-3" />
+              <span className="text-small">{post.links.length}</span>
+            </div>
+          )}
+
+          {/* All Scheduled dates */}
+          <ScheduledDatesDisplay distributions={post.distributions} />
         </div>
-      )}
+
+        {/* Distributions */}
+        {totalDistributions > 0 && (
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-soft">
+            {/* Platform icons with count badges */}
+            <div className="flex items-center gap-1.5">
+              {platforms.slice(0, 4).map((platform, index) => (
+                <PlatformIconWithBadge
+                  key={index}
+                  platformName={platform.name}
+                  count={platform.count}
+                />
+              ))}
+              {platforms.length > 4 && (
+                <span className="text-small text-text-muted ml-1">
+                  +{platforms.length - 4}
+                </span>
+              )}
+            </div>
+
+            {/* Distribution status */}
+            <div className="flex items-center gap-2 text-small">
+              {scheduledCount > 0 && (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <Calendar className="w-3 h-3" />
+                  <span>{scheduledCount}</span>
+                </div>
+              )}
+              {postedCount > 0 && (
+                <div className="flex items-center gap-1 text-green-600">
+                  <Send className="w-3 h-3" />
+                  <span>{postedCount}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
