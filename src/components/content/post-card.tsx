@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { format } from "date-fns";
+import { format, isPast } from "date-fns";
 import {
   Calendar,
   Image as ImageIcon,
@@ -261,8 +261,14 @@ function ScheduledDatesDisplay({
 }: {
   distributions: ContentPostWithDetails["distributions"];
 }) {
+  // Filter for truly scheduled distributions (future dates only)
+  // Overdue scheduled distributions are effectively "posted"
   const scheduledDates = distributions
-    ?.filter((d) => d.status === "scheduled" && d.scheduled_at)
+    ?.filter((d) => {
+      if (d.status !== "scheduled" || !d.scheduled_at) return false;
+      const scheduledDate = new Date(d.scheduled_at);
+      return !isPast(scheduledDate); // Only include future dates
+    })
     .map((d) => ({
       date: new Date(d.scheduled_at!),
       platform: d.account?.platform?.name || "Unknown",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useId } from "react";
-import { format as formatDate } from "date-fns";
+import { useState, useEffect, useCallback, useId, useRef } from "react";
+import { format as formatDate, isPast } from "date-fns";
 import {
   ChevronDown,
   Calendar,
@@ -186,18 +186,47 @@ export function DistributionAccordionItem({
   const updateDistribution = useUpdateDistribution(planId);
   const deleteDistribution = useDeleteDistribution(planId);
   const createTask = useCreateTask(planId);
+  const hasAutoUpdated = useRef(false);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showMarkPostedDialog, setShowMarkPostedDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
+  // Check if distribution should be auto-marked as posted
+  // (scheduled time has passed but status is still "scheduled")
+  const isOverdue = distribution.status === "scheduled" &&
+    distribution.scheduled_at &&
+    isPast(new Date(distribution.scheduled_at));
+
+  // Compute effective status (for display)
+  const effectiveStatus: ContentDistributionStatus = isOverdue ? "posted" : distribution.status;
+
+  // Auto-update overdue distributions to posted status
+  useEffect(() => {
+    if (isOverdue && !hasAutoUpdated.current && !updateDistribution.isPending) {
+      hasAutoUpdated.current = true;
+      updateDistribution.mutate({
+        distributionId: distribution.id,
+        updates: {
+          status: "posted",
+          posted_at: distribution.scheduled_at, // Use scheduled time as posted time
+        },
+      });
+    }
+  }, [isOverdue, distribution.id, distribution.scheduled_at, updateDistribution]);
+
+  // Reset auto-update flag when distribution changes
+  useEffect(() => {
+    hasAutoUpdated.current = false;
+  }, [distribution.id]);
+
   // Get account and platform info
   const account = distribution.account;
   const platformName = account?.platform?.name?.toLowerCase() || "blog";
   const platformDisplayName = account?.platform?.display_name || "Platform";
   const accountName = account?.account_name || "Unknown Account";
-  const status = statusConfig[distribution.status];
+  const status = statusConfig[effectiveStatus];
   const StatusIcon = status.icon;
   const formats = formatOptions[platformName] || [];
 
@@ -208,7 +237,8 @@ export function DistributionAccordionItem({
   const [scheduledTime, setScheduledTime] = useState("");
   const [internalNotes, setInternalNotes] = useState("");
   const [platformData, setPlatformData] = useState<PlatformSpecificData>({});
-  const [createReminderTask, setCreateReminderTask] = useState(false);
+  const [platformPostUrl, setPlatformPostUrl] = useState("");
+  const [createPerformanceCheckTasks, setCreatePerformanceCheckTasks] = useState(false);
 
   // Initialize form when distribution changes or accordion expands
   useEffect(() => {
@@ -218,7 +248,8 @@ export function DistributionAccordionItem({
       setPlatformData(data);
       setCaption(data.caption || data.tweet_text || data.video_description || "");
       setInternalNotes(data.internal_notes || "");
-      setCreateReminderTask(false);
+      setPlatformPostUrl(distribution.platform_post_url || "");
+      setCreatePerformanceCheckTasks(false);
       setHasChanges(false);
 
       if (distribution.scheduled_at) {
@@ -264,19 +295,46 @@ export function DistributionAccordionItem({
           scheduled_at,
           status: newStatus,
           platform_specific_data: newPlatformData as Record<string, unknown>,
+          platform_post_url: platformPostUrl || null,
         },
       });
 
-      // Create reminder task if enabled
-      if (createReminderTask && scheduled_at && postTitle) {
+      // Create performance check tasks if enabled (1 week and 1 month after scheduled date)
+      if (createPerformanceCheckTasks && scheduled_at && postTitle) {
+        const scheduledDateObj = new Date(scheduled_at);
+
+        // 1 week performance check task
+        const oneWeekLater = new Date(scheduledDateObj);
+        oneWeekLater.setDate(oneWeekLater.getDate() + 7);
         await createTask.mutateAsync({
-          title: `Post to ${platformDisplayName}: ${postTitle}`,
-          description: `Reminder to publish content to ${accountName} on ${platformDisplayName}`,
+          title: `1-week check: ${postTitle} on ${platformDisplayName}`,
+          description: `Check performance metrics for "${postTitle}" posted to ${accountName} on ${platformDisplayName}. Look at engagement, reach, and any early insights.`,
           status: "pending",
-          priority: "medium",
+          priority: "low",
           effort: "light",
-          due_date: scheduledDate,
-          due_time: scheduledTime,
+          due_date: formatDate(oneWeekLater, "yyyy-MM-dd"),
+          due_time: null,
+          objective_id: null,
+          annual_kr_id: null,
+          quarter_target_id: null,
+          assigned_to: null,
+          reminder_enabled: true,
+          sort_order: 0,
+          is_recurring: false,
+          recurring_master_id: null,
+        });
+
+        // 1 month performance check task
+        const oneMonthLater = new Date(scheduledDateObj);
+        oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+        await createTask.mutateAsync({
+          title: `1-month check: ${postTitle} on ${platformDisplayName}`,
+          description: `Review final performance metrics for "${postTitle}" posted to ${accountName} on ${platformDisplayName}. Document learnings and compare to goals.`,
+          status: "pending",
+          priority: "low",
+          effort: "light",
+          due_date: formatDate(oneMonthLater, "yyyy-MM-dd"),
+          due_time: null,
           objective_id: null,
           annual_kr_id: null,
           quarter_target_id: null,
@@ -300,7 +358,8 @@ export function DistributionAccordionItem({
     scheduledTime,
     internalNotes,
     platformData,
-    createReminderTask,
+    platformPostUrl,
+    createPerformanceCheckTasks,
     postTitle,
     accountName,
     platformDisplayName,
@@ -469,55 +528,26 @@ export function DistributionAccordionItem({
             )}
           </div>
 
-          {/* Platform-specific fields */}
-          {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok") && (
-            <div className="space-y-1.5">
-              <Label className="text-small">Hashtags</Label>
-              <Input
-                value={platformData.hashtags?.join(" ") || ""}
-                onChange={(e) => {
-                  setPlatformData({
-                    ...platformData,
-                    hashtags: e.target.value.split(/\s+/).filter(Boolean),
-                  });
-                  handleFieldChange();
-                }}
-                placeholder="#hashtag1 #hashtag2"
-                className="bg-bg-0"
-              />
-              {platformName === "instagram" && (
-                <p className="text-xs text-text-muted">{(platformData.hashtags?.length || 0)}/30</p>
-              )}
-            </div>
-          )}
-
-          {platformName === "instagram" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-small">Location</Label>
-                <Input
-                  value={platformData.location || ""}
-                  onChange={(e) => {
-                    setPlatformData({ ...platformData, location: e.target.value });
-                    handleFieldChange();
-                  }}
-                  placeholder="Add location..."
-                  className="bg-bg-0"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-small">Alt Text</Label>
-                <Input
-                  value={platformData.alt_text || ""}
-                  onChange={(e) => {
-                    setPlatformData({ ...platformData, alt_text: e.target.value });
-                    handleFieldChange();
-                  }}
-                  placeholder="Image description..."
-                  className="bg-bg-0"
-                />
-              </div>
-            </div>
+          {/* Detected Hashtags (auto-extracted from caption) */}
+          {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok") && caption && (
+            (() => {
+              const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
+              if (detectedHashtags.length === 0) return null;
+              return (
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : ""}):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()
           )}
 
           {platformName === "youtube" && (
@@ -658,14 +688,35 @@ export function DistributionAccordionItem({
             </div>
           </div>
 
-          {/* Create reminder task toggle */}
+          {/* Create performance check tasks toggle */}
           {(scheduledDate || scheduledTime) && (
             <div className="flex items-center justify-between p-3 bg-bg-0 rounded-lg border border-border-soft">
               <div>
-                <Label className="text-small">Create reminder task</Label>
-                <p className="text-xs text-text-muted">Add a task to remind you to post</p>
+                <Label className="text-small">Create performance check tasks</Label>
+                <p className="text-xs text-text-muted">Add tasks to check metrics at 1 week and 1 month</p>
               </div>
-              <Switch checked={createReminderTask} onCheckedChange={setCreateReminderTask} />
+              <Switch checked={createPerformanceCheckTasks} onCheckedChange={setCreatePerformanceCheckTasks} />
+            </div>
+          )}
+
+          {/* Post Link (for posted distributions) */}
+          {effectiveStatus === "posted" && (
+            <div className="space-y-1.5">
+              <Label className="text-small flex items-center gap-2">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Post Link
+              </Label>
+              <Input
+                type="url"
+                value={platformPostUrl}
+                onChange={(e) => {
+                  setPlatformPostUrl(e.target.value);
+                  handleFieldChange();
+                }}
+                placeholder="https://..."
+                className="bg-bg-0"
+              />
+              <p className="text-xs text-text-muted">Link to the published post</p>
             </div>
           )}
 
@@ -685,9 +736,9 @@ export function DistributionAccordionItem({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between pt-2 border-t border-border-soft">
             <div className="flex items-center gap-2">
-              {distribution.status !== "posted" && (
+              {effectiveStatus !== "posted" && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -698,14 +749,17 @@ export function DistributionAccordionItem({
                 </Button>
               )}
             </div>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving || !hasChanges}
-            >
-              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Save Changes
-            </Button>
+            {hasChanges && (
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-accent hover:bg-accent-hover text-white"
+              >
+                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            )}
           </div>
         </div>
       </div>

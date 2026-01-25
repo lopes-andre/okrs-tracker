@@ -510,8 +510,10 @@ export interface ContentDistribution {
 export interface ContentDistributionMetrics {
   id: string;
   distribution_id: string;
+  checked_by: string;
   metrics: Record<string, number>;
   checked_at: string;
+  notes: string | null;
   created_at: string;
 }
 

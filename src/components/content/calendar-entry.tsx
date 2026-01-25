@@ -1,7 +1,7 @@
 "use client";
 
 import { format, parseISO, isPast, isToday } from "date-fns";
-import { Check, AlertTriangle, Clock } from "lucide-react";
+import { Check, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -43,8 +43,9 @@ function getEntryStatus(entry: ContentCalendarEntry) {
 
   if (entry.scheduled_at) {
     const scheduledDate = parseISO(entry.scheduled_at);
+    // If scheduled time has passed, treat as posted (auto-posted)
     if (isPast(scheduledDate) && !isToday(scheduledDate)) {
-      return "overdue";
+      return "posted"; // Changed from "overdue" to "posted"
     }
     return "scheduled";
   }
@@ -56,8 +57,6 @@ function getStatusStyles(status: string) {
   switch (status) {
     case "posted":
       return "bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300";
-    case "overdue":
-      return "bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300";
     case "scheduled":
       return "bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300";
     default:
@@ -127,9 +126,6 @@ export function CalendarEntry({
       {status === "posted" && (
         <Check className="w-3 h-3 text-green-600 shrink-0" />
       )}
-      {status === "overdue" && (
-        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-      )}
     </div>
   );
 
@@ -159,12 +155,10 @@ export function CalendarEntry({
               className={cn(
                 "text-[10px]",
                 status === "posted" && "bg-green-600",
-                status === "overdue" && "border-amber-500 text-amber-600",
                 status === "scheduled" && "border-blue-500 text-blue-600"
               )}
             >
               {status === "posted" && "Posted"}
-              {status === "overdue" && "Overdue"}
               {status === "scheduled" && "Scheduled"}
             </Badge>
           </div>
@@ -264,9 +258,6 @@ export function CalendarEntryGroup({
               {/* Status */}
               {status === "posted" && (
                 <Check className="w-3 h-3 text-green-600 shrink-0" />
-              )}
-              {status === "overdue" && (
-                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
               )}
             </div>
           );

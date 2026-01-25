@@ -21,6 +21,7 @@ import {
   type MetricField,
 } from "./platform-metrics-config";
 import { useAddDistributionMetrics } from "@/features/content/hooks";
+import { createUntypedClient as createClient } from "@/lib/supabase/untyped-client";
 import type { ContentDistributionWithAccount } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -86,6 +87,13 @@ export function MetricsCheckInDialog({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Get current user
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
+
       // Convert string values to numbers, filtering out empty values
       const numericMetrics: Record<string, number> = {};
       Object.entries(metrics).forEach(([key, value]) => {
@@ -96,8 +104,10 @@ export function MetricsCheckInDialog({
 
       await addMetrics.mutateAsync({
         distribution_id: distribution.id,
+        checked_by: user.id,
         metrics: numericMetrics,
         checked_at: new Date().toISOString(),
+        notes: notes || null,
       });
 
       onOpenChange(false);
