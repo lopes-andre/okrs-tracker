@@ -114,13 +114,13 @@ export function AccountsSettings({ planId }: AccountsSettingsProps) {
           }}
         />
       ) : (
-        <div className="space-y-6">
+        <div className="columns-1 lg:columns-2 gap-4 lg:gap-6">
           {Object.entries(accountsByPlatform).map(([platformId, platformAccounts]) => {
             const platform = platformAccounts[0]?.platform;
             if (!platform) return null;
 
             return (
-              <Card key={platformId}>
+              <Card key={platformId} className="break-inside-avoid mb-4 lg:mb-6">
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
                     <PlatformIcon platformName={platform.name} size="lg" />
