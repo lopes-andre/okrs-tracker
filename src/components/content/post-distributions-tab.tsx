@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Plus, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddDistributionDialog } from "./add-distribution-dialog";
-import { DistributionAccordionItem } from "./distribution-accordion-item";
+import { DistributionAccordionItem, type DistributionEditData } from "./distribution-accordion-item";
 import { useDistributionsByPost } from "@/features/content/hooks";
 import type {
   ContentPostWithDetails,
@@ -19,6 +19,11 @@ interface PostDistributionsTabProps {
   post: ContentPostWithDetails;
   accounts: ContentAccountWithPlatform[];
   planId: string;
+  // Controlled mode props for unified saving
+  editedDistributions?: Record<string, DistributionEditData>;
+  onDistributionUpdate?: (distributionId: string, updates: DistributionEditData) => void;
+  deletedDistributionIds?: string[];
+  onDistributionDelete?: (distributionId: string) => void;
 }
 
 // ============================================================================
@@ -29,11 +34,18 @@ export function PostDistributionsTab({
   post,
   accounts,
   planId,
+  editedDistributions,
+  onDistributionUpdate,
+  deletedDistributionIds,
+  onDistributionDelete,
 }: PostDistributionsTabProps) {
   const { data: distributions, isLoading } = useDistributionsByPost(post.id);
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // Check if controlled mode
+  const isControlled = !!onDistributionUpdate;
 
   // Toggle accordion expansion
   const toggleExpanded = useCallback((id: string) => {
@@ -56,7 +68,8 @@ export function PostDistributionsTab({
     );
   }
 
-  const distList = distributions || post.distributions || [];
+  const distList = (distributions || post.distributions || [])
+    .filter(d => !deletedDistributionIds?.includes(d.id));
 
   return (
     <>
@@ -98,6 +111,10 @@ export function PostDistributionsTab({
                 postTitle={post.title}
                 isExpanded={expandedIds.has(distribution.id)}
                 onToggle={() => toggleExpanded(distribution.id)}
+                // Controlled mode props
+                editedValues={isControlled ? editedDistributions?.[distribution.id] : undefined}
+                onUpdate={isControlled ? onDistributionUpdate : undefined}
+                onDelete={isControlled ? onDistributionDelete : undefined}
               />
             ))}
           </div>

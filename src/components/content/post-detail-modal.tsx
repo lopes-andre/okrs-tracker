@@ -74,6 +74,18 @@ interface PendingLink {
   title: string;
 }
 
+interface PendingDistributionPlatformData {
+  subject_line?: string;
+  preview_text?: string;
+  article_title?: string;
+  meta_description?: string;
+  video_title?: string;
+  visibility?: "public" | "unlisted" | "private";
+  episode_title?: string;
+  season_number?: number;
+  episode_number?: number;
+}
+
 interface PendingDistribution {
   id: string;
   accountId: string;
@@ -85,6 +97,7 @@ interface PendingDistribution {
   platformPostUrl?: string | null;
   internalNotes?: string | null;
   createPerformanceCheckTasks?: boolean;
+  platformData?: PendingDistributionPlatformData;
 }
 
 // ============================================================================
@@ -403,9 +416,45 @@ export function PostDetailModal({
           }
         }
 
-        // Update edited distributions
+        // Update edited distributions (only those with actual changes)
         for (const [distributionId, editData] of Object.entries(editedDistributions)) {
           try {
+            // Check if this distribution has actual changes (skip if no real changes)
+            const original = post?.distributions?.find(d => d.id === distributionId);
+            if (original) {
+              const originalData = (original.platform_specific_data || {}) as Record<string, unknown>;
+              let origScheduledDate = "";
+              let origScheduledTime = "";
+              if (original.scheduled_at) {
+                const date = new Date(original.scheduled_at);
+                origScheduledDate = formatDate(date, "yyyy-MM-dd");
+                origScheduledTime = formatDate(date, "HH:mm");
+              }
+
+              // Compare each field to detect real changes
+              const formatChanged = (editData.format ?? null) !== (original.format ?? null);
+              const captionChanged = (editData.caption ?? null) !== (original.caption ?? originalData.caption ?? originalData.tweet_text ?? originalData.video_description ?? null);
+              const dateChanged = (editData.scheduledDate ?? "") !== origScheduledDate;
+              const timeChanged = (editData.scheduledTime ?? "") !== origScheduledTime;
+              const urlChanged = (editData.platformPostUrl ?? null) !== (original.platform_post_url ?? null);
+              const notesChanged = (editData.internalNotes ?? null) !== (originalData.internal_notes ?? null);
+
+              // Check platform data changes (for blog/newsletter specific fields)
+              const origPlatformData = editData.platformData || {};
+              const platformDataChanged = JSON.stringify(origPlatformData) !== JSON.stringify(originalData);
+
+              // Check toggle state change
+              const savedToggleState = originalData.create_performance_check_tasks;
+              const toggleChanged = editData.createPerformanceCheckTasks !== (savedToggleState !== undefined ? savedToggleState : true);
+
+              const hasRealChanges = formatChanged || captionChanged || dateChanged || timeChanged || urlChanged || notesChanged || platformDataChanged || toggleChanged;
+
+              if (!hasRealChanges) {
+                // Skip this distribution - no actual changes
+                continue;
+              }
+            }
+
             // Build scheduled_at from date and time if both are present
             let scheduledAt: string | null = null;
             let computedStatus: "draft" | "scheduled" | "posted" = "draft";
@@ -584,6 +633,10 @@ export function PostDetailModal({
             const willCreateTasks = dist.createPerformanceCheckTasks && dist.scheduledAt;
 
             const platformSpecificData: Record<string, unknown> = {};
+            // Copy platform-specific data (subject_line, article_title, meta_description, etc.)
+            if (dist.platformData) {
+              Object.assign(platformSpecificData, dist.platformData);
+            }
             if (dist.internalNotes) {
               platformSpecificData.internal_notes = dist.internalNotes;
             }

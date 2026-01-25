@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,18 @@ import type { ContentAccountWithPlatform } from "@/lib/supabase/types";
 // TYPES
 // ============================================================================
 
+export interface PendingDistributionPlatformData {
+  subject_line?: string;
+  preview_text?: string;
+  article_title?: string;
+  meta_description?: string;
+  video_title?: string;
+  visibility?: "public" | "unlisted" | "private";
+  episode_title?: string;
+  season_number?: number;
+  episode_number?: number;
+}
+
 export interface PendingDistribution {
   id: string;
   accountId: string;
@@ -51,6 +64,8 @@ export interface PendingDistribution {
   status: "draft" | "scheduled" | "posted";
   platformPostUrl?: string | null;
   internalNotes?: string | null;
+  createPerformanceCheckTasks?: boolean;
+  platformData?: PendingDistributionPlatformData;
 }
 
 interface PendingDistributionAccordionItemProps {
@@ -354,34 +369,89 @@ export function PendingDistributionAccordionItem({
             </div>
           )}
 
-          {/* Caption / Content */}
-          <div className="space-y-1.5">
-            <Label className="text-small">
-              {platformName === "twitter" || platformName === "x"
-                ? "Tweet"
-                : platformName === "newsletter"
-                ? "Subject Line"
-                : "Caption"}
-            </Label>
-            <Textarea
-              value={distribution.caption || ""}
-              onChange={(e) => onUpdate({ caption: e.target.value || null })}
-              placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
-              rows={3}
-              maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
-              className="bg-bg-0"
-            />
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              {(platformName === "twitter" || platformName === "x") && (
-                <span>{(distribution.caption || "").length}/280</span>
-              )}
+          {/* Caption / Content - different fields based on platform */}
+          {platformName === "newsletter" ? (
+            <>
+              {/* Newsletter: Subject Line (Input) then Preview Text (Textarea) */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Subject Line</Label>
+                <Input
+                  value={distribution.platformData?.subject_line || ""}
+                  onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, subject_line: e.target.value || undefined } })}
+                  placeholder="Newsletter subject line..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Preview Text</Label>
+                <Textarea
+                  value={distribution.caption || ""}
+                  onChange={(e) => onUpdate({ caption: e.target.value || null })}
+                  placeholder="Preview text shown in email clients..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+            </>
+          ) : platformName === "blog" ? (
+            <>
+              {/* Blog: Blog Post Title (Input) then Meta Description (Textarea) */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Blog Post Title</Label>
+                <Input
+                  value={distribution.platformData?.article_title || ""}
+                  onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, article_title: e.target.value || undefined } })}
+                  placeholder="Blog post title..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Meta Description</Label>
+                <Textarea
+                  value={distribution.platformData?.meta_description || ""}
+                  onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, meta_description: e.target.value || undefined } })}
+                  placeholder="SEO meta description for the blog post..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-small">
+                  {platformName === "twitter" || platformName === "x" ? "Tweet" : "Caption"}
+                </Label>
+                <Textarea
+                  value={distribution.caption || ""}
+                  onChange={(e) => onUpdate({ caption: e.target.value || null })}
+                  placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
+                  rows={3}
+                  maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
+                  className="bg-bg-0"
+                />
+                {(platformName === "twitter" || platformName === "x") && (
+                  <p className="text-xs text-text-muted text-right">{(distribution.caption || "").length}/280</p>
+                )}
+              </div>
+
+              {/* Detected Hashtags (auto-extracted from caption) */}
               {detectedHashtags.length > 0 && (
-                <span className="text-accent">
-                  {detectedHashtags.length} hashtag{detectedHashtags.length !== 1 ? "s" : ""} detected
-                </span>
+                <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
+                  <p className="text-xs text-text-muted mb-2">
+                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : platformName === "youtube" ? "/15" : ""}):
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {detectedHashtags.map((tag, idx) => (
+                      <span key={idx} className="text-xs text-accent bg-accent/10 px-1.5 py-0.5 rounded">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Schedule */}
           <div className="space-y-1.5">
@@ -423,6 +493,20 @@ export function PendingDistributionAccordionItem({
                     <span>This post will be shared on {formatDate(new Date(`${scheduledDate}T${scheduledTime}`), "MMM d 'at' h:mm a")}</span>
                   </>
                 )}
+              </div>
+            )}
+
+            {/* Create performance check tasks toggle */}
+            {(scheduledDate || scheduledTime) && (
+              <div className="flex items-center justify-between p-3 bg-bg-0 rounded-lg border border-border-soft">
+                <div>
+                  <Label className="text-small">Create performance check tasks</Label>
+                  <p className="text-xs text-text-muted">Add tasks to check metrics at 1 week and 1 month</p>
+                </div>
+                <Switch
+                  checked={distribution.createPerformanceCheckTasks ?? true}
+                  onCheckedChange={(checked) => onUpdate({ createPerformanceCheckTasks: checked })}
+                />
               </div>
             )}
           </div>

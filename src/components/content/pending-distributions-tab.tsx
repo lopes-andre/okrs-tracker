@@ -94,6 +94,7 @@ export function PendingDistributionsTab({
         status: "draft",
         platformPostUrl: null,
         internalNotes: null,
+        createPerformanceCheckTasks: true, // Default to ON
       });
     });
     setSelectedAccountIds([]);

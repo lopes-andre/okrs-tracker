@@ -281,9 +281,9 @@ export function DistributionAccordionItem({
       setLocalCaption(distribution.caption || data.caption || data.tweet_text || data.video_description || "");
       setLocalInternalNotes(data.internal_notes || "");
       setLocalPlatformPostUrl(distribution.platform_post_url || "");
-      // Check if tasks were already created for this distribution
-      const tasksAlreadyCreated = data.performance_tasks_created === true;
-      setLocalCreatePerformanceCheckTasks(!tasksAlreadyCreated); // Default ON only if not already created
+      // Load saved toggle state, default to true if not explicitly set
+      const savedToggleState = data.create_performance_check_tasks;
+      setLocalCreatePerformanceCheckTasks(savedToggleState !== undefined ? savedToggleState : true);
       setHasLocalChanges(false);
 
       if (distribution.scheduled_at) {
@@ -309,8 +309,8 @@ export function DistributionAccordionItem({
         initScheduledTime = formatDate(date, "HH:mm");
       }
 
-      // Check if tasks were already created for this distribution
-      const tasksAlreadyCreated = data.performance_tasks_created === true;
+      // Load saved toggle state, default to true if not explicitly set
+      const savedToggleState = data.create_performance_check_tasks;
 
       onUpdate(distribution.id, {
         format: distribution.format,
@@ -321,7 +321,7 @@ export function DistributionAccordionItem({
         internalNotes: data.internal_notes || null,
         platformData: data,
         platformPostUrl: distribution.platform_post_url,
-        createPerformanceCheckTasks: !tasksAlreadyCreated, // Default ON only if not already created
+        createPerformanceCheckTasks: savedToggleState !== undefined ? savedToggleState : true,
       });
     }
   }, [isExpanded, isControlled, editedValues, distribution, onUpdate]);
@@ -362,6 +362,8 @@ export function DistributionAccordionItem({
       const newPlatformData: PlatformSpecificData = {
         ...platformData,
         internal_notes: internalNotes || undefined,
+        // Save the toggle state
+        create_performance_check_tasks: createPerformanceCheckTasks,
         // Mark tasks as created if we're about to create them
         ...(shouldCreateTasks ? { performance_tasks_created: true } : {}),
       };
@@ -590,37 +592,82 @@ export function DistributionAccordionItem({
             </div>
           )}
 
-          {/* Caption / Content */}
-          <div className="space-y-1.5">
-            <Label className="text-small">
-              {platformName === "twitter" || platformName === "x"
-                ? "Tweet"
-                : platformName === "newsletter"
-                ? "Subject Line"
-                : "Caption"}
-            </Label>
-            <Textarea
-              value={caption}
-              onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
-              placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
-              rows={3}
-              maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
-              className="bg-bg-0"
-            />
-            {(platformName === "twitter" || platformName === "x") && (
-              <p className="text-xs text-text-muted text-right">{caption.length}/280</p>
-            )}
-          </div>
+          {/* Caption / Content - different fields based on platform */}
+          {platformName === "newsletter" ? (
+            <>
+              {/* Newsletter: Subject Line (Input) then Preview Text (Textarea) */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Subject Line</Label>
+                <Input
+                  value={platformData?.subject_line || ""}
+                  onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, subject_line: e.target.value } })}
+                  placeholder="Newsletter subject line..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Preview Text</Label>
+                <Textarea
+                  value={caption}
+                  onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
+                  placeholder="Preview text shown in email clients..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+            </>
+          ) : platformName === "blog" ? (
+            <>
+              {/* Blog: Blog Post Title (Input) then Meta Description (Textarea) */}
+              <div className="space-y-1.5">
+                <Label className="text-small">Blog Post Title</Label>
+                <Input
+                  value={platformData?.article_title || ""}
+                  onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, article_title: e.target.value } })}
+                  placeholder="Blog post title..."
+                  className="bg-bg-0"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-small">Meta Description</Label>
+                <Textarea
+                  value={platformData?.meta_description || ""}
+                  onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, meta_description: e.target.value } })}
+                  placeholder="SEO meta description for the blog post..."
+                  rows={3}
+                  className="bg-bg-0"
+                />
+              </div>
+            </>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-small">
+                {platformName === "twitter" || platformName === "x" ? "Tweet" : "Caption"}
+              </Label>
+              <Textarea
+                value={caption}
+                onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
+                placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
+                rows={3}
+                maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
+                className="bg-bg-0"
+              />
+              {(platformName === "twitter" || platformName === "x") && (
+                <p className="text-xs text-text-muted text-right">{caption.length}/280</p>
+              )}
+            </div>
+          )}
 
           {/* Detected Hashtags (auto-extracted from caption) */}
-          {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok") && caption && (
+          {(platformName === "instagram" || platformName === "linkedin" || platformName === "tiktok" || platformName === "youtube" || platformName === "spotify" || platformName === "x" || platformName === "twitter") && caption && (
             (() => {
               const detectedHashtags = caption.match(/#[a-zA-Z0-9_]+/g) || [];
               if (detectedHashtags.length === 0) return null;
+              const maxHashtags = platformName === "instagram" ? 30 : platformName === "youtube" ? 15 : undefined;
               return (
                 <div className="p-3 bg-bg-0 rounded-lg border border-border-soft">
                   <p className="text-xs text-text-muted mb-2">
-                    Detected hashtags ({detectedHashtags.length}{platformName === "instagram" ? "/30" : ""}):
+                    Detected hashtags ({detectedHashtags.length}{maxHashtags ? `/${maxHashtags}` : ""}):
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {detectedHashtags.map((tag, idx) => (
@@ -664,19 +711,6 @@ export function DistributionAccordionItem({
             </>
           )}
 
-          {(platformName === "blog" || platformName === "newsletter") && (
-            <div className="space-y-1.5">
-              <Label className="text-small">
-                {platformName === "blog" ? "Slug" : "Preview Text"}
-              </Label>
-              <Input
-                value={platformName === "blog" ? platformData?.slug || "" : platformData?.preview_text || ""}
-                onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, [platformName === "blog" ? "slug" : "preview_text"]: e.target.value } })}
-                placeholder={platformName === "blog" ? "my-article-slug" : "Preview text..."}
-                className="bg-bg-0"
-              />
-            </div>
-          )}
 
           {(platformName === "spotify" || platformName === "podcast") && (
             <>
@@ -744,12 +778,22 @@ export function DistributionAccordionItem({
             </div>
 
             {/* Contextual tip based on schedule datetime */}
-            {scheduledDate && scheduledTime && effectiveStatus !== "posted" && (
-              <div className="flex items-center gap-2 p-2 rounded-lg text-small bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-                <Clock className="w-4 h-4 shrink-0" />
-                <span>This post will be shared on {formatDate(new Date(`${scheduledDate}T${scheduledTime}`), "MMM d 'at' h:mm a")}</span>
-              </div>
-            )}
+            {scheduledDate && scheduledTime && effectiveStatus !== "posted" && (() => {
+              const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+              const isInPast = isPast(scheduledDateTime);
+
+              return isInPast ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg text-small bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>This post will be marked as Posted (scheduled time has passed)</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2 rounded-lg text-small bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>This post will be shared on {formatDate(scheduledDateTime, "MMM d 'at' h:mm a")}</span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Create performance check tasks toggle */}
@@ -763,8 +807,8 @@ export function DistributionAccordionItem({
             </div>
           )}
 
-          {/* Post Link (for posted distributions) */}
-          {effectiveStatus === "posted" && (
+          {/* Post Link (for posted distributions or when scheduled time is in the past) */}
+          {(effectiveStatus === "posted" || (scheduledDate && scheduledTime && isPast(new Date(`${scheduledDate}T${scheduledTime}`)))) && (
             <div className="space-y-1.5">
               <Label className="text-small flex items-center gap-2">
                 <ExternalLink className="w-3.5 h-3.5" />
