@@ -159,7 +159,7 @@ function filterEntries(
 // ============================================================================
 
 export function ContentCalendar({ planId }: ContentCalendarProps) {
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("week");
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filters, setFilters] = useState<CalendarFiltersState>(defaultCalendarFilters);
 
@@ -229,8 +229,10 @@ export function ContentCalendar({ planId }: ContentCalendarProps) {
     }
   }, [viewMode]);
 
-  const goToDate = useCallback((date: Date) => {
+  // Handler for clicking a day in month view - navigates to day view
+  const handleDayClick = useCallback((date: Date) => {
     setCurrentDate(date);
+    setViewMode("day");
   }, []);
 
   // Entry click handler
@@ -354,7 +356,8 @@ export function ContentCalendar({ planId }: ContentCalendarProps) {
                 currentDate={currentDate}
                 entriesByDay={entriesByDay}
                 onEntryClick={handleEntryClick}
-                onDayClick={goToDate}
+                onDayClick={handleDayClick}
+                onMoreClick={handleDayClick}
               />
             )}
             {viewMode === "week" && (

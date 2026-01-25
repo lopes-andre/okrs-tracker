@@ -32,8 +32,22 @@ interface CalendarWeekViewProps {
 // ============================================================================
 
 const HOUR_HEIGHT = 60; // pixels per hour
-const START_HOUR = 6; // 6 AM
-const END_HOUR = 22; // 10 PM
+const START_HOUR = 0; // 12 AM (midnight)
+const END_HOUR = 24; // 12 AM next day (full 24 hours)
+const DEFAULT_ENTRY_DURATION_MINUTES = 45; // Default duration for overlap detection
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface PositionedEntry {
+  entry: ContentCalendarEntry;
+  top: number;
+  startMinutes: number;
+  endMinutes: number;
+  column: number;
+  totalColumns: number;
+}
 
 // ============================================================================
 // HELPERS
@@ -50,7 +64,114 @@ function getEntryPosition(entry: ContentCalendarEntry) {
   if (hour < START_HOUR || hour >= END_HOUR) return null;
 
   const top = (hour - START_HOUR) * HOUR_HEIGHT + (minutes / 60) * HOUR_HEIGHT;
-  return { top, hour, minutes };
+  const startMinutes = hour * 60 + minutes;
+  const endMinutes = startMinutes + DEFAULT_ENTRY_DURATION_MINUTES;
+
+  return { top, hour, minutes, startMinutes, endMinutes };
+}
+
+// Check if two entries overlap in time
+function entriesOverlap(
+  a: { startMinutes: number; endMinutes: number },
+  b: { startMinutes: number; endMinutes: number }
+): boolean {
+  return a.startMinutes < b.endMinutes && b.startMinutes < a.endMinutes;
+}
+
+// Group overlapping entries and assign columns (Google Calendar style)
+function groupOverlappingEntries(entries: ContentCalendarEntry[]): PositionedEntry[] {
+  const positioned = entries
+    .map((entry) => ({
+      entry,
+      position: getEntryPosition(entry),
+    }))
+    .filter((e) => e.position !== null)
+    .map(({ entry, position }) => ({
+      entry,
+      top: position!.top,
+      startMinutes: position!.startMinutes,
+      endMinutes: position!.endMinutes,
+      column: 0,
+      totalColumns: 1,
+    }));
+
+  // Sort by start time, then by entry ID for stability
+  positioned.sort((a, b) => {
+    if (a.startMinutes !== b.startMinutes) {
+      return a.startMinutes - b.startMinutes;
+    }
+    return a.entry.distribution_id.localeCompare(b.entry.distribution_id);
+  });
+
+  if (positioned.length === 0) return [];
+
+  // Find connected components of overlapping entries (collision groups)
+  const visited = new Set<number>();
+  const collisionGroups: number[][] = [];
+
+  for (let i = 0; i < positioned.length; i++) {
+    if (visited.has(i)) continue;
+
+    // BFS to find all entries in this collision group
+    const group: number[] = [];
+    const queue: number[] = [i];
+    visited.add(i);
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      group.push(current);
+
+      // Find all overlapping entries not yet visited
+      for (let j = 0; j < positioned.length; j++) {
+        if (visited.has(j)) continue;
+        if (entriesOverlap(positioned[current], positioned[j])) {
+          visited.add(j);
+          queue.push(j);
+        }
+      }
+    }
+
+    collisionGroups.push(group);
+  }
+
+  // For each collision group, assign columns
+  for (const group of collisionGroups) {
+    // Sort group by start time
+    group.sort((a, b) => positioned[a].startMinutes - positioned[b].startMinutes);
+
+    // Track which columns are occupied at what end times
+    const columns: { endMinutes: number }[] = [];
+
+    for (const idx of group) {
+      const entry = positioned[idx];
+
+      // Find the first column that's available (no overlap)
+      let assignedColumn = -1;
+      for (let col = 0; col < columns.length; col++) {
+        if (columns[col].endMinutes <= entry.startMinutes) {
+          assignedColumn = col;
+          columns[col].endMinutes = entry.endMinutes;
+          break;
+        }
+      }
+
+      // No available column, create a new one
+      if (assignedColumn === -1) {
+        assignedColumn = columns.length;
+        columns.push({ endMinutes: entry.endMinutes });
+      }
+
+      entry.column = assignedColumn;
+    }
+
+    // Set totalColumns for all entries in this group
+    const totalColumns = columns.length;
+    for (const idx of group) {
+      positioned[idx].totalColumns = totalColumns;
+    }
+  }
+
+  return positioned;
 }
 
 // ============================================================================
@@ -196,25 +317,34 @@ export function CalendarWeekView({
 
                 {/* Entries */}
                 <div className="absolute inset-0 p-0.5">
-                  {dayEntries.map((entry) => {
-                    const position = getEntryPosition(entry);
-                    if (!position) return null;
+                  {groupOverlappingEntries(dayEntries).map(
+                    ({ entry, top, column, totalColumns }) => {
+                      // Calculate width and left position for side-by-side layout
+                      const widthPercent = 100 / totalColumns;
+                      const leftPercent = column * widthPercent;
+                      // Add small gaps between columns
+                      const gapPx = totalColumns > 1 ? 1 : 0;
 
-                    return (
-                      <div
-                        key={entry.distribution_id}
-                        className="absolute left-0.5 right-0.5"
-                        style={{ top: position.top }}
-                      >
-                        <CalendarEntry
-                          entry={entry}
-                          onClick={() => onEntryClick(entry)}
-                          variant="compact"
-                          showTime={true}
-                        />
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div
+                          key={entry.distribution_id}
+                          className="absolute"
+                          style={{
+                            top,
+                            left: `calc(${leftPercent}% + 2px + ${column * gapPx}px)`,
+                            width: `calc(${widthPercent}% - 4px - ${gapPx}px)`,
+                          }}
+                        >
+                          <CalendarEntry
+                            entry={entry}
+                            onClick={() => onEntryClick(entry)}
+                            variant="compact"
+                            showTime={true}
+                          />
+                        </div>
+                      );
+                    }
+                  )}
                 </div>
               </div>
             );

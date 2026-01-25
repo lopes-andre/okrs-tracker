@@ -24,6 +24,7 @@ interface CalendarMonthViewProps {
   entriesByDay: Map<string, ContentCalendarEntry[]>;
   onEntryClick: (entry: ContentCalendarEntry) => void;
   onDayClick: (date: Date) => void;
+  onMoreClick?: (date: Date) => void;
 }
 
 // ============================================================================
@@ -41,6 +42,7 @@ export function CalendarMonthView({
   entriesByDay,
   onEntryClick,
   onDayClick,
+  onMoreClick,
 }: CalendarMonthViewProps) {
   // Calculate calendar grid days
   const calendarDays = useMemo(() => {
@@ -115,6 +117,7 @@ export function CalendarMonthView({
                   variant="compact"
                   showTime={false}
                   maxVisible={3}
+                  onMoreClick={onMoreClick ? () => onMoreClick(day) : undefined}
                 />
               </div>
             );

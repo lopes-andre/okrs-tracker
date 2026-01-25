@@ -30,6 +30,7 @@ interface CalendarEntryGroupProps {
   variant?: "compact" | "default" | "expanded";
   showTime?: boolean;
   maxVisible?: number;
+  onMoreClick?: () => void;
 }
 
 // ============================================================================
@@ -178,6 +179,7 @@ export function CalendarEntryGroup({
   variant = "default",
   showTime = true,
   maxVisible = 3,
+  onMoreClick,
 }: CalendarEntryGroupProps) {
   if (entries.length === 0) return null;
 
@@ -277,9 +279,21 @@ export function CalendarEntryGroup({
 
       {/* Hidden count */}
       {hiddenCount > 0 && (
-        <p className="text-[10px] text-text-muted text-center py-0.5">
-          +{hiddenCount} more
-        </p>
+        onMoreClick ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoreClick();
+            }}
+            className="w-full text-[10px] text-accent hover:text-accent-hover text-center py-0.5 hover:underline transition-colors"
+          >
+            +{hiddenCount} more
+          </button>
+        ) : (
+          <p className="text-[10px] text-text-muted text-center py-0.5">
+            +{hiddenCount} more
+          </p>
+        )
       )}
     </div>
   );
