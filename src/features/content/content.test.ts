@@ -351,3 +351,364 @@ describe("Platform Format Validation", () => {
     return formats.includes(format);
   }
 });
+
+// ============================================================================
+// CAPTION PERSISTENCE TESTS
+// ============================================================================
+
+/**
+ * Extract caption from distribution data.
+ * Priority: distribution.caption > platform_specific_data.caption > platform_specific_data.tweet_text > etc.
+ */
+function extractCaption(
+  distribution: {
+    caption: string | null;
+    platform_specific_data?: {
+      caption?: string;
+      tweet_text?: string;
+      video_description?: string;
+    } | null;
+  }
+): string {
+  const data = distribution.platform_specific_data || {};
+  return distribution.caption || data.caption || data.tweet_text || data.video_description || "";
+}
+
+describe("Caption Persistence", () => {
+  it("should prioritize distribution.caption over platform_specific_data", () => {
+    const distribution = {
+      caption: "Main caption from distribution column",
+      platform_specific_data: {
+        caption: "Legacy caption in platform data",
+      },
+    };
+    expect(extractCaption(distribution)).toBe("Main caption from distribution column");
+  });
+
+  it("should fallback to platform_specific_data.caption when distribution.caption is null", () => {
+    const distribution = {
+      caption: null,
+      platform_specific_data: {
+        caption: "Legacy caption in platform data",
+      },
+    };
+    expect(extractCaption(distribution)).toBe("Legacy caption in platform data");
+  });
+
+  it("should fallback to tweet_text for Twitter/X distributions", () => {
+    const distribution = {
+      caption: null,
+      platform_specific_data: {
+        tweet_text: "My tweet content",
+      },
+    };
+    expect(extractCaption(distribution)).toBe("My tweet content");
+  });
+
+  it("should fallback to video_description for YouTube distributions", () => {
+    const distribution = {
+      caption: null,
+      platform_specific_data: {
+        video_description: "Video description here",
+      },
+    };
+    expect(extractCaption(distribution)).toBe("Video description here");
+  });
+
+  it("should return empty string when no caption data is available", () => {
+    const distribution = {
+      caption: null,
+      platform_specific_data: {},
+    };
+    expect(extractCaption(distribution)).toBe("");
+  });
+
+  it("should handle null platform_specific_data", () => {
+    const distribution = {
+      caption: null,
+      platform_specific_data: null,
+    };
+    expect(extractCaption(distribution)).toBe("");
+  });
+});
+
+// ============================================================================
+// DIRTY STATE DETECTION TESTS
+// ============================================================================
+
+/**
+ * Compare distribution edit values against original values to detect real changes.
+ */
+function hasDistributionChanges(
+  editData: {
+    format?: string | null;
+    caption?: string | null;
+    scheduledDate?: string;
+    scheduledTime?: string;
+    platformPostUrl?: string | null;
+    internalNotes?: string | null;
+  },
+  original: {
+    format: string | null;
+    caption: string | null;
+    scheduled_at: string | null;
+    platform_post_url: string | null;
+    platform_specific_data?: { internal_notes?: string } | null;
+  }
+): boolean {
+  // Get original values for comparison
+  const origData = original.platform_specific_data || {};
+  let origScheduledDate = "";
+  let origScheduledTime = "";
+  if (original.scheduled_at) {
+    const date = new Date(original.scheduled_at);
+    origScheduledDate = date.toISOString().slice(0, 10);
+    origScheduledTime = date.toISOString().slice(11, 16);
+  }
+
+  // Compare each field
+  const formatChanged = (editData.format ?? null) !== (original.format ?? null);
+  const captionChanged = (editData.caption ?? null) !== (original.caption ?? null);
+  const dateChanged = (editData.scheduledDate ?? "") !== origScheduledDate;
+  const timeChanged = (editData.scheduledTime ?? "") !== origScheduledTime;
+  const urlChanged = (editData.platformPostUrl ?? null) !== (original.platform_post_url ?? null);
+  const notesChanged = (editData.internalNotes ?? null) !== (origData.internal_notes ?? null);
+
+  return formatChanged || captionChanged || dateChanged || timeChanged || urlChanged || notesChanged;
+}
+
+describe("Dirty State Detection", () => {
+  const originalDistribution = {
+    format: "post" as const,
+    caption: "Original caption",
+    scheduled_at: "2026-01-25T10:00:00.000Z",
+    platform_post_url: null,
+    platform_specific_data: {
+      internal_notes: "Some notes",
+    },
+  };
+
+  it("should detect no changes when values are the same", () => {
+    const editData = {
+      format: "post",
+      caption: "Original caption",
+      scheduledDate: "2026-01-25",
+      scheduledTime: "10:00",
+      platformPostUrl: null,
+      internalNotes: "Some notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(false);
+  });
+
+  it("should detect format change", () => {
+    const editData = {
+      format: "reel",
+      caption: "Original caption",
+      scheduledDate: "2026-01-25",
+      scheduledTime: "10:00",
+      platformPostUrl: null,
+      internalNotes: "Some notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(true);
+  });
+
+  it("should detect caption change", () => {
+    const editData = {
+      format: "post",
+      caption: "New caption",
+      scheduledDate: "2026-01-25",
+      scheduledTime: "10:00",
+      platformPostUrl: null,
+      internalNotes: "Some notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(true);
+  });
+
+  it("should detect date change", () => {
+    const editData = {
+      format: "post",
+      caption: "Original caption",
+      scheduledDate: "2026-01-26",
+      scheduledTime: "10:00",
+      platformPostUrl: null,
+      internalNotes: "Some notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(true);
+  });
+
+  it("should detect time change", () => {
+    const editData = {
+      format: "post",
+      caption: "Original caption",
+      scheduledDate: "2026-01-25",
+      scheduledTime: "11:00",
+      platformPostUrl: null,
+      internalNotes: "Some notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(true);
+  });
+
+  it("should detect internal notes change", () => {
+    const editData = {
+      format: "post",
+      caption: "Original caption",
+      scheduledDate: "2026-01-25",
+      scheduledTime: "10:00",
+      platformPostUrl: null,
+      internalNotes: "Updated notes",
+    };
+    expect(hasDistributionChanges(editData, originalDistribution)).toBe(true);
+  });
+
+  it("should handle null vs undefined correctly", () => {
+    const original = {
+      format: null,
+      caption: null,
+      scheduled_at: null,
+      platform_post_url: null,
+      platform_specific_data: null,
+    };
+    const editData = {
+      format: null,
+      caption: null,
+      scheduledDate: "",
+      scheduledTime: "",
+      platformPostUrl: null,
+      internalNotes: null,
+    };
+    expect(hasDistributionChanges(editData, original)).toBe(false);
+  });
+});
+
+// ============================================================================
+// DUPLICATE TASK PREVENTION TESTS
+// ============================================================================
+
+/**
+ * Check if performance check tasks should be created for a distribution.
+ */
+function shouldCreatePerformanceTasks(
+  createPerformanceCheckTasks: boolean,
+  scheduledAt: string | null,
+  isPosted: boolean,
+  platformData?: { performance_tasks_created?: boolean } | null
+): boolean {
+  // Don't create tasks if:
+  // - The toggle is off
+  // - No scheduled date
+  // - Not posted yet
+  // - Tasks were already created
+  const tasksAlreadyCreated = platformData?.performance_tasks_created === true;
+  return createPerformanceCheckTasks && !!scheduledAt && isPosted && !tasksAlreadyCreated;
+}
+
+describe("Duplicate Task Prevention", () => {
+  it("should allow task creation when all conditions are met and tasks not created yet", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, "2026-01-20T10:00:00Z", true, {})
+    ).toBe(true);
+  });
+
+  it("should prevent task creation when toggle is off", () => {
+    expect(
+      shouldCreatePerformanceTasks(false, "2026-01-20T10:00:00Z", true, {})
+    ).toBe(false);
+  });
+
+  it("should prevent task creation when no scheduled date", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, null, true, {})
+    ).toBe(false);
+  });
+
+  it("should prevent task creation when not posted yet", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, "2026-01-20T10:00:00Z", false, {})
+    ).toBe(false);
+  });
+
+  it("should prevent task creation when tasks were already created", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, "2026-01-20T10:00:00Z", true, {
+        performance_tasks_created: true,
+      })
+    ).toBe(false);
+  });
+
+  it("should handle undefined platform data", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, "2026-01-20T10:00:00Z", true, undefined)
+    ).toBe(true);
+  });
+
+  it("should handle null platform data", () => {
+    expect(
+      shouldCreatePerformanceTasks(true, "2026-01-20T10:00:00Z", true, null)
+    ).toBe(true);
+  });
+});
+
+// ============================================================================
+// OVERDUE DISTRIBUTION DETECTION TESTS
+// ============================================================================
+
+/**
+ * Check if a distribution is overdue (scheduled time has passed but status is still "scheduled")
+ */
+function isDistributionOverdue(
+  status: ContentDistributionStatus,
+  scheduledAt: string | null,
+  currentTime: Date
+): boolean {
+  if (status !== "scheduled") return false;
+  if (!scheduledAt) return false;
+  return new Date(scheduledAt) < currentTime;
+}
+
+describe("Overdue Distribution Detection", () => {
+  const now = new Date("2026-01-25T12:00:00Z");
+
+  it("should identify overdue scheduled distribution", () => {
+    expect(
+      isDistributionOverdue("scheduled", "2026-01-25T10:00:00Z", now)
+    ).toBe(true);
+  });
+
+  it("should not identify future scheduled distribution as overdue", () => {
+    expect(
+      isDistributionOverdue("scheduled", "2026-01-25T14:00:00Z", now)
+    ).toBe(false);
+  });
+
+  it("should not identify draft distribution as overdue", () => {
+    expect(
+      isDistributionOverdue("draft", "2026-01-25T10:00:00Z", now)
+    ).toBe(false);
+  });
+
+  it("should not identify posted distribution as overdue", () => {
+    expect(
+      isDistributionOverdue("posted", "2026-01-25T10:00:00Z", now)
+    ).toBe(false);
+  });
+
+  it("should not identify distribution without scheduled_at as overdue", () => {
+    expect(
+      isDistributionOverdue("scheduled", null, now)
+    ).toBe(false);
+  });
+
+  it("should handle exact boundary time", () => {
+    const exactTime = new Date("2026-01-25T10:00:00Z");
+    expect(
+      isDistributionOverdue("scheduled", "2026-01-25T10:00:00Z", exactTime)
+    ).toBe(false); // Not past yet, exactly at the time
+  });
+
+  it("should handle distribution scheduled exactly one second ago", () => {
+    const oneSecondLater = new Date("2026-01-25T10:00:01Z");
+    expect(
+      isDistributionOverdue("scheduled", "2026-01-25T10:00:00Z", oneSecondLater)
+    ).toBe(true);
+  });
+});

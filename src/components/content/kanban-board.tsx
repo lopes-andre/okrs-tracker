@@ -7,7 +7,7 @@ import { KanbanColumn } from "./kanban-column";
 import { PostCard } from "./post-card";
 import { PostDetailModal } from "./post-detail-modal";
 import { KanbanFilters, defaultFilters, type KanbanFilters as KanbanFiltersType } from "./kanban-filters";
-import { usePostsWithDetails, useAccountsWithPlatform, useToggleFavorite } from "@/features/content/hooks";
+import { usePostsWithDetails, useAccountsWithPlatform, useToggleFavorite, useAutoUpdateOverdueDistributions } from "@/features/content/hooks";
 import type { ContentPostWithDetails, ContentPostStatus, ContentGoal } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -65,6 +65,9 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
   const { data: posts, isLoading } = usePostsWithDetails(planId);
   const { data: accounts = [] } = useAccountsWithPlatform(planId);
   const toggleFavorite = useToggleFavorite(planId);
+
+  // Auto-update overdue distributions to "posted" status on page load
+  useAutoUpdateOverdueDistributions(planId, posts);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);

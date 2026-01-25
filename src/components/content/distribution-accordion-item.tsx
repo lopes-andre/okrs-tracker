@@ -49,6 +49,17 @@ import type {
 // TYPES
 // ============================================================================
 
+export interface DistributionEditData {
+  format?: string | null;
+  caption?: string | null;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  platformPostUrl?: string | null;
+  internalNotes?: string | null;
+  platformData?: PlatformSpecificData;
+  createPerformanceCheckTasks?: boolean;
+}
+
 interface DistributionAccordionItemProps {
   distribution: ContentDistribution & {
     account?: ContentAccountWithPlatform;
@@ -57,6 +68,10 @@ interface DistributionAccordionItemProps {
   postTitle?: string;
   isExpanded: boolean;
   onToggle: () => void;
+  // Controlled mode props (optional - if not provided, uses direct database updates)
+  editedValues?: DistributionEditData;
+  onUpdate?: (distributionId: string, updates: DistributionEditData) => void;
+  onDelete?: (distributionId: string) => void;
 }
 
 interface PlatformSpecificData {
@@ -97,6 +112,8 @@ interface PlatformSpecificData {
   preview_text?: string;
   audience_segment?: string;
   internal_notes?: string;
+  create_performance_check_tasks?: boolean;
+  performance_tasks_created?: boolean;
 }
 
 // ============================================================================
@@ -180,6 +197,9 @@ export function DistributionAccordionItem({
   postTitle,
   isExpanded,
   onToggle,
+  editedValues,
+  onUpdate,
+  onDelete,
 }: DistributionAccordionItemProps) {
   const contentId = useId();
   const updateDistribution = useUpdateDistribution(planId);
@@ -187,9 +207,11 @@ export function DistributionAccordionItem({
   const createTask = useCreateTask(planId);
   const hasAutoUpdated = useRef(false);
 
+  // Controlled mode: changes go to parent via onUpdate
+  const isControlled = !!onUpdate;
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
 
   // Check if distribution should be auto-marked as posted
   // (scheduled time has passed but status is still "scheduled")
@@ -228,46 +250,104 @@ export function DistributionAccordionItem({
   const StatusIcon = status.icon;
   const formats = formatOptions[platformName] || [];
 
-  // Form state
-  const [format, setFormat] = useState(distribution.format || "");
-  const [caption, setCaption] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
-  const [internalNotes, setInternalNotes] = useState("");
-  const [platformData, setPlatformData] = useState<PlatformSpecificData>({});
-  const [platformPostUrl, setPlatformPostUrl] = useState("");
-  const [createPerformanceCheckTasks, setCreatePerformanceCheckTasks] = useState(false);
+  // Form state - use editedValues in controlled mode, otherwise local state
+  const [localFormat, setLocalFormat] = useState(distribution.format || "");
+  const [localCaption, setLocalCaption] = useState("");
+  const [localScheduledDate, setLocalScheduledDate] = useState("");
+  const [localScheduledTime, setLocalScheduledTime] = useState("");
+  const [localInternalNotes, setLocalInternalNotes] = useState("");
+  const [localPlatformData, setLocalPlatformData] = useState<PlatformSpecificData>({});
+  const [localPlatformPostUrl, setLocalPlatformPostUrl] = useState("");
+  const [localCreatePerformanceCheckTasks, setLocalCreatePerformanceCheckTasks] = useState(true); // Default ON
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
 
-  // Initialize form when distribution changes or accordion expands
+  // Get current values - prefer editedValues in controlled mode
+  const format = isControlled && editedValues?.format !== undefined ? editedValues.format || "" : localFormat;
+  const caption = isControlled && editedValues?.caption !== undefined ? editedValues.caption || "" : localCaption;
+  const scheduledDate = isControlled && editedValues?.scheduledDate !== undefined ? editedValues.scheduledDate : localScheduledDate;
+  const scheduledTime = isControlled && editedValues?.scheduledTime !== undefined ? editedValues.scheduledTime : localScheduledTime;
+  const internalNotes = isControlled && editedValues?.internalNotes !== undefined ? editedValues.internalNotes || "" : localInternalNotes;
+  const platformData = isControlled && editedValues?.platformData !== undefined ? editedValues.platformData : localPlatformData;
+  const platformPostUrl = isControlled && editedValues?.platformPostUrl !== undefined ? editedValues.platformPostUrl || "" : localPlatformPostUrl;
+  const createPerformanceCheckTasks = isControlled && editedValues?.createPerformanceCheckTasks !== undefined ? editedValues.createPerformanceCheckTasks : localCreatePerformanceCheckTasks;
+
+  // Initialize local form state when distribution changes or accordion expands (uncontrolled mode only)
   useEffect(() => {
-    if (isExpanded) {
-      setFormat(distribution.format || "");
+    if (isExpanded && !isControlled) {
+      setLocalFormat(distribution.format || "");
       const data = (distribution.platform_specific_data || {}) as PlatformSpecificData;
-      setPlatformData(data);
-      setCaption(data.caption || data.tweet_text || data.video_description || "");
-      setInternalNotes(data.internal_notes || "");
-      setPlatformPostUrl(distribution.platform_post_url || "");
-      setCreatePerformanceCheckTasks(false);
-      setHasChanges(false);
+      setLocalPlatformData(data);
+      // Read caption from distribution.caption first, then fallback to platform_specific_data for legacy data
+      setLocalCaption(distribution.caption || data.caption || data.tweet_text || data.video_description || "");
+      setLocalInternalNotes(data.internal_notes || "");
+      setLocalPlatformPostUrl(distribution.platform_post_url || "");
+      // Check if tasks were already created for this distribution
+      const tasksAlreadyCreated = data.performance_tasks_created === true;
+      setLocalCreatePerformanceCheckTasks(!tasksAlreadyCreated); // Default ON only if not already created
+      setHasLocalChanges(false);
 
       if (distribution.scheduled_at) {
         const date = new Date(distribution.scheduled_at);
-        setScheduledDate(formatDate(date, "yyyy-MM-dd"));
-        setScheduledTime(formatDate(date, "HH:mm"));
+        setLocalScheduledDate(formatDate(date, "yyyy-MM-dd"));
+        setLocalScheduledTime(formatDate(date, "HH:mm"));
       } else {
-        setScheduledDate("");
-        setScheduledTime("");
+        setLocalScheduledDate("");
+        setLocalScheduledTime("");
       }
     }
-  }, [isExpanded, distribution]);
+  }, [isExpanded, distribution, isControlled]);
 
-  // Track changes
-  const handleFieldChange = useCallback(() => {
-    setHasChanges(true);
-  }, []);
+  // Initialize edited values in controlled mode when accordion expands
+  useEffect(() => {
+    if (isExpanded && isControlled && !editedValues) {
+      const data = (distribution.platform_specific_data || {}) as PlatformSpecificData;
+      let initScheduledDate = "";
+      let initScheduledTime = "";
+      if (distribution.scheduled_at) {
+        const date = new Date(distribution.scheduled_at);
+        initScheduledDate = formatDate(date, "yyyy-MM-dd");
+        initScheduledTime = formatDate(date, "HH:mm");
+      }
 
-  // Handle save
+      // Check if tasks were already created for this distribution
+      const tasksAlreadyCreated = data.performance_tasks_created === true;
+
+      onUpdate(distribution.id, {
+        format: distribution.format,
+        // Read caption from distribution.caption first, then fallback to platform_specific_data for legacy data
+        caption: distribution.caption || data.caption || data.tweet_text || data.video_description || null,
+        scheduledDate: initScheduledDate,
+        scheduledTime: initScheduledTime,
+        internalNotes: data.internal_notes || null,
+        platformData: data,
+        platformPostUrl: distribution.platform_post_url,
+        createPerformanceCheckTasks: !tasksAlreadyCreated, // Default ON only if not already created
+      });
+    }
+  }, [isExpanded, isControlled, editedValues, distribution, onUpdate]);
+
+  // Handle field updates
+  const handleFieldUpdate = useCallback((updates: Partial<DistributionEditData>) => {
+    if (isControlled) {
+      onUpdate(distribution.id, { ...editedValues, ...updates });
+    } else {
+      // Update local state
+      if (updates.format !== undefined) setLocalFormat(updates.format || "");
+      if (updates.caption !== undefined) setLocalCaption(updates.caption || "");
+      if (updates.scheduledDate !== undefined) setLocalScheduledDate(updates.scheduledDate);
+      if (updates.scheduledTime !== undefined) setLocalScheduledTime(updates.scheduledTime);
+      if (updates.internalNotes !== undefined) setLocalInternalNotes(updates.internalNotes || "");
+      if (updates.platformData !== undefined) setLocalPlatformData(updates.platformData);
+      if (updates.platformPostUrl !== undefined) setLocalPlatformPostUrl(updates.platformPostUrl || "");
+      if (updates.createPerformanceCheckTasks !== undefined) setLocalCreatePerformanceCheckTasks(updates.createPerformanceCheckTasks);
+      setHasLocalChanges(true);
+    }
+  }, [isControlled, distribution.id, editedValues, onUpdate]);
+
+  // Handle save (uncontrolled mode only)
   const handleSave = useCallback(async () => {
+    if (isControlled) return; // In controlled mode, parent handles saving
+
     setIsSaving(true);
     try {
       let scheduled_at: string | null = null;
@@ -275,9 +355,15 @@ export function DistributionAccordionItem({
         scheduled_at = new Date(`${scheduledDate}T${scheduledTime}`).toISOString();
       }
 
+      // Check if tasks were already created to prevent duplicates
+      const tasksAlreadyCreated = platformData.performance_tasks_created === true;
+      const shouldCreateTasks = createPerformanceCheckTasks && scheduled_at && postTitle && !tasksAlreadyCreated;
+
       const newPlatformData: PlatformSpecificData = {
         ...platformData,
         internal_notes: internalNotes || undefined,
+        // Mark tasks as created if we're about to create them
+        ...(shouldCreateTasks ? { performance_tasks_created: true } : {}),
       };
 
       let newStatus: ContentDistributionStatus = distribution.status;
@@ -297,9 +383,9 @@ export function DistributionAccordionItem({
         },
       });
 
-      // Create performance check tasks if enabled (1 week and 1 month after scheduled date)
-      if (createPerformanceCheckTasks && scheduled_at && postTitle) {
-        const scheduledDateObj = new Date(scheduled_at);
+      // Create performance check tasks if enabled and not already created
+      if (shouldCreateTasks) {
+        const scheduledDateObj = new Date(scheduled_at!);
 
         // 1 week performance check task
         const oneWeekLater = new Date(scheduledDateObj);
@@ -344,11 +430,12 @@ export function DistributionAccordionItem({
         });
       }
 
-      setHasChanges(false);
+      setHasLocalChanges(false);
     } finally {
       setIsSaving(false);
     }
   }, [
+    isControlled,
     distribution,
     format,
     caption,
@@ -367,9 +454,14 @@ export function DistributionAccordionItem({
 
   // Handle delete
   const handleConfirmDelete = useCallback(async () => {
-    await deleteDistribution.mutateAsync(distribution.id);
-    setShowDeleteDialog(false);
-  }, [distribution.id, deleteDistribution]);
+    if (isControlled && onDelete) {
+      onDelete(distribution.id);
+      setShowDeleteDialog(false);
+    } else {
+      await deleteDistribution.mutateAsync(distribution.id);
+      setShowDeleteDialog(false);
+    }
+  }, [isControlled, onDelete, distribution.id, deleteDistribution]);
 
   // Handle keyboard
   const handleKeyDown = useCallback(
@@ -482,10 +574,7 @@ export function DistributionAccordionItem({
               <Label className="text-small">Format</Label>
               <Select
                 value={format}
-                onValueChange={(v) => {
-                  setFormat(v);
-                  handleFieldChange();
-                }}
+                onValueChange={(v) => handleFieldUpdate({ format: v })}
               >
                 <SelectTrigger className="bg-bg-0">
                   <SelectValue placeholder="Select format..." />
@@ -512,10 +601,7 @@ export function DistributionAccordionItem({
             </Label>
             <Textarea
               value={caption}
-              onChange={(e) => {
-                setCaption(e.target.value);
-                handleFieldChange();
-              }}
+              onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
               placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
               rows={3}
               maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
@@ -553,11 +639,8 @@ export function DistributionAccordionItem({
               <div className="space-y-1.5">
                 <Label className="text-small">Video Title</Label>
                 <Input
-                  value={platformData.video_title || ""}
-                  onChange={(e) => {
-                    setPlatformData({ ...platformData, video_title: e.target.value });
-                    handleFieldChange();
-                  }}
+                  value={platformData?.video_title || ""}
+                  onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, video_title: e.target.value } })}
                   placeholder="Video title..."
                   className="bg-bg-0"
                 />
@@ -565,14 +648,8 @@ export function DistributionAccordionItem({
               <div className="space-y-1.5">
                 <Label className="text-small">Visibility</Label>
                 <Select
-                  value={platformData.visibility || "public"}
-                  onValueChange={(v) => {
-                    setPlatformData({
-                      ...platformData,
-                      visibility: v as "public" | "unlisted" | "private",
-                    });
-                    handleFieldChange();
-                  }}
+                  value={platformData?.visibility || "public"}
+                  onValueChange={(v) => handleFieldUpdate({ platformData: { ...platformData, visibility: v as "public" | "unlisted" | "private" } })}
                 >
                   <SelectTrigger className="bg-bg-0">
                     <SelectValue />
@@ -593,14 +670,8 @@ export function DistributionAccordionItem({
                 {platformName === "blog" ? "Slug" : "Preview Text"}
               </Label>
               <Input
-                value={platformName === "blog" ? platformData.slug || "" : platformData.preview_text || ""}
-                onChange={(e) => {
-                  setPlatformData({
-                    ...platformData,
-                    [platformName === "blog" ? "slug" : "preview_text"]: e.target.value,
-                  });
-                  handleFieldChange();
-                }}
+                value={platformName === "blog" ? platformData?.slug || "" : platformData?.preview_text || ""}
+                onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, [platformName === "blog" ? "slug" : "preview_text"]: e.target.value } })}
                 placeholder={platformName === "blog" ? "my-article-slug" : "Preview text..."}
                 className="bg-bg-0"
               />
@@ -612,11 +683,8 @@ export function DistributionAccordionItem({
               <div className="space-y-1.5">
                 <Label className="text-small">Episode Title</Label>
                 <Input
-                  value={platformData.episode_title || ""}
-                  onChange={(e) => {
-                    setPlatformData({ ...platformData, episode_title: e.target.value });
-                    handleFieldChange();
-                  }}
+                  value={platformData?.episode_title || ""}
+                  onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, episode_title: e.target.value } })}
                   placeholder="Episode title..."
                   className="bg-bg-0"
                 />
@@ -626,14 +694,8 @@ export function DistributionAccordionItem({
                   <Label className="text-small">Season #</Label>
                   <Input
                     type="number"
-                    value={platformData.season_number || ""}
-                    onChange={(e) => {
-                      setPlatformData({
-                        ...platformData,
-                        season_number: parseInt(e.target.value) || undefined,
-                      });
-                      handleFieldChange();
-                    }}
+                    value={platformData?.season_number || ""}
+                    onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, season_number: parseInt(e.target.value) || undefined } })}
                     placeholder="1"
                     className="bg-bg-0"
                   />
@@ -642,14 +704,8 @@ export function DistributionAccordionItem({
                   <Label className="text-small">Episode #</Label>
                   <Input
                     type="number"
-                    value={platformData.episode_number || ""}
-                    onChange={(e) => {
-                      setPlatformData({
-                        ...platformData,
-                        episode_number: parseInt(e.target.value) || undefined,
-                      });
-                      handleFieldChange();
-                    }}
+                    value={platformData?.episode_number || ""}
+                    onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, episode_number: parseInt(e.target.value) || undefined } })}
                     placeholder="1"
                     className="bg-bg-0"
                   />
@@ -676,19 +732,13 @@ export function DistributionAccordionItem({
               <Input
                 type="date"
                 value={scheduledDate}
-                onChange={(e) => {
-                  setScheduledDate(e.target.value);
-                  handleFieldChange();
-                }}
+                onChange={(e) => handleFieldUpdate({ scheduledDate: e.target.value })}
                 className="bg-bg-0"
               />
               <Input
                 type="time"
                 value={scheduledTime}
-                onChange={(e) => {
-                  setScheduledTime(e.target.value);
-                  handleFieldChange();
-                }}
+                onChange={(e) => handleFieldUpdate({ scheduledTime: e.target.value })}
                 className="bg-bg-0"
               />
             </div>
@@ -709,7 +759,7 @@ export function DistributionAccordionItem({
                 <Label className="text-small">Create performance check tasks</Label>
                 <p className="text-xs text-text-muted">Add tasks to check metrics at 1 week and 1 month</p>
               </div>
-              <Switch checked={createPerformanceCheckTasks} onCheckedChange={setCreatePerformanceCheckTasks} />
+              <Switch checked={createPerformanceCheckTasks} onCheckedChange={(checked) => handleFieldUpdate({ createPerformanceCheckTasks: checked })} />
             </div>
           )}
 
@@ -723,10 +773,7 @@ export function DistributionAccordionItem({
               <Input
                 type="url"
                 value={platformPostUrl}
-                onChange={(e) => {
-                  setPlatformPostUrl(e.target.value);
-                  handleFieldChange();
-                }}
+                onChange={(e) => handleFieldUpdate({ platformPostUrl: e.target.value })}
                 placeholder="https://..."
                 className="bg-bg-0"
               />
@@ -739,19 +786,16 @@ export function DistributionAccordionItem({
             <Label className="text-small">Internal Notes</Label>
             <Textarea
               value={internalNotes}
-              onChange={(e) => {
-                setInternalNotes(e.target.value);
-                handleFieldChange();
-              }}
+              onChange={(e) => handleFieldUpdate({ internalNotes: e.target.value })}
               placeholder="Notes for yourself..."
               rows={2}
               className="bg-bg-0"
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end pt-2 border-t border-border-soft">
-            {hasChanges && (
+          {/* Actions - only show in uncontrolled mode */}
+          {!isControlled && hasLocalChanges && (
+            <div className="flex items-center justify-end pt-2 border-t border-border-soft">
               <Button
                 size="sm"
                 onClick={handleSave}
@@ -761,8 +805,8 @@ export function DistributionAccordionItem({
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

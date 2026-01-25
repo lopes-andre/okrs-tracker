@@ -46,10 +46,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useCreateDistribution } from "@/features/content/hooks";
+import { format as formatDate, isPast } from "date-fns";
+import { usePost, useUpdatePost, useDeletePost, useCreatePost, useAddPostLink, useDeletePostLink, useUploadMedia, useCreateDistribution, useUpdateDistribution, useDeleteDistribution } from "@/features/content/hooks";
+import { useCreateTask } from "@/features/tasks/hooks";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { PostDistributionsTab } from "./post-distributions-tab";
+import type { DistributionEditData } from "./distribution-accordion-item";
 import { PostMetricsTab } from "./post-metrics-tab";
 import { MediaSection } from "./media-section";
 import { PendingMediaUpload } from "./pending-media-upload";
@@ -79,6 +82,9 @@ interface PendingDistribution {
   scheduledAt: string | null;
   postedAt: string | null;
   status: "draft" | "scheduled" | "posted";
+  platformPostUrl?: string | null;
+  internalNotes?: string | null;
+  createPerformanceCheckTasks?: boolean;
 }
 
 // ============================================================================
@@ -128,6 +134,9 @@ export function PostDetailModal({
   const deletePostLink = useDeletePostLink(planId);
   const uploadMedia = useUploadMedia(planId);
   const createDistribution = useCreateDistribution(planId);
+  const updateDistribution = useUpdateDistribution(planId);
+  const deleteDistributionMutation = useDeleteDistribution(planId);
+  const createTask = useCreateTask(planId);
   const { toast } = useToast();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,6 +164,10 @@ export function PostDetailModal({
   const [pendingMediaFiles, setPendingMediaFiles] = useState<File[]>([]);
   const [pendingLinks, setPendingLinks] = useState<PendingLink[]>([]);
   const [pendingDistributions, setPendingDistributions] = useState<PendingDistribution[]>([]);
+
+  // Edit mode distribution tracking (for unified save)
+  const [editedDistributions, setEditedDistributions] = useState<Record<string, DistributionEditData>>({});
+  const [deletedDistributionIds, setDeletedDistributionIds] = useState<string[]>([]);
 
   // Reset form when dialog opens or post changes
   useEffect(() => {
@@ -191,6 +204,9 @@ export function PostDetailModal({
       setShowAddLinkForm(false);
       setNewLinkUrl("");
       setNewLinkTitle("");
+      // Reset distribution edit tracking
+      setEditedDistributions({});
+      setDeletedDistributionIds([]);
     }
   }, [open, post, isEditing, initialStatus]);
 
@@ -201,7 +217,42 @@ export function PostDetailModal({
       const titleChanged = title !== initialTitle;
       const descriptionChanged = description !== initialDescription;
       const goalsChanged = JSON.stringify([...selectedGoalIds].sort()) !== JSON.stringify([...initialGoalIds].sort());
-      return titleChanged || descriptionChanged || goalsChanged;
+      const hasDistributionDeletes = deletedDistributionIds.length > 0;
+
+      // Check if any distribution has actual changes (compare edited values against original)
+      let hasDistributionEdits = false;
+      for (const [distributionId, editData] of Object.entries(editedDistributions)) {
+        const original = post?.distributions?.find(d => d.id === distributionId);
+        if (!original) {
+          hasDistributionEdits = true;
+          break;
+        }
+
+        // Get original values for comparison
+        const originalData = (original.platform_specific_data || {}) as Record<string, unknown>;
+        let origScheduledDate = "";
+        let origScheduledTime = "";
+        if (original.scheduled_at) {
+          const date = new Date(original.scheduled_at);
+          origScheduledDate = formatDate(date, "yyyy-MM-dd");
+          origScheduledTime = formatDate(date, "HH:mm");
+        }
+
+        // Compare each field
+        const formatChanged = (editData.format ?? null) !== (original.format ?? null);
+        const captionChanged = (editData.caption ?? null) !== (original.caption ?? originalData.caption ?? originalData.tweet_text ?? originalData.video_description ?? null);
+        const dateChanged = (editData.scheduledDate ?? "") !== origScheduledDate;
+        const timeChanged = (editData.scheduledTime ?? "") !== origScheduledTime;
+        const urlChanged = (editData.platformPostUrl ?? null) !== (original.platform_post_url ?? null);
+        const notesChanged = (editData.internalNotes ?? null) !== (originalData.internal_notes ?? null);
+
+        if (formatChanged || captionChanged || dateChanged || timeChanged || urlChanged || notesChanged) {
+          hasDistributionEdits = true;
+          break;
+        }
+      }
+
+      return titleChanged || descriptionChanged || goalsChanged || hasDistributionEdits || hasDistributionDeletes;
     } else {
       // For new posts: check if any content has been added
       const hasTitle = title.trim().length > 0;
@@ -212,7 +263,7 @@ export function PostDetailModal({
       const hasDistributions = pendingDistributions.length > 0;
       return hasTitle || hasDescription || hasGoals || hasMedia || hasLinks || hasDistributions;
     }
-  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingLinks, pendingDistributions]);
+  }, [isEditing, title, description, selectedGoalIds, initialTitle, initialDescription, initialGoalIds, pendingMediaFiles, pendingLinks, pendingDistributions, editedDistributions, deletedDistributionIds, post?.distributions]);
 
   // Handle close request (intercept to check for unsaved changes)
   const handleCloseRequest = useCallback((openState: boolean) => {
@@ -278,6 +329,24 @@ export function PostDetailModal({
     setPendingDistributions(prev => prev.filter(d => d.id !== id));
   }, []);
 
+  // Handlers for editing existing distributions (edit mode)
+  const handleDistributionUpdate = useCallback((distributionId: string, updates: DistributionEditData) => {
+    setEditedDistributions(prev => ({
+      ...prev,
+      [distributionId]: updates,
+    }));
+  }, []);
+
+  const handleDistributionDelete = useCallback((distributionId: string) => {
+    setDeletedDistributionIds(prev => [...prev, distributionId]);
+    // Also remove from edited distributions
+    setEditedDistributions(prev => {
+      const next = { ...prev };
+      delete next[distributionId];
+      return next;
+    });
+  }, []);
+
   // Handle adding a link
   const handleAddLink = useCallback(async () => {
     if (!postId || !newLinkUrl.trim()) return;
@@ -324,6 +393,142 @@ export function PostDetailModal({
           },
           goalIds: selectedGoalIds,
         });
+
+        // Delete removed distributions
+        for (const distributionId of deletedDistributionIds) {
+          try {
+            await deleteDistributionMutation.mutateAsync(distributionId);
+          } catch (err) {
+            console.error("Failed to delete distribution:", err);
+          }
+        }
+
+        // Update edited distributions
+        for (const [distributionId, editData] of Object.entries(editedDistributions)) {
+          try {
+            // Build scheduled_at from date and time if both are present
+            let scheduledAt: string | null = null;
+            let computedStatus: "draft" | "scheduled" | "posted" = "draft";
+            let postedAt: string | null = null;
+
+            if (editData.scheduledDate && editData.scheduledTime) {
+              const scheduledDateTime = new Date(`${editData.scheduledDate}T${editData.scheduledTime}`);
+              scheduledAt = scheduledDateTime.toISOString();
+              if (isPast(scheduledDateTime)) {
+                computedStatus = "posted";
+                postedAt = scheduledAt;
+              } else {
+                computedStatus = "scheduled";
+              }
+            }
+
+            // Build platform_specific_data
+            const platformSpecificData: Record<string, unknown> = {};
+            if (editData.internalNotes) {
+              platformSpecificData.internal_notes = editData.internalNotes;
+            }
+            if (editData.platformData) {
+              Object.assign(platformSpecificData, editData.platformData);
+            }
+            if (editData.createPerformanceCheckTasks !== undefined) {
+              platformSpecificData.create_performance_check_tasks = editData.createPerformanceCheckTasks;
+            }
+
+            await updateDistribution.mutateAsync({
+              distributionId,
+              updates: {
+                format: editData.format ?? null,
+                caption: editData.caption ?? null,
+                scheduled_at: scheduledAt,
+                posted_at: postedAt,
+                status: computedStatus,
+                platform_post_url: editData.platformPostUrl ?? null,
+                platform_specific_data: platformSpecificData,
+              },
+            });
+
+            // Create performance check tasks if enabled, has scheduled date, and is posted
+            // IMPORTANT: Only create tasks if they haven't already been created (prevent duplicates)
+            const tasksAlreadyCreated = editData.platformData?.performance_tasks_created === true;
+            if (editData.createPerformanceCheckTasks && scheduledAt && computedStatus === "posted" && !tasksAlreadyCreated) {
+              // Find the distribution to get account info
+              const distribution = post?.distributions?.find(d => d.id === distributionId);
+              const account = distribution?.account;
+              const platformDisplayName = account?.platform?.display_name || "Platform";
+              const accountName = account?.account_name || "Account";
+
+              const scheduledDateObj = new Date(scheduledAt);
+
+              // 1 week performance check task
+              const oneWeekLater = new Date(scheduledDateObj);
+              oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+              try {
+                await createTask.mutateAsync({
+                  title: `1-week check: ${title.trim()} on ${platformDisplayName}`,
+                  description: `Check performance metrics for "${title.trim()}" posted to ${accountName} on ${platformDisplayName}. Look at engagement, reach, and any early insights.`,
+                  status: "pending",
+                  priority: "low",
+                  effort: "light",
+                  due_date: formatDate(oneWeekLater, "yyyy-MM-dd"),
+                  due_time: null,
+                  objective_id: null,
+                  annual_kr_id: null,
+                  quarter_target_id: null,
+                  assigned_to: null,
+                  reminder_enabled: true,
+                  sort_order: 0,
+                  is_recurring: false,
+                  recurring_master_id: null,
+                });
+              } catch {
+                // Task creation failure is not critical
+              }
+
+              // 1 month performance check task
+              const oneMonthLater = new Date(scheduledDateObj);
+              oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+              try {
+                await createTask.mutateAsync({
+                  title: `1-month check: ${title.trim()} on ${platformDisplayName}`,
+                  description: `Review final performance metrics for "${title.trim()}" posted to ${accountName} on ${platformDisplayName}. Document learnings and compare to goals.`,
+                  status: "pending",
+                  priority: "low",
+                  effort: "light",
+                  due_date: formatDate(oneMonthLater, "yyyy-MM-dd"),
+                  due_time: null,
+                  objective_id: null,
+                  annual_kr_id: null,
+                  quarter_target_id: null,
+                  assigned_to: null,
+                  reminder_enabled: true,
+                  sort_order: 0,
+                  is_recurring: false,
+                  recurring_master_id: null,
+                });
+              } catch {
+                // Task creation failure is not critical
+              }
+
+              // Mark tasks as created to prevent duplicates on future saves
+              try {
+                await updateDistribution.mutateAsync({
+                  distributionId,
+                  updates: {
+                    platform_specific_data: {
+                      ...platformSpecificData,
+                      performance_tasks_created: true,
+                    },
+                  },
+                });
+              } catch {
+                // Non-critical
+              }
+            }
+          } catch (err) {
+            console.error("Failed to update distribution:", err);
+          }
+        }
+
         // Close the modal after saving
         onOpenChange(false);
       } else {
@@ -370,6 +575,23 @@ export function PostDetailModal({
         // Create pending distributions
         for (const dist of pendingDistributions) {
           try {
+            // Get account info for task creation
+            const account = accounts.find(a => a.id === dist.accountId);
+            const platformDisplayName = account?.platform?.display_name || "Platform";
+            const accountName = account?.account_name || "Account";
+
+            // Determine if tasks will be created (to mark in platform_specific_data)
+            const willCreateTasks = dist.createPerformanceCheckTasks && dist.scheduledAt;
+
+            const platformSpecificData: Record<string, unknown> = {};
+            if (dist.internalNotes) {
+              platformSpecificData.internal_notes = dist.internalNotes;
+            }
+            if (willCreateTasks) {
+              // Mark that tasks will be created to prevent duplicates on future edits
+              platformSpecificData.performance_tasks_created = true;
+            }
+
             const distributionData: ContentDistributionInsert = {
               post_id: newPost.id,
               account_id: dist.accountId,
@@ -378,11 +600,66 @@ export function PostDetailModal({
               caption: dist.caption,
               scheduled_at: dist.scheduledAt,
               posted_at: dist.postedAt,
-              platform_post_url: null,
-              platform_specific_data: {},
+              platform_post_url: dist.platformPostUrl || null,
+              platform_specific_data: platformSpecificData,
               linked_task_id: null,
             };
             await createDistribution.mutateAsync(distributionData);
+
+            // Create performance check tasks if enabled and has scheduled date
+            if (willCreateTasks) {
+              const scheduledDateObj = new Date(dist.scheduledAt!);
+
+              // 1 week performance check task
+              const oneWeekLater = new Date(scheduledDateObj);
+              oneWeekLater.setDate(oneWeekLater.getDate() + 7);
+              try {
+                await createTask.mutateAsync({
+                  title: `1-week check: ${title.trim()} on ${platformDisplayName}`,
+                  description: `Check performance metrics for "${title.trim()}" posted to ${accountName} on ${platformDisplayName}. Look at engagement, reach, and any early insights.`,
+                  status: "pending",
+                  priority: "low",
+                  effort: "light",
+                  due_date: formatDate(oneWeekLater, "yyyy-MM-dd"),
+                  due_time: null,
+                  objective_id: null,
+                  annual_kr_id: null,
+                  quarter_target_id: null,
+                  assigned_to: null,
+                  reminder_enabled: true,
+                  sort_order: 0,
+                  is_recurring: false,
+                  recurring_master_id: null,
+                });
+              } catch {
+                // Task creation failure is not critical
+              }
+
+              // 1 month performance check task
+              const oneMonthLater = new Date(scheduledDateObj);
+              oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+              try {
+                await createTask.mutateAsync({
+                  title: `1-month check: ${title.trim()} on ${platformDisplayName}`,
+                  description: `Review final performance metrics for "${title.trim()}" posted to ${accountName} on ${platformDisplayName}. Document learnings and compare to goals.`,
+                  status: "pending",
+                  priority: "low",
+                  effort: "light",
+                  due_date: formatDate(oneMonthLater, "yyyy-MM-dd"),
+                  due_time: null,
+                  objective_id: null,
+                  annual_kr_id: null,
+                  quarter_target_id: null,
+                  assigned_to: null,
+                  reminder_enabled: true,
+                  sort_order: 0,
+                  is_recurring: false,
+                  recurring_master_id: null,
+                });
+              } catch {
+                // Task creation failure is not critical
+              }
+            }
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Unknown error";
             console.error("Failed to create distribution:", errorMessage, err);
@@ -404,7 +681,7 @@ export function PostDetailModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution, toast]);
+  }, [title, description, status, selectedGoalIds, isEditing, postId, createPost, updatePost, onOpenChange, computedStatus, pendingMediaFiles, pendingLinks, pendingDistributions, uploadMedia, addPostLink, createDistribution, createTask, accounts, toast, deletedDistributionIds, editedDistributions, deleteDistributionMutation, updateDistribution, post?.distributions]);
 
   // Handle save and close (called from confirmation dialog)
   const handleSaveAndClose = useCallback(async () => {
@@ -806,6 +1083,10 @@ export function PostDetailModal({
                     post={post}
                     accounts={accounts}
                     planId={planId}
+                    editedDistributions={editedDistributions}
+                    onDistributionUpdate={handleDistributionUpdate}
+                    deletedDistributionIds={deletedDistributionIds}
+                    onDistributionDelete={handleDistributionDelete}
                   />
                 ) : (
                   <PendingDistributionsTab

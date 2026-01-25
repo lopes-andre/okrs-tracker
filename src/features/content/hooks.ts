@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { isPast } from "date-fns";
 import { queryKeys } from "@/lib/query-client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage } from "@/lib/toast-utils";
@@ -21,6 +23,7 @@ import type {
   ContentCampaignCheckinInsert,
   ContentPostFilters,
   ContentCampaignFilters,
+  ContentPostWithDetails,
 } from "@/lib/supabase/types";
 
 // ============================================================================
@@ -280,6 +283,92 @@ export function usePostsWithDetails(planId: string) {
     queryFn: () => api.getPostsWithDetails(planId),
     enabled: !!planId,
   });
+}
+
+/**
+ * Auto-update overdue distributions to "posted" status.
+ * This hook should be called once on page load to ensure distributions
+ * that have passed their scheduled time are marked as posted.
+ */
+export function useAutoUpdateOverdueDistributions(planId: string, posts: ContentPostWithDetails[] | undefined) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const hasCheckedRef = useRef<Set<string>>(new Set());
+
+  const updateOverdueDistributions = useCallback(async () => {
+    if (!posts) return;
+
+    // Find all overdue distributions (scheduled but past their time)
+    const overdueDistributions: Array<{
+      id: string;
+      scheduledAt: string;
+      postTitle: string;
+      platformName: string;
+    }> = [];
+
+    for (const post of posts) {
+      if (!post.distributions) continue;
+
+      for (const dist of post.distributions) {
+        // Skip if already checked in this session
+        if (hasCheckedRef.current.has(dist.id)) continue;
+
+        // Check if overdue
+        if (
+          dist.status === "scheduled" &&
+          dist.scheduled_at &&
+          isPast(new Date(dist.scheduled_at))
+        ) {
+          overdueDistributions.push({
+            id: dist.id,
+            scheduledAt: dist.scheduled_at,
+            postTitle: post.title || "Untitled",
+            platformName: dist.account?.platform?.display_name || "Platform",
+          });
+        }
+
+        // Mark as checked
+        hasCheckedRef.current.add(dist.id);
+      }
+    }
+
+    // Update all overdue distributions
+    if (overdueDistributions.length > 0) {
+      let updatedCount = 0;
+
+      for (const dist of overdueDistributions) {
+        try {
+          await api.updateDistribution(dist.id, {
+            status: "posted",
+            posted_at: dist.scheduledAt, // Use scheduled time as posted time
+          });
+          updatedCount++;
+        } catch (err) {
+          console.error(`Failed to auto-update distribution ${dist.id}:`, err);
+        }
+      }
+
+      // Show toast notification
+      if (updatedCount > 0) {
+        toast({
+          title: `${updatedCount} distribution${updatedCount > 1 ? "s" : ""} marked as posted`,
+          description: updatedCount === 1
+            ? `"${overdueDistributions[0].postTitle}" on ${overdueDistributions[0].platformName}`
+            : `${updatedCount} scheduled posts have passed their scheduled time`,
+          variant: "success",
+        });
+
+        // Invalidate queries to refresh the data
+        queryClient.invalidateQueries({ queryKey: queryKeys.content.posts.all });
+        queryClient.invalidateQueries({ queryKey: queryKeys.content.distributions.all });
+      }
+    }
+  }, [posts, queryClient, toast]);
+
+  // Run auto-update when posts data changes
+  useEffect(() => {
+    updateOverdueDistributions();
+  }, [updateOverdueDistributions]);
 }
 
 /**
