@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import { format, isPast } from "date-fns";
 import {
   Calendar,
@@ -9,6 +9,7 @@ import {
   Send,
   Star,
   Loader2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -23,8 +24,12 @@ import type { ContentPostWithDetails } from "@/lib/supabase/types";
 
 interface PostCardProps {
   post: ContentPostWithDetails;
+  position?: number;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
   onClick?: () => void;
   onToggleFavorite?: (postId: string, isFavorite: boolean) => void;
+  onToggleSelect?: (postId: string) => void;
 }
 
 // ============================================================================
@@ -142,7 +147,7 @@ function FavoriteStar({ isFavorite, onToggle }: FavoriteStarProps) {
  * 3. If no images or video thumbnails, no cover photo
  * PDFs and video links without thumbnails are NOT used as cover photos
  */
-function CoverImage({ post }: { post: ContentPostWithDetails }) {
+const CoverImage = memo(function CoverImage({ post }: { post: ContentPostWithDetails }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -225,7 +230,23 @@ function CoverImage({ post }: { post: ContentPostWithDetails }) {
       onError={() => setHasError(true)}
     />
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if the media array changes (compare by first image URL)
+  const prevMedia = prevProps.post.media || [];
+  const nextMedia = nextProps.post.media || [];
+
+  // Compare the cover image candidate
+  const prevFirst = prevMedia.find(m =>
+    (m.media_type === "image" || m.file_type === "image" || m.mime_type?.startsWith("image/")) &&
+    !(m.is_external || m.media_type === "video_link")
+  );
+  const nextFirst = nextMedia.find(m =>
+    (m.media_type === "image" || m.file_type === "image" || m.mime_type?.startsWith("image/")) &&
+    !(m.is_external || m.media_type === "video_link")
+  );
+
+  return prevFirst?.file_url === nextFirst?.file_url;
+});
 
 // ============================================================================
 // PLATFORM ICON WITH COUNT BADGE
@@ -316,7 +337,15 @@ function ScheduledDatesDisplay({
 // MAIN COMPONENT
 // ============================================================================
 
-export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
+export const PostCard = memo(function PostCard({
+  post,
+  position,
+  isSelected = false,
+  isSelectionMode = false,
+  onClick,
+  onToggleFavorite,
+  onToggleSelect,
+}: PostCardProps) {
   // Count distributions by platform
   const platformCounts = post.distributions?.reduce(
     (acc, dist) => {
@@ -351,13 +380,30 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
     onToggleFavorite?.(post.id, !post.is_favorite);
   }, [post.id, post.is_favorite, onToggleFavorite]);
 
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (isSelectionMode) {
+      e.preventDefault();
+      onToggleSelect?.(post.id);
+    } else {
+      onClick?.();
+    }
+  }, [isSelectionMode, onClick, onToggleSelect, post.id]);
+
+  const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleSelect?.(post.id);
+  }, [onToggleSelect, post.id]);
+
   return (
     <div
       className={cn(
-        "bg-bg-0 rounded-card border border-border-soft overflow-hidden",
-        "hover:border-border hover:shadow-sm transition-all cursor-pointer"
+        "bg-bg-0 rounded-card border overflow-hidden",
+        "hover:shadow-sm transition-all cursor-pointer",
+        isSelected
+          ? "border-accent ring-1 ring-accent"
+          : "border-border-soft hover:border-border"
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {/* Cover Image - full width, no padding */}
       {hasImageMedia && (
@@ -368,8 +414,26 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
 
       {/* Card Content - has padding */}
       <div className="p-3">
-        {/* Title Row with Favorite Star */}
+        {/* Title Row with Selection/Position & Favorite Star */}
         <div className="flex items-start gap-2 mb-2">
+          {/* Selection checkbox or position indicator */}
+          {isSelectionMode ? (
+            <button
+              onClick={handleCheckboxClick}
+              className={cn(
+                "flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors",
+                isSelected
+                  ? "bg-accent border-accent text-white"
+                  : "border-border-soft hover:border-accent"
+              )}
+            >
+              {isSelected && <Check className="w-3 h-3" />}
+            </button>
+          ) : position !== undefined ? (
+            <span className="flex-shrink-0 w-5 h-5 rounded bg-bg-1 text-text-muted text-[10px] font-medium flex items-center justify-center">
+              {position}
+            </span>
+          ) : null}
           <h4 className="flex-1 font-medium text-body-sm line-clamp-2">
             {post.title || "Untitled Post"}
           </h4>
@@ -466,4 +530,4 @@ export function PostCard({ post, onClick, onToggleFavorite }: PostCardProps) {
       </div>
     </div>
   );
-}
+});

@@ -996,10 +996,21 @@ export async function uploadMediaFile(
   return mediaRecord;
 }
 
+// Cache for signed URLs to prevent re-fetching on re-renders
+// Cache expires after 30 minutes (half of the 1 hour signed URL lifetime)
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
- * Get signed URL for a media file
+ * Get signed URL for a media file (cached)
  */
 export async function getMediaSignedUrl(path: string): Promise<string> {
+  // Check cache first
+  const cached = signedUrlCache.get(path);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.url;
+  }
+
   const supabase = createClient();
   const { data, error } = await supabase.storage
     .from("content-media")
@@ -1009,6 +1020,13 @@ export async function getMediaSignedUrl(path: string): Promise<string> {
     const errorMessage = error.message || String(error);
     throw new StorageError(errorMessage || "Failed to get signed URL.");
   }
+
+  // Cache the URL
+  signedUrlCache.set(path, {
+    url: data.signedUrl,
+    expiresAt: Date.now() + CACHE_DURATION_MS,
+  });
+
   return data.signedUrl;
 }
 
