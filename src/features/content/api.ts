@@ -1181,6 +1181,81 @@ class StorageError extends Error {
   }
 }
 
+// Allowed file extensions for upload (security)
+const ALLOWED_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "svg", // Images
+  "mp4", "webm", "mov", "avi", // Videos
+  "pdf", // Documents
+]);
+
+// Allowed MIME types (must match extension)
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml",
+  "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo",
+  "application/pdf",
+]);
+
+// Maximum file size (50MB)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+/**
+ * Sanitize filename to prevent path traversal and special character issues
+ */
+function sanitizeFilename(filename: string): string {
+  // Remove path separators and special characters
+  return filename
+    .replace(/[/\\:*?"<>|]/g, "_") // Replace dangerous chars with underscore
+    .replace(/\.{2,}/g, ".") // Prevent multiple dots (path traversal)
+    .trim();
+}
+
+/**
+ * Validate file before upload
+ */
+function validateUploadFile(file: File): { ext: string; error?: string } {
+  // Check file size
+  if (file.size > MAX_FILE_SIZE) {
+    return { ext: "", error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` };
+  }
+
+  // Extract and validate extension
+  const nameParts = file.name.split(".");
+  if (nameParts.length < 2) {
+    return { ext: "", error: "File must have an extension." };
+  }
+  const ext = nameParts.pop()?.toLowerCase() || "";
+
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return { ext: "", error: `File type .${ext} is not allowed. Allowed types: ${Array.from(ALLOWED_EXTENSIONS).join(", ")}.` };
+  }
+
+  // Validate MIME type
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    return { ext: "", error: `MIME type ${file.type} is not allowed.` };
+  }
+
+  // Cross-check MIME type matches extension
+  const mimeToExt: Record<string, string[]> = {
+    "image/jpeg": ["jpg", "jpeg"],
+    "image/png": ["png"],
+    "image/gif": ["gif"],
+    "image/webp": ["webp"],
+    "image/svg+xml": ["svg"],
+    "video/mp4": ["mp4"],
+    "video/webm": ["webm"],
+    "video/quicktime": ["mov"],
+    "video/x-msvideo": ["avi"],
+    "application/pdf": ["pdf"],
+  };
+
+  const expectedExts = mimeToExt[file.type];
+  if (expectedExts && !expectedExts.includes(ext)) {
+    return { ext: "", error: `File extension .${ext} does not match MIME type ${file.type}.` };
+  }
+
+  return { ext };
+}
+
 /**
  * Upload media file for a content post
  */
@@ -1191,9 +1266,14 @@ export async function uploadMediaFile(
 ): Promise<ContentPostMedia> {
   const supabase = createClient();
 
-  // Generate path
-  const ext = file.name.split(".").pop();
-  const fileName = `${Date.now()}.${ext}`;
+  // Validate file before upload
+  const validation = validateUploadFile(file);
+  if (validation.error) {
+    throw new StorageError(validation.error);
+  }
+
+  // Generate secure path with validated extension
+  const fileName = `${Date.now()}.${validation.ext}`;
   const storagePath = `${planId}/${postId}/${fileName}`;
 
   // Upload file to storage
@@ -1237,13 +1317,13 @@ export async function uploadMediaFile(
     : file.type === "application/pdf" ? "pdf"
     : "other";
 
-  // Create database record
+  // Create database record with sanitized filename
   const { data: mediaRecord, error: insertError } = await supabase
     .from("content_post_media")
     .insert({
       post_id: postId,
       file_url: data.path,
-      file_name: file.name,
+      file_name: sanitizeFilename(file.name),
       file_type: fileTypeCategory,
       file_size: file.size,
       mime_type: file.type,
