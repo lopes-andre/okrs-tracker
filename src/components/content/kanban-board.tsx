@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { Plus, Loader2, BookOpen, CheckSquare, X, Trash2, Star } from "lucide-react";
 import {
@@ -28,7 +28,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { KanbanColumn } from "./kanban-column";
 import { PostCard } from "./post-card";
-import { PostDetailModal } from "./post-detail-modal";
+
+// Lazy load heavy modal component
+const PostDetailModal = lazy(() =>
+  import("./post-detail-modal").then((mod) => ({ default: mod.PostDetailModal }))
+);
 import { KanbanFilters, defaultFilters, type KanbanFilters as KanbanFiltersType } from "./kanban-filters";
 import { usePostsWithDetails, useAccountsWithPlatform, useToggleFavorite, useAutoUpdateOverdueDistributions, useReorderPosts, useDeletePost } from "@/features/content/hooks";
 import type { ContentPostWithDetails, ContentPostStatus, ContentGoal } from "@/lib/supabase/types";
@@ -674,17 +678,22 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         </div>
       </DndContext>
 
-      <PostDetailModal
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        planId={planId}
-        postId={selectedPostId}
-        goals={goals}
-        accounts={accounts}
-        initialStatus={initialStatus}
-        positionInfo={positionInfo}
-        onPositionChange={handlePositionChange}
-      />
+      {/* Lazy load modal only when dialog is open */}
+      {dialogOpen && (
+        <Suspense fallback={null}>
+          <PostDetailModal
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            planId={planId}
+            postId={selectedPostId}
+            goals={goals}
+            accounts={accounts}
+            initialStatus={initialStatus}
+            positionInfo={positionInfo}
+            onPositionChange={handlePositionChange}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

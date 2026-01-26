@@ -20,7 +20,7 @@ export function useAnalyticsData(planId: string, year: number) {
     queryKey: [...queryKeys.objectives.list(planId), "analytics", year],
     queryFn: () => api.getAnalyticsData(planId),
     enabled: !!planId,
-    staleTime: 30000, // 30 seconds - analytics can be slightly stale
+    staleTime: 2 * 60 * 1000, // 2 minutes - analytics computation is expensive
   });
 }
 

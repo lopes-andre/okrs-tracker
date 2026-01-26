@@ -81,6 +81,7 @@ export function useAccounts(planId: string) {
     queryKey: queryKeys.content.accounts.list(planId),
     queryFn: () => api.getAccounts(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - accounts don't change frequently
   });
 }
 
@@ -92,6 +93,7 @@ export function useAccountsWithPlatform(planId: string) {
     queryKey: queryKeys.content.accounts.list(planId),
     queryFn: () => api.getAccountsWithPlatform(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - accounts don't change frequently
   });
 }
 
@@ -183,6 +185,7 @@ export function useGoals(planId: string) {
     queryKey: queryKeys.content.goals.list(planId),
     queryFn: () => api.getGoals(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - goals don't change frequently
   });
 }
 

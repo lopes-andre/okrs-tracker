@@ -442,6 +442,7 @@ function ThumbnailImage({ item }: { item: ContentPostMedia }) {
       src={url}
       alt={item.file_name}
       className="w-full h-full object-cover"
+      loading="lazy"
     />
   );
 }
