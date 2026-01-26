@@ -194,8 +194,9 @@ Activity events reference task_id. We have two options:
 |------|-------------|-------------|--------|
 | `supabase/migrations/027_task_visibility_by_role.sql` | CREATE | New migration for RLS policy | ✅ Done |
 | `src/features/timeline/api.ts` | MODIFY | Filter activity by task visibility | N/A (handled at RLS level) |
-| `src/components/tasks/TaskRow.tsx` | MINOR | Update empty state messaging | TODO |
-| `src/app/plans/[planId]/tasks/page.tsx` | MINOR | Update empty state for non-owners | TODO |
+| `src/components/tasks/TaskRow.tsx` | MINOR | Update empty state messaging | N/A |
+| `src/app/plans/[planId]/tasks/page.tsx` | MINOR | Update empty state for non-owners | ✅ Done |
+| `src/app/plans/[planId]/tasks/logbook/page.tsx` | MINOR | Update logbook for non-owners | ✅ Done |
 
 ### 2.3.1 Tables Updated in Migration
 
@@ -215,8 +216,8 @@ Activity events reference task_id. We have two options:
 1. ✅ **Create migration file** with new RLS policies (`027_task_visibility_by_role.sql`)
 2. **Test RLS in isolation** via Supabase SQL editor
 3. ✅ **Update activity log filtering** (Option B implemented in migration)
-4. **Update UI empty states** (optional polish)
-5. **Run full test suite**
+4. ✅ **Update UI empty states** for non-owners ("My Tasks" vs "Tasks")
+5. ✅ **Run full test suite** - All 1265 tests pass
 6. **Manual testing with owner and member accounts**
 
 ---
