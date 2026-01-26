@@ -247,3 +247,83 @@ export function useIsRecurringTask(taskId: string | null) {
     enabled: !!taskId,
   });
 }
+
+/**
+ * Update tags for recurring task with scope support
+ */
+export function useUpdateRecurringTaskTags(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      tagIds,
+      scope,
+    }: {
+      taskId: string;
+      tagIds: string[];
+      scope: "this" | "future" | "all";
+    }) => api.updateRecurringTaskTags(taskId, tagIds, scope),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tags.list(planId) });
+
+      const scopeText =
+        variables.scope === "this"
+          ? "This task"
+          : variables.scope === "future"
+          ? "This and future tasks"
+          : "All tasks in series";
+      toast({
+        title: "Tags updated",
+        description: scopeText + " updated",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Update assignees for recurring task with scope support
+ */
+export function useUpdateRecurringTaskAssignees(planId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      userIds,
+      scope,
+    }: {
+      taskId: string;
+      userIds: string[];
+      scope: "this" | "future" | "all";
+    }) => api.updateRecurringTaskAssignees(taskId, userIds, scope),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.timeline.list(planId) });
+
+      const scopeText =
+        variables.scope === "this"
+          ? "This task"
+          : variables.scope === "future"
+          ? "This and future tasks"
+          : "All tasks in series";
+      toast({
+        title: "Assignees updated",
+        description: scopeText + " updated",
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      toast(formatErrorMessage(error));
+    },
+  });
+}

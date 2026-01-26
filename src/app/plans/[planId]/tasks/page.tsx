@@ -49,7 +49,13 @@ import {
   useBulkAddTagToTasks,
   useBulkRemoveTagFromTasks,
 } from "@/features/tasks/hooks";
-import { useCreateRecurringTask, useUpdateRecurringTask, useDeleteRecurringTask } from "@/features/task-recurrence/hooks";
+import {
+  useCreateRecurringTask,
+  useUpdateRecurringTask,
+  useDeleteRecurringTask,
+  useUpdateRecurringTaskTags,
+  useUpdateRecurringTaskAssignees,
+} from "@/features/task-recurrence/hooks";
 import type { RecurrenceConfig } from "@/lib/recurrence-engine";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
@@ -114,6 +120,8 @@ export default function TasksPage({
   const deleteTask = useDeleteTask(planId);
   const updateRecurringTask = useUpdateRecurringTask(planId);
   const deleteRecurringTask = useDeleteRecurringTask(planId);
+  const updateRecurringTaskTags = useUpdateRecurringTaskTags(planId);
+  const updateRecurringTaskAssignees = useUpdateRecurringTaskAssignees(planId);
   const setTaskTags = useSetTaskTags(planId);
   const setTaskAssignees = useSetTaskAssignees(planId);
   const createTag = useCreateTag(planId);
@@ -437,14 +445,16 @@ export default function TasksPage({
         updates: pendingData.data as TaskUpdate,
         scope,
       });
-      // For now, tags and assignees are only updated on the single task
-      // (could be extended to update all in scope in the future)
-      await setTaskTags.mutateAsync({ taskId: task.id, tagIds: pendingData.tagIds });
-      await setTaskAssignees.mutateAsync({
+      // Update tags and assignees with the same scope
+      await updateRecurringTaskTags.mutateAsync({
+        taskId: task.id,
+        tagIds: pendingData.tagIds,
+        scope,
+      });
+      await updateRecurringTaskAssignees.mutateAsync({
         taskId: task.id,
         userIds: pendingData.assigneeIds,
-        actorId: currentUserId || undefined,
-        previousAssigneeIds: editingTaskAssignees,
+        scope,
       });
     }
 

@@ -619,7 +619,47 @@ export async function deleteRecurringTask(
       });
     }
   } else if (scope === "all") {
-    // Delete the master task (cascades to rule and instances)
+    // Delete all instances first, then the master task
+    // (Foreign key on recurring_master_id may not cascade delete)
+    const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
+
+    // Collect all task IDs to delete (instances + master)
+    const instanceTaskIds = instances.map((i) => i.task_id);
+
+    // Delete associated task_tags for instances
+    if (instanceTaskIds.length > 0) {
+      await supabase
+        .from("task_tags")
+        .delete()
+        .in("task_id", instanceTaskIds);
+
+      // Delete associated task_assignees for instances
+      await supabase
+        .from("task_assignees")
+        .delete()
+        .in("task_id", instanceTaskIds);
+
+      // Delete all instance tasks
+      const { error: instancesError } = await supabase
+        .from("tasks")
+        .delete()
+        .in("id", instanceTaskIds);
+      if (instancesError) throw instancesError;
+    }
+
+    // Delete task_tags for master
+    await supabase
+      .from("task_tags")
+      .delete()
+      .eq("task_id", info.master_task_id);
+
+    // Delete task_assignees for master
+    await supabase
+      .from("task_assignees")
+      .delete()
+      .eq("task_id", info.master_task_id);
+
+    // Finally delete the master task (this should cascade to recurrence_rules and instances table)
     const { error } = await supabase
       .from("tasks")
       .delete()
@@ -684,4 +724,166 @@ export async function getRecurringTasks(planId: string): Promise<Task[]> {
       .eq("is_recurring", true)
       .order("created_at", { ascending: false })
   );
+}
+
+// ============================================================================
+// RECURRING TASK TAGS & ASSIGNEES WITH SCOPE
+// ============================================================================
+
+/**
+ * Update tags for recurring task series with scope support
+ *
+ * @param scope - 'this' = only this instance, 'future' = this and future, 'all' = entire series
+ */
+export async function updateRecurringTaskTags(
+  taskId: string,
+  tagIds: string[],
+  scope: "this" | "future" | "all"
+): Promise<void> {
+  const supabase = createClient();
+
+  const info = await getTaskRecurrenceInfo(taskId);
+  if (!info) throw new Error("Task recurrence info not found");
+
+  // Helper to set tags for a single task
+  async function setTagsForTask(tid: string) {
+    // Delete existing
+    await supabase.from("task_tags").delete().eq("task_id", tid);
+    // Insert new
+    if (tagIds.length > 0) {
+      const { error } = await supabase
+        .from("task_tags")
+        .insert(tagIds.map((tagId) => ({ task_id: tid, tag_id: tagId })));
+      if (error) throw error;
+    }
+  }
+
+  if (scope === "this") {
+    // Mark as exception and update only this task
+    const instance = await getInstanceForTask(taskId);
+    if (instance) {
+      await markInstanceAsException(instance.id);
+    }
+    await setTagsForTask(taskId);
+  } else if (scope === "future" || scope === "all") {
+    const masterId = info.master_task_id;
+
+    // Get cutoff date for 'future' scope
+    let cutoffDate: string | null = null;
+    if (scope === "future") {
+      if (info.instance_date) {
+        cutoffDate = info.instance_date;
+      } else {
+        const { data: masterTask } = await supabase
+          .from("tasks")
+          .select("due_date")
+          .eq("id", masterId)
+          .single();
+        cutoffDate = masterTask?.due_date || null;
+      }
+    }
+
+    // Update master task (for 'all' always, for 'future' only if editing the master)
+    if (scope === "all" || !info.instance_date) {
+      await setTagsForTask(masterId);
+    }
+
+    // Get all instances and update them
+    const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
+
+    for (const instance of instances) {
+      if (instance.is_exception) continue; // Skip exceptions
+
+      // For 'future', only update instances on or after the cutoff date
+      if (scope === "future" && cutoffDate && instance.original_date < cutoffDate) continue;
+
+      await setTagsForTask(instance.task_id);
+    }
+  }
+}
+
+/**
+ * Update assignees for recurring task series with scope support
+ *
+ * @param scope - 'this' = only this instance, 'future' = this and future, 'all' = entire series
+ */
+export async function updateRecurringTaskAssignees(
+  taskId: string,
+  userIds: string[],
+  scope: "this" | "future" | "all"
+): Promise<void> {
+  const supabase = createClient();
+
+  const info = await getTaskRecurrenceInfo(taskId);
+  if (!info) throw new Error("Task recurrence info not found");
+
+  // Get current user for assigned_by
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Helper to set assignees for a single task
+  async function setAssigneesForTask(tid: string) {
+    // Delete existing assignees
+    await supabase.from("task_assignees").delete().eq("task_id", tid);
+
+    // Insert new assignees
+    if (userIds.length > 0) {
+      const { error } = await supabase
+        .from("task_assignees")
+        .insert(userIds.map((userId) => ({
+          task_id: tid,
+          user_id: userId,
+          assigned_by: user?.id || null,
+        })));
+      if (error) throw error;
+    }
+
+    // Also update the legacy assigned_to field
+    await supabase
+      .from("tasks")
+      .update({ assigned_to: userIds.length > 0 ? userIds[0] : null })
+      .eq("id", tid);
+  }
+
+  if (scope === "this") {
+    // Mark as exception and update only this task
+    const instance = await getInstanceForTask(taskId);
+    if (instance) {
+      await markInstanceAsException(instance.id);
+    }
+    await setAssigneesForTask(taskId);
+  } else if (scope === "future" || scope === "all") {
+    const masterId = info.master_task_id;
+
+    // Get cutoff date for 'future' scope
+    let cutoffDate: string | null = null;
+    if (scope === "future") {
+      if (info.instance_date) {
+        cutoffDate = info.instance_date;
+      } else {
+        const { data: masterTask } = await supabase
+          .from("tasks")
+          .select("due_date")
+          .eq("id", masterId)
+          .single();
+        cutoffDate = masterTask?.due_date || null;
+      }
+    }
+
+    // Update master task (for 'all' always, for 'future' only if editing the master)
+    if (scope === "all" || !info.instance_date) {
+      await setAssigneesForTask(masterId);
+    }
+
+    // Get all instances and update them
+    const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
+
+    for (const instance of instances) {
+      if (instance.is_exception) continue; // Skip exceptions
+
+      // For 'future', only update instances on or after the cutoff date
+      if (scope === "future" && cutoffDate && instance.original_date < cutoffDate) continue;
+
+      await setAssigneesForTask(instance.task_id);
+    }
+  }
 }
