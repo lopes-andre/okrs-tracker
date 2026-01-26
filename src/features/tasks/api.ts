@@ -213,7 +213,10 @@ export async function getTasksWithDetails(
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*)),
       task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url)),
-      recurrence_rule:task_recurrence_rules(id, task_id, rrule, frequency, interval_value)
+      recurrence_rule:task_recurrence_rules(id, task_id, rrule, frequency, interval_value),
+      master_task:tasks!recurring_master_id(
+        recurrence_rule:task_recurrence_rules(id, task_id, rrule, frequency, interval_value)
+      )
     `)
     .eq("plan_id", planId);
 
@@ -228,15 +231,26 @@ export async function getTasksWithDetails(
   if (error) throw error;
 
   // Transform to extract tags, assignees, and recurrence_rule
-  return (data || []).map((task) => ({
-    ...task,
-    tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
-    assignees: task.task_assignees || [],
-    // recurrence_rule comes as an array from the join, take the first element
-    recurrence_rule: Array.isArray(task.recurrence_rule) ? task.recurrence_rule[0] : task.recurrence_rule,
-    task_tags: undefined,
-    task_assignees: undefined,
-  })) as TaskWithDetails[];
+  return (data || []).map((task) => {
+    // For instances (recurring_master_id set), get the rule from master_task if not on this task
+    let recurrenceRule = Array.isArray(task.recurrence_rule) ? task.recurrence_rule[0] : task.recurrence_rule;
+
+    // If this is an instance without its own rule, get it from the master
+    if (!recurrenceRule && task.master_task) {
+      const masterRule = task.master_task.recurrence_rule;
+      recurrenceRule = Array.isArray(masterRule) ? masterRule[0] : masterRule;
+    }
+
+    return {
+      ...task,
+      tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
+      assignees: task.task_assignees || [],
+      recurrence_rule: recurrenceRule,
+      task_tags: undefined,
+      task_assignees: undefined,
+      master_task: undefined, // Don't include in final object
+    };
+  }) as TaskWithDetails[];
 }
 
 /**

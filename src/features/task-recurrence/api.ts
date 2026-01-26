@@ -484,22 +484,40 @@ export async function updateRecurringTask(
   } else if (scope === "future" || scope === "all") {
     const masterId = info.master_task_id;
 
-    // Update master task
-    const { error: masterError } = await supabase
-      .from("tasks")
-      .update(updates)
-      .eq("id", masterId);
-    if (masterError) throw masterError;
+    // Get the current task's instance date to use as the cutoff for "future"
+    // If editing the master task, use its due_date; if editing an instance, use its instance_date
+    let cutoffDate: string | null = null;
+    if (scope === "future") {
+      if (info.instance_date) {
+        cutoffDate = info.instance_date;
+      } else {
+        // Editing the master task - get its due_date
+        const { data: masterTask } = await supabase
+          .from("tasks")
+          .select("due_date")
+          .eq("id", masterId)
+          .single();
+        cutoffDate = masterTask?.due_date || null;
+      }
+    }
+
+    // Update master task (for 'all' always, for 'future' only if editing the master or if master is in the future)
+    if (scope === "all" || !info.instance_date) {
+      const { error: masterError } = await supabase
+        .from("tasks")
+        .update(updates)
+        .eq("id", masterId);
+      if (masterError) throw masterError;
+    }
 
     // Get all instances
     const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
-    const today = format(new Date(), "yyyy-MM-dd");
 
     for (const instance of instances) {
       if (instance.is_exception) continue; // Skip exceptions
 
-      // For 'future', only update instances on or after today
-      if (scope === "future" && instance.original_date < today) continue;
+      // For 'future', only update instances on or after the cutoff date
+      if (scope === "future" && cutoffDate && instance.original_date < cutoffDate) continue;
 
       const { error } = await supabase
         .from("tasks")
@@ -536,11 +554,24 @@ export async function deleteRecurringTask(
     if (error) throw error;
   } else if (scope === "future") {
     // Delete this and all future instances
-    const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
-    const today = format(new Date(), "yyyy-MM-dd");
+    // Use the current task's instance_date as the cutoff, not today
+    let cutoffDate: string;
+    if (info.instance_date) {
+      cutoffDate = info.instance_date;
+    } else {
+      // Deleting from the master task - get its due_date
+      const { data: masterTask } = await supabase
+        .from("tasks")
+        .select("due_date")
+        .eq("id", info.master_task_id)
+        .single();
+      cutoffDate = masterTask?.due_date || format(new Date(), "yyyy-MM-dd");
+    }
 
-    // Collect IDs for batch operations
-    const futureInstances = instances.filter((i) => i.original_date >= today);
+    const instances = await getRecurrenceInstances(info.recurrence_rule_id!);
+
+    // Collect IDs for batch operations - instances on or after the cutoff date
+    const futureInstances = instances.filter((i) => i.original_date >= cutoffDate);
     const instanceIds = futureInstances.map((i) => i.id);
     const taskIds = futureInstances.map((i) => i.task_id);
 
@@ -562,11 +593,22 @@ export async function deleteRecurringTask(
       if (taskError) throw taskError;
     }
 
-    // Update the rule to end today
-    await updateRecurrenceRule(info.recurrence_rule_id!, {
-      end_type: "until",
-      end_date: today,
-    });
+    // If we're deleting from the master task, delete the master too
+    // Otherwise, update the rule to end at the cutoff date
+    if (!info.instance_date) {
+      // Deleting from master - delete everything
+      const { error } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("id", info.master_task_id);
+      if (error) throw error;
+    } else {
+      // Update the rule to end before the cutoff date
+      await updateRecurrenceRule(info.recurrence_rule_id!, {
+        end_type: "until",
+        end_date: cutoffDate,
+      });
+    }
   } else if (scope === "all") {
     // Delete the master task (cascades to rule and instances)
     const { error } = await supabase
