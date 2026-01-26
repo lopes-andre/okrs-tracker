@@ -1,4 +1,4 @@
-import { ApiError } from "./api-utils";
+import { toApiError, type ErrorCategory } from "./api-utils";
 
 // Toast variants that match our UI toast system
 export type ToastVariant = "default" | "success" | "warning" | "destructive";
@@ -13,47 +13,94 @@ export interface ToastMessage {
 // ERROR MESSAGE FORMATTING
 // ============================================================================
 
+/**
+ * Get user-friendly title based on error category
+ */
+function getErrorTitle(category: ErrorCategory): string {
+  switch (category) {
+    case "validation":
+      return "Validation Error";
+    case "auth":
+      return "Access Denied";
+    case "not_found":
+      return "Not Found";
+    case "conflict":
+      return "Conflict";
+    case "network":
+      return "Connection Error";
+    case "timeout":
+      return "Request Timeout";
+    case "rate_limit":
+      return "Too Many Requests";
+    case "server":
+      return "Server Error";
+    default:
+      return "Error";
+  }
+}
+
+/**
+ * Get additional guidance based on error category
+ */
+function getErrorGuidance(category: ErrorCategory): string | undefined {
+  switch (category) {
+    case "network":
+      return "Please check your internet connection and try again.";
+    case "timeout":
+      return "The request took too long. Please try again.";
+    case "rate_limit":
+      return "Please wait a moment before trying again.";
+    case "server":
+      return "Our team has been notified. Please try again later.";
+    case "auth":
+      return "Please refresh the page or log in again.";
+    default:
+      return undefined;
+  }
+}
+
 export function formatErrorMessage(error: unknown): ToastMessage {
-  if (error instanceof ApiError) {
-    return {
-      title: "Error",
-      description: error.userMessage,
-      variant: "destructive",
-    };
-  }
+  const apiError = toApiError(error);
+  const title = getErrorTitle(apiError.category);
+  const guidance = getErrorGuidance(apiError.category);
 
-  if (error instanceof Error) {
-    return {
-      title: "Error",
-      description: error.message,
-      variant: "destructive",
-    };
-  }
-
-  // Handle Supabase/PostgrestError objects (plain objects with message property)
-  if (typeof error === "object" && error !== null && "message" in error) {
-    const errObj = error as { message: string; code?: string; details?: string };
-    return {
-      title: "Error",
-      description: errObj.message || "An error occurred.",
-      variant: "destructive",
-    };
-  }
-
-  // Handle string errors
-  if (typeof error === "string") {
-    return {
-      title: "Error",
-      description: error,
-      variant: "destructive",
-    };
+  // Combine user message with guidance
+  let description = apiError.userMessage;
+  if (guidance && !description.toLowerCase().includes(guidance.toLowerCase().slice(0, 20))) {
+    description = `${description} ${guidance}`;
   }
 
   return {
-    title: "Error",
-    description: "An unexpected error occurred. Please try again.",
+    title,
+    description,
     variant: "destructive",
   };
+}
+
+/**
+ * Format error with additional retry hint
+ */
+export function formatErrorWithRetryHint(error: unknown): ToastMessage {
+  const base = formatErrorMessage(error);
+  const apiError = toApiError(error);
+
+  // Add retry hint for retryable errors
+  if (apiError.isRetryable && base.description) {
+    return {
+      ...base,
+      description: `${base.description} You can try again.`,
+    };
+  }
+
+  return base;
+}
+
+/**
+ * Check if error is likely transient and will resolve on retry
+ */
+export function isTransientError(error: unknown): boolean {
+  const apiError = toApiError(error);
+  return apiError.category === "network" || apiError.category === "timeout";
 }
 
 // ============================================================================

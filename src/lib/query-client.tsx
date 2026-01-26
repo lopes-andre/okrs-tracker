@@ -2,6 +2,30 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
+import { shouldRetryError, toApiError } from "./api-utils";
+
+// ============================================================================
+// RETRY CONFIGURATION
+// ============================================================================
+
+/**
+ * Calculate retry delay with exponential backoff and jitter
+ */
+function calculateRetryDelay(attemptIndex: number, error?: unknown): number {
+  const baseDelay = 1000; // 1 second
+  const maxDelay = 30000; // 30 seconds
+
+  // Rate limit errors should wait longer
+  const apiError = error ? toApiError(error) : null;
+  if (apiError?.category === "rate_limit") {
+    return Math.min(5000 * 2 ** attemptIndex, 60000); // 5s, 10s, 20s, up to 60s
+  }
+
+  // Exponential backoff with jitter to prevent thundering herd
+  const exponentialDelay = baseDelay * 2 ** attemptIndex;
+  const jitter = Math.random() * 1000; // 0-1 second jitter
+  return Math.min(exponentialDelay + jitter, maxDelay);
+}
 
 // Default query options for the app
 const defaultQueryOptions = {
@@ -10,15 +34,23 @@ const defaultQueryOptions = {
     staleTime: 60 * 1000,
     // Cache data for 5 minutes
     gcTime: 5 * 60 * 1000,
-    // Retry failed requests 3 times with exponential backoff
-    retry: 3,
-    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    // Smart retry: only retry retryable errors
+    retry: (failureCount: number, error: unknown) => shouldRetryError(error, failureCount),
+    // Exponential backoff with jitter
+    retryDelay: (attemptIndex: number, error: unknown) => calculateRetryDelay(attemptIndex, error),
     // Don't refetch on window focus in development
     refetchOnWindowFocus: process.env.NODE_ENV === "production",
+    // Throw errors to error boundary in development for easier debugging
+    throwOnError: process.env.NODE_ENV === "development",
   },
   mutations: {
-    // Retry mutations once
-    retry: 1,
+    // Smart retry for mutations too
+    retry: (failureCount: number, error: unknown) => {
+      // Be more conservative with mutations (only 1 retry)
+      if (failureCount >= 1) return false;
+      return shouldRetryError(error, failureCount);
+    },
+    retryDelay: (attemptIndex: number, error: unknown) => calculateRetryDelay(attemptIndex, error),
   },
 };
 

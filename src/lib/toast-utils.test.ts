@@ -31,7 +31,7 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      expect(result.title).toBe("Error");
+      expect(result.title).toBe("Conflict");
       expect(result.description).toBe("This item already exists.");
       expect(result.variant).toBe("destructive");
     });
@@ -47,7 +47,8 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      expect(result.description).toBe("You don't have permission to perform this action.");
+      expect(result.title).toBe("Access Denied");
+      expect(result.description).toContain("You don't have permission to perform this action.");
       expect(result.variant).toBe("destructive");
     });
 
@@ -62,6 +63,7 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
+      expect(result.title).toBe("Validation Error");
       expect(result.description).toBe("Cannot delete this item because it is referenced by other data.");
     });
 
@@ -129,7 +131,8 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      expect(result.description).toBe("duplicate key value violates unique constraint");
+      expect(result.title).toBe("Conflict");
+      expect(result.description).toBe("This item already exists.");
     });
 
     it("should handle object with empty message", () => {
@@ -137,7 +140,8 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      expect(result.description).toBe("An error occurred.");
+      // Empty message gets converted to default
+      expect(result.description).toBe("An unexpected error occurred.");
     });
   });
 
@@ -157,8 +161,8 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      // Empty string is still passed through
-      expect(result.description).toBe("");
+      // Empty string gets converted to default
+      expect(result.description).toBe("An unexpected error occurred.");
     });
   });
 
@@ -167,7 +171,7 @@ describe("formatErrorMessage", () => {
       const result = formatErrorMessage(null);
 
       expect(result.title).toBe("Error");
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
       expect(result.variant).toBe("destructive");
     });
 
@@ -175,27 +179,27 @@ describe("formatErrorMessage", () => {
       const result = formatErrorMessage(undefined);
 
       expect(result.title).toBe("Error");
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
     });
 
     it("should handle number error", () => {
       const result = formatErrorMessage(404);
 
       expect(result.title).toBe("Error");
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
     });
 
     it("should handle boolean error", () => {
       const result = formatErrorMessage(false);
 
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
     });
 
     it("should handle array error", () => {
       const result = formatErrorMessage(["error1", "error2"]);
 
       // Arrays don't have a 'message' property
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
     });
 
     it("should handle object without message property", () => {
@@ -203,14 +207,14 @@ describe("formatErrorMessage", () => {
 
       const result = formatErrorMessage(error);
 
-      expect(result.description).toBe("An unexpected error occurred. Please try again.");
+      expect(result.description).toBe("An unexpected error occurred.");
     });
   });
 
   describe("Return type validation", () => {
     it("should always return a valid ToastMessage", () => {
       const testCases = [
-        new ApiError("test"),
+        new ApiError({ message: "test", code: "UNKNOWN" }),
         new Error("test"),
         { message: "test" },
         "test",
@@ -228,6 +232,31 @@ describe("formatErrorMessage", () => {
         expect(typeof result.title).toBe("string");
         expect(result.variant).toBe("destructive");
       });
+    });
+  });
+
+  describe("Network error handling", () => {
+    it("should format network errors with guidance", () => {
+      const error = new TypeError("Failed to fetch");
+
+      const result = formatErrorMessage(error);
+
+      expect(result.title).toBe("Connection Error");
+      expect(result.description).toContain("check your internet connection");
+    });
+
+    it("should format timeout errors", () => {
+      const postgrestError = {
+        message: "Request timeout",
+        code: "PGRST103",
+        details: null,
+        hint: null,
+      };
+      const error = new ApiError(postgrestError);
+
+      const result = formatErrorMessage(error);
+
+      expect(result.title).toBe("Request Timeout");
     });
   });
 });
