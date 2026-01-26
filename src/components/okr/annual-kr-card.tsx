@@ -374,7 +374,7 @@ export const AnnualKrCard = memo(function AnnualKrCard({
                 variant="secondary"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); onCheckIn(); }}
-                className="gap-1.5 h-7 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                className="gap-1.5 h-7 px-2.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <TrendingUp className="w-3.5 h-3.5" />
@@ -394,7 +394,8 @@ export const AnnualKrCard = memo(function AnnualKrCard({
                 variant="ghost"
                 size="icon"
                 onClick={(e) => e.stopPropagation()}
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                className="h-7 w-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity shrink-0"
+                aria-label="Key result options"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>

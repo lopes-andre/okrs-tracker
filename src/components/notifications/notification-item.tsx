@@ -151,11 +151,12 @@ export function NotificationItem({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
             onClick={(e) => {
               e.stopPropagation();
               onDelete(notification.id);
             }}
+            aria-label="Dismiss notification"
           >
             <X className="h-3 w-3" />
           </Button>

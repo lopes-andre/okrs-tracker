@@ -234,7 +234,7 @@ function AccountRow({ account, onEdit, onDelete }: AccountRowProps) {
         <div className="flex items-center gap-2">
           <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Account options">
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>

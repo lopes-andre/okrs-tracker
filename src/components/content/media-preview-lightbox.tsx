@@ -211,6 +211,7 @@ export function MediaPreviewLightbox({
                 size="icon"
                 className="text-white hover:bg-white/20"
                 onClick={handleDownload}
+                aria-label="Download file"
               >
                 <Download className="w-5 h-5" />
               </Button>
@@ -223,6 +224,7 @@ export function MediaPreviewLightbox({
                 size="icon"
                 className="text-white hover:bg-white/20"
                 onClick={handleOpenExternal}
+                aria-label="Open in new tab"
               >
                 <ExternalLink className="w-5 h-5" />
               </Button>
@@ -236,6 +238,7 @@ export function MediaPreviewLightbox({
                 className="text-white hover:bg-white/20 hover:text-red-400"
                 onClick={() => setShowDeleteDialog(true)}
                 disabled={isDeleting}
+                aria-label="Delete media"
               >
                 {isDeleting ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -251,6 +254,7 @@ export function MediaPreviewLightbox({
               size="icon"
               className="text-white hover:bg-white/20"
               onClick={onClose}
+              aria-label="Close preview"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -270,6 +274,7 @@ export function MediaPreviewLightbox({
                 size="icon"
                 className="absolute left-4 text-white hover:bg-white/20 z-10"
                 onClick={goToPrevious}
+                aria-label="Previous media"
               >
                 <ChevronLeft className="w-8 h-8" />
               </Button>
@@ -278,6 +283,7 @@ export function MediaPreviewLightbox({
                 size="icon"
                 className="absolute right-4 text-white hover:bg-white/20 z-10"
                 onClick={goToNext}
+                aria-label="Next media"
               >
                 <ChevronRight className="w-8 h-8" />
               </Button>

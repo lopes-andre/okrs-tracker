@@ -52,7 +52,7 @@ export default async function PlanLayout({
         <Navbar user={userData} planId={planId} />
         <PlanNav planId={planId} />
         <ReminderProvider planId={planId}>
-          <main className="container-main py-8">{children}</main>
+          <main id="main-content" className="container-main py-8">{children}</main>
         </ReminderProvider>
       </div>
     </RealtimeWrapper>

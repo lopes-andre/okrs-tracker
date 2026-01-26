@@ -268,10 +268,10 @@ export function ContentCalendar({ planId }: ContentCalendarProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* Date Navigation */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={goToPrevious}>
+          <Button variant="outline" size="icon" onClick={goToPrevious} aria-label="Previous period">
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="icon" onClick={goToNext}>
+          <Button variant="outline" size="icon" onClick={goToNext} aria-label="Next period">
             <ChevronRight className="w-4 h-4" />
           </Button>
           <Button variant="outline" onClick={goToToday}>

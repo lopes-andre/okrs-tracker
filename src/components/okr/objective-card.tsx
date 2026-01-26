@@ -144,6 +144,8 @@ export function ObjectiveCard({
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="p-1 -m-1 hover:bg-bg-1 rounded transition-colors shrink-0 mt-0.5"
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? "Collapse objective" : "Expand objective"}
           >
             {isExpanded ? (
               <ChevronDown className="w-5 h-5 text-text-muted" />
@@ -221,7 +223,8 @@ export function ObjectiveCard({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                        aria-label="Objective options"
                       >
                         <MoreHorizontal className="w-4 h-4" />
                       </Button>
