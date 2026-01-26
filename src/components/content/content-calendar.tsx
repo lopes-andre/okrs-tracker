@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import {
   format,
   startOfMonth,
@@ -30,7 +30,11 @@ import { CalendarWeekView } from "./calendar-week-view";
 import { CalendarDayView } from "./calendar-day-view";
 import { CalendarListView } from "./calendar-list-view";
 import { CalendarFilters, type CalendarFiltersState, defaultCalendarFilters } from "./calendar-filters";
-import { PostDetailModal } from "./post-detail-modal";
+
+// Lazy load heavy modal component
+const PostDetailModal = lazy(() =>
+  import("./post-detail-modal").then((mod) => ({ default: mod.PostDetailModal }))
+);
 import { useCalendarData, useAccountsWithPlatform, useGoals } from "@/features/content/hooks";
 import { cn } from "@/lib/utils";
 import type { ContentCalendarEntry, ContentAccountWithPlatform } from "@/lib/supabase/types";
@@ -388,15 +392,19 @@ export function ContentCalendar({ planId }: ContentCalendarProps) {
         </>
       )}
 
-      {/* Post Detail Modal */}
-      <PostDetailModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        planId={planId}
-        postId={selectedPostId}
-        goals={goals}
-        accounts={accounts}
-      />
+      {/* Post Detail Modal - Lazy loaded */}
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <PostDetailModal
+            open={modalOpen}
+            onOpenChange={setModalOpen}
+            planId={planId}
+            postId={selectedPostId}
+            goals={goals}
+            accounts={accounts}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

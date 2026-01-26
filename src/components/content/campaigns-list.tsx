@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { Plus, Megaphone, Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/layout/empty-state";
 import { CampaignCard } from "./campaign-card";
-import { CampaignDialog, type CampaignFormData } from "./campaign-dialog";
+import type { CampaignFormData } from "./campaign-dialog";
+
+// Lazy load heavy dialog component
+const CampaignDialog = lazy(() =>
+  import("./campaign-dialog").then((mod) => ({ default: mod.CampaignDialog }))
+);
 import { CampaignCheckinDialog } from "./campaign-checkin-dialog";
 import {
   useCampaigns,
@@ -209,12 +214,16 @@ export function CampaignsList({ planId }: CampaignsListProps) {
             onClick: () => setShowCampaignDialog(true),
           }}
         />
-        <CampaignDialog
-          open={showCampaignDialog}
-          onOpenChange={setShowCampaignDialog}
-          planId={planId}
-          onSubmit={handleCreate}
-        />
+        {showCampaignDialog && (
+          <Suspense fallback={null}>
+            <CampaignDialog
+              open={showCampaignDialog}
+              onOpenChange={setShowCampaignDialog}
+              planId={planId}
+              onSubmit={handleCreate}
+            />
+          </Suspense>
+        )}
       </>
     );
   }
@@ -356,17 +365,21 @@ export function CampaignsList({ planId }: CampaignsListProps) {
         )}
       </div>
 
-      {/* Campaign Dialog */}
-      <CampaignDialog
-        open={showCampaignDialog}
-        onOpenChange={(open) => {
-          setShowCampaignDialog(open);
-          if (!open) setEditingCampaign(null);
-        }}
-        planId={planId}
-        campaign={editingCampaign}
-        onSubmit={editingCampaign ? handleUpdate : handleCreate}
-      />
+      {/* Campaign Dialog - Lazy loaded */}
+      {showCampaignDialog && (
+        <Suspense fallback={null}>
+          <CampaignDialog
+            open={showCampaignDialog}
+            onOpenChange={(open) => {
+              setShowCampaignDialog(open);
+              if (!open) setEditingCampaign(null);
+            }}
+            planId={planId}
+            campaign={editingCampaign}
+            onSubmit={editingCampaign ? handleUpdate : handleCreate}
+          />
+        </Suspense>
+      )}
 
       {/* Check-in Dialog */}
       {checkinCampaign && (

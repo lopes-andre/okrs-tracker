@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useState, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -28,7 +28,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskRow, TaskDialog, CollapsibleTaskList, BulkActionsToolbar } from "@/components/tasks";
+import { TaskRow, CollapsibleTaskList, BulkActionsToolbar } from "@/components/tasks";
+
+// Lazy load heavy dialog component
+const TaskDialog = lazy(() =>
+  import("@/components/tasks/task-dialog").then((mod) => ({ default: mod.TaskDialog }))
+);
 import { CommentsDialog } from "@/components/comments";
 import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-dialog";
 import {
@@ -988,25 +993,29 @@ export default function TasksPage({
         </TabsContent>
       </Tabs>
 
-      {/* Dialogs */}
-      <TaskDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        planId={planId}
-        task={editingTask}
-        objectives={objectives}
-        annualKrs={annualKrs}
-        tags={tags}
-        selectedTags={editingTaskTags}
-        initialObjectiveId={editingObjectiveId}
-        members={members}
-        selectedAssignees={editingTaskAssignees}
-        currentUserId={currentUserId ?? undefined}
-        currentUserProfile={currentUserProfile}
-        isOwner={isOwner}
-        onSubmit={editingTask ? handleUpdate : handleCreate}
-        onCreateTag={handleCreateTag}
-      />
+      {/* Dialogs - Lazy loaded */}
+      {dialogOpen && (
+        <Suspense fallback={null}>
+          <TaskDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            planId={planId}
+            task={editingTask}
+            objectives={objectives}
+            annualKrs={annualKrs}
+            tags={tags}
+            selectedTags={editingTaskTags}
+            initialObjectiveId={editingObjectiveId}
+            members={members}
+            selectedAssignees={editingTaskAssignees}
+            currentUserId={currentUserId ?? undefined}
+            currentUserProfile={currentUserProfile}
+            isOwner={isOwner}
+            onSubmit={editingTask ? handleUpdate : handleCreate}
+            onCreateTag={handleCreateTag}
+          />
+        </Suspense>
+      )}
 
       <DeleteConfirmationDialog
         open={deleteDialog.open}

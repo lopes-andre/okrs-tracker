@@ -19,6 +19,7 @@ export function useTags(planId: string) {
     queryKey: queryKeys.tags.list(planId),
     queryFn: () => api.getTags(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - tags don't change frequently
   });
 }
 
@@ -30,6 +31,7 @@ export function useTagsByKind(planId: string, kind: TagKind) {
     queryKey: queryKeys.tags.byKind(planId, kind),
     queryFn: () => api.getTagsByKind(planId, kind),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - tags don't change frequently
   });
 }
 
@@ -66,6 +68,7 @@ export function useTagsWithUsage(planId: string) {
     queryKey: queryKeys.tags.withUsage(planId),
     queryFn: () => api.getTagsWithUsage(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - tags don't change frequently
   });
 }
 
@@ -127,6 +130,7 @@ export function useKrGroups(planId: string) {
     queryKey: queryKeys.groups.list(planId),
     queryFn: () => api.getKrGroups(planId),
     enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - KR groups don't change frequently
   });
 }
 

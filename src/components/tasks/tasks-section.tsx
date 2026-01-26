@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Plus, Clock, AlertTriangle, ListTodo } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TaskRow } from "./task-row";
-import { TaskDialog } from "./task-dialog";
+
+// Lazy load heavy dialog component
+const TaskDialog = lazy(() =>
+  import("./task-dialog").then((mod) => ({ default: mod.TaskDialog }))
+);
 import { DeleteConfirmationDialog } from "@/components/okr/delete-confirmation-dialog";
 import {
   useTasks,
@@ -213,15 +217,19 @@ export function TasksSection({ planId, view = "summary" }: TasksSectionProps) {
           </CardContent>
         </Card>
 
-        {/* Dialogs */}
-        <TaskDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          planId={planId}
-          task={editingTask}
-          objectives={objectives}
-          onSubmit={editingTask ? handleUpdate : handleCreate}
-        />
+        {/* Dialogs - Lazy loaded */}
+        {dialogOpen && (
+          <Suspense fallback={null}>
+            <TaskDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              planId={planId}
+              task={editingTask}
+              objectives={objectives}
+              onSubmit={editingTask ? handleUpdate : handleCreate}
+            />
+          </Suspense>
+        )}
 
         <DeleteConfirmationDialog
           open={deleteDialog.open}
@@ -356,15 +364,19 @@ export function TasksSection({ planId, view = "summary" }: TasksSectionProps) {
         )}
       </div>
 
-      {/* Dialogs */}
-      <TaskDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        planId={planId}
-        task={editingTask}
-        objectives={objectives}
-        onSubmit={editingTask ? handleUpdate : handleCreate}
-      />
+      {/* Dialogs - Lazy loaded */}
+      {dialogOpen && (
+        <Suspense fallback={null}>
+          <TaskDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            planId={planId}
+            task={editingTask}
+            objectives={objectives}
+            onSubmit={editingTask ? handleUpdate : handleCreate}
+          />
+        </Suspense>
+      )}
 
       <DeleteConfirmationDialog
         open={deleteDialog.open}
