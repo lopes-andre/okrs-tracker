@@ -1,9 +1,14 @@
+"use client";
+
 import { FileQuestion, Home, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function NotFound() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-bg-1">
       <Card className="max-w-md w-full">
@@ -27,11 +32,13 @@ export default function NotFound() {
                 Go to Plans
               </Link>
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="javascript:history.back()">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go Back
-              </Link>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Go Back
             </Button>
           </div>
         </CardContent>

@@ -107,9 +107,9 @@ export const TimelinePreviewWidget = memo(function TimelinePreviewWidget({ confi
       </div>
 
       <div className="pt-3 border-t border-border-soft mt-3">
-        <Link href={`/plans/${planId}/timeline`}>
+        <Link href={`/plans/${planId}/settings?tab=activity`}>
           <Button variant="ghost" size="sm" className="w-full justify-center gap-1">
-            View full timeline
+            View full activity log
             <ArrowRight className="w-4 h-4" />
           </Button>
         </Link>

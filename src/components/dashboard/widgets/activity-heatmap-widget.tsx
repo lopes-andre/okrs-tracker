@@ -34,15 +34,36 @@ const getColor = (count: number, maxCount: number): string => {
 };
 
 export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
-  const { checkIns, year } = useDashboardData();
+  const { checkIns, tasks, postedDistributions, year } = useDashboardData();
   const compact = (config.compact as boolean) ?? true;
 
-  const { grid, maxCount, totalCheckIns, activeDays, longestStreak } = useMemo(() => {
-    // Group check-ins by date
-    const checkInsByDate = new Map<string, number>();
+  const { grid, maxCount, totalActivity, activeDays, longestStreak } = useMemo(() => {
+    // Aggregate activity by date from all sources:
+    // 1. Check-ins (by recorded_at)
+    // 2. Completed tasks (by completed_at)
+    // 3. Posted distributions (by posted_at)
+    const activityByDate = new Map<string, number>();
+
+    // Count check-ins
     checkIns.forEach((ci) => {
       const date = ci.recorded_at.split("T")[0];
-      checkInsByDate.set(date, (checkInsByDate.get(date) || 0) + 1);
+      activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+    });
+
+    // Count completed tasks
+    tasks.forEach((task) => {
+      if (task.completed_at) {
+        const date = task.completed_at.split("T")[0];
+        activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+      }
+    });
+
+    // Count posted distributions
+    postedDistributions.forEach((dist) => {
+      if (dist.posted_at) {
+        const date = dist.posted_at.split("T")[0];
+        activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+      }
     });
 
     const yearStart = startOfYear(new Date(year, 0, 1));
@@ -79,7 +100,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
 
     allDays.forEach((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
-      const count = checkInsByDate.get(dateStr) || 0;
+      const count = activityByDate.get(dateStr) || 0;
       const isFutureDay = isFuture(day);
 
       if (!isFutureDay) {
@@ -126,11 +147,11 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
     return {
       grid: weeks,
       maxCount: max || 1,
-      totalCheckIns: total,
+      totalActivity: total,
       activeDays: active,
       longestStreak: maxStreak,
     };
-  }, [checkIns, year]);
+  }, [checkIns, tasks, postedDistributions, year]);
 
   // Month labels
   const monthLabels = useMemo(() => {
@@ -159,8 +180,8 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
       {/* Stats Row */}
       <div className="flex items-center gap-6 mb-4 pb-4 border-b border-border-soft">
         <div>
-          <p className="text-2xl font-bold font-heading">{totalCheckIns}</p>
-          <p className="text-xs text-text-muted">Check-ins</p>
+          <p className="text-2xl font-bold font-heading">{totalActivity}</p>
+          <p className="text-xs text-text-muted">Activities</p>
         </div>
         <div className="w-px h-10 bg-border-soft" />
         <div>
@@ -239,7 +260,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
                         {day.isYear && !day.isFuture && (
                           <TooltipContent side="top" className="text-xs">
                             <p className="font-medium">
-                              {day.count} check-in{day.count !== 1 ? "s" : ""}
+                              {day.count} activit{day.count !== 1 ? "ies" : "y"}
                             </p>
                             <p className="text-text-muted">
                               {format(day.date, "MMM d, yyyy")}

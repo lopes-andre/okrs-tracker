@@ -232,6 +232,7 @@ export const queryKeys = {
       byPost: (postId: string) => [...queryKeys.content.distributions.all, "byPost", postId] as const,
       calendar: (planId: string, startDate: string, endDate: string) =>
         [...queryKeys.content.distributions.all, "calendar", planId, startDate, endDate] as const,
+      posted: (planId: string) => [...queryKeys.content.distributions.all, "posted", planId] as const,
     },
     campaigns: {
       all: ["content", "campaigns"] as const,

@@ -57,7 +57,7 @@ import { TagsSettings } from "@/components/tags";
 import { TaskReminderSettings } from "@/components/tasks";
 import { ImportExportSettings } from "@/components/import-export";
 import type { OkrRole, TimelineFilters } from "@/lib/supabase/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { startOfWeek, endOfWeek } from "date-fns";
 
 export default function SettingsPage({
@@ -67,6 +67,10 @@ export default function SettingsPage({
 }) {
   const { planId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Support deep linking to specific tabs via ?tab=activity
+  const defaultTab = searchParams.get("tab") || "general";
 
   const { data: plan, isLoading: isLoadingPlan } = usePlan(planId);
   const { data: role } = usePlanRole(planId);
@@ -206,7 +210,7 @@ export default function SettingsPage({
         description="Manage your plan configuration and team access"
       />
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="general" className="gap-2">
             <Settings className="w-4 h-4" />

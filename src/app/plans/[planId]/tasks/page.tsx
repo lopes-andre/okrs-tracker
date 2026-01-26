@@ -28,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskRow, CollapsibleTaskList, BulkActionsToolbar } from "@/components/tasks";
+import { TaskRow, CollapsibleTaskList, BulkActionsToolbar, RecurrenceEditDialog, type RecurrenceEditScope } from "@/components/tasks";
 
 // Lazy load heavy dialog component
 const TaskDialog = lazy(() =>
@@ -49,7 +49,7 @@ import {
   useBulkAddTagToTasks,
   useBulkRemoveTagFromTasks,
 } from "@/features/tasks/hooks";
-import { useCreateRecurringTask } from "@/features/task-recurrence/hooks";
+import { useCreateRecurringTask, useUpdateRecurringTask, useDeleteRecurringTask } from "@/features/task-recurrence/hooks";
 import type { RecurrenceConfig } from "@/lib/recurrence-engine";
 import { useObjectives } from "@/features/objectives/hooks";
 import { useAnnualKrs } from "@/features/annual-krs/hooks";
@@ -66,8 +66,16 @@ import type {
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
+// Type for task dialog form data
+type TaskDialogData = Omit<TaskInsert, "plan_id"> | TaskUpdate;
+
 // Type for the stats card filter
 type StatsFilter = "all" | "today" | "overdue" | "thisWeek" | "completed";
+
+// Helper to check if a task is part of a recurring series
+function isRecurringTask(task: TaskWithDetails): boolean {
+  return !!(task.is_recurring || task.recurring_master_id || task.recurrence_rule);
+}
 
 export default function TasksPage({
   params,
@@ -104,6 +112,8 @@ export default function TasksPage({
   const createRecurringTask = useCreateRecurringTask(planId);
   const updateTask = useUpdateTask(planId);
   const deleteTask = useDeleteTask(planId);
+  const updateRecurringTask = useUpdateRecurringTask(planId);
+  const deleteRecurringTask = useDeleteRecurringTask(planId);
   const setTaskTags = useSetTaskTags(planId);
   const setTaskAssignees = useSetTaskAssignees(planId);
   const createTag = useCreateTag(planId);
@@ -126,6 +136,17 @@ export default function TasksPage({
   }>({
     open: false,
     task: null,
+  });
+  // State for recurring task scope dialog
+  const [recurringEditDialog, setRecurringEditDialog] = useState<{
+    open: boolean;
+    task: TaskWithDetails | null;
+    action: "edit" | "delete";
+    pendingData?: { data: TaskDialogData; tagIds: string[]; assigneeIds: string[] };
+  }>({
+    open: false,
+    task: null,
+    action: "edit",
   });
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
   const [activeView, setActiveView] = useState<"list" | "grouped">("list");
@@ -304,8 +325,6 @@ export default function TasksPage({
   }, [allActiveTasks, objectives, annualKrs]);
 
   // Handlers
-  type TaskDialogData = Omit<TaskInsert, "plan_id"> | TaskUpdate;
-
   async function handleCreate(
     data: TaskDialogData,
     tagIds: string[],
@@ -349,6 +368,20 @@ export default function TasksPage({
     assigneeIds: string[]
   ) {
     if (!editingTask) return;
+
+    // Check if this is a recurring task - if so, show scope dialog
+    if (isRecurringTask(editingTask)) {
+      setRecurringEditDialog({
+        open: true,
+        task: editingTask,
+        action: "edit",
+        pendingData: { data, tagIds, assigneeIds },
+      });
+      setDialogOpen(false); // Close the task dialog while scope dialog is shown
+      return;
+    }
+
+    // Regular task update
     await updateTask.mutateAsync({
       id: editingTask.id,
       data: data as TaskUpdate,
@@ -369,12 +402,55 @@ export default function TasksPage({
 
   async function handleDelete() {
     if (!deleteDialog.task) return;
+
+    // Check if this is a recurring task - if so, show scope dialog
+    if (isRecurringTask(deleteDialog.task)) {
+      setRecurringEditDialog({
+        open: true,
+        task: deleteDialog.task,
+        action: "delete",
+      });
+      setDeleteDialog({ open: false, task: null }); // Close delete dialog while scope dialog is shown
+      return;
+    }
+
+    // Regular task delete
     await deleteTask.mutateAsync(deleteDialog.task.id);
     setDeleteDialog({ open: false, task: null });
   }
 
   async function handleCreateTag(name: string) {
     return createTag.mutateAsync({ name, kind: "custom", color: null });
+  }
+
+  // Handler for recurring task scope confirmation
+  async function handleRecurringEditConfirm(scope: RecurrenceEditScope) {
+    const { task, action, pendingData } = recurringEditDialog;
+    if (!task) return;
+
+    if (action === "delete") {
+      await deleteRecurringTask.mutateAsync({ taskId: task.id, scope });
+    } else if (action === "edit" && pendingData) {
+      // Apply the update with the selected scope
+      await updateRecurringTask.mutateAsync({
+        taskId: task.id,
+        updates: pendingData.data as TaskUpdate,
+        scope,
+      });
+      // For now, tags and assignees are only updated on the single task
+      // (could be extended to update all in scope in the future)
+      await setTaskTags.mutateAsync({ taskId: task.id, tagIds: pendingData.tagIds });
+      await setTaskAssignees.mutateAsync({
+        taskId: task.id,
+        userIds: pendingData.assigneeIds,
+        actorId: currentUserId || undefined,
+        previousAssigneeIds: editingTaskAssignees,
+      });
+    }
+
+    // Reset state
+    setRecurringEditDialog({ open: false, task: null, action: "edit" });
+    setEditingTask(null);
   }
 
   function openEdit(task: TaskWithDetails) {
@@ -1024,6 +1100,19 @@ export default function TasksPage({
         description="This action cannot be undone."
         itemName={deleteDialog.task?.title || ""}
         onConfirm={handleDelete}
+      />
+
+      {/* Recurring Task Scope Dialog */}
+      <RecurrenceEditDialog
+        open={recurringEditDialog.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRecurringEditDialog({ open: false, task: null, action: "edit" });
+          }
+        }}
+        action={recurringEditDialog.action}
+        onConfirm={handleRecurringEditConfirm}
+        isLoading={updateRecurringTask.isPending || deleteRecurringTask.isPending}
       />
 
       {/* Bulk Actions Toolbar */}

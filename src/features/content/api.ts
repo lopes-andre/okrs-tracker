@@ -603,6 +603,27 @@ export async function getDistributionsByPost(postId: string): Promise<ContentDis
 }
 
 /**
+ * Get posted distributions for a plan (for activity heatmap)
+ * Returns just the id and posted_at date for counting purposes
+ */
+export async function getPostedDistributions(planId: string): Promise<{ id: string; posted_at: string }[]> {
+  const supabase = createClient();
+  return handleSupabaseError(
+    supabase
+      .from("content_distributions")
+      .select(`
+        id,
+        posted_at,
+        post:content_posts!inner(plan_id)
+      `)
+      .eq("post.plan_id", planId)
+      .eq("status", "posted")
+      .not("posted_at", "is", null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) as Promise<any[]>;
+}
+
+/**
  * Get calendar data (distributions for a date range)
  */
 export async function getCalendarData(

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDashboardData } from "../dashboard-data-provider";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, isPast, isToday, isTomorrow, isThisWeek } from "date-fns";
+import { formatDistanceToNow, isToday, isTomorrow, isThisWeek, startOfDay, isBefore } from "date-fns";
 
 interface TasksDueWidgetProps {
   config: Record<string, unknown>;
@@ -30,9 +30,11 @@ export const TasksDueWidget = memo(function TasksDueWidget({ config }: TasksDueW
       return dateA.getTime() - dateB.getTime();
     });
 
-  // Separate overdue and upcoming
-  const overdueTasks = dueTasks.filter((t) => isPast(new Date(t.due_date!)) && !isToday(new Date(t.due_date!)));
-  const upcomingTasks = dueTasks.filter((t) => !isPast(new Date(t.due_date!)) || isToday(new Date(t.due_date!)));
+  // Separate overdue and upcoming using startOfDay for consistent comparison
+  // A task is only overdue if its due date is before today (not just before the current time)
+  const todayStart = startOfDay(new Date());
+  const overdueTasks = dueTasks.filter((t) => isBefore(startOfDay(new Date(t.due_date!)), todayStart));
+  const upcomingTasks = dueTasks.filter((t) => !isBefore(startOfDay(new Date(t.due_date!)), todayStart));
 
   // Combine with overdue first, then upcoming
   const sortedTasks = [...overdueTasks, ...upcomingTasks];
@@ -50,7 +52,9 @@ export const TasksDueWidget = memo(function TasksDueWidget({ config }: TasksDueW
 
   function getDueDateLabel(dueDate: string) {
     const date = new Date(dueDate);
-    if (isPast(date) && !isToday(date)) {
+    const dateStart = startOfDay(date);
+    // Only overdue if the date is before today (using startOfDay for consistent comparison)
+    if (isBefore(dateStart, todayStart)) {
       return { label: formatDistanceToNow(date, { addSuffix: true }), isOverdue: true };
     }
     if (isToday(date)) {

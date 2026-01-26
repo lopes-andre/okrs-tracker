@@ -6,6 +6,7 @@ import { useAnnualKrs } from "@/features/annual-krs/hooks";
 import { useCheckIns } from "@/features/check-ins/hooks";
 import { useTasks } from "@/features/tasks/hooks";
 import { usePlan } from "@/features/plans/hooks";
+import { usePostedDistributions } from "@/features/content/hooks";
 import { computeKrProgress } from "@/lib/progress-engine";
 import type {
   Objective,
@@ -27,6 +28,7 @@ interface DashboardDataContextValue {
   annualKrs: AnnualKr[];
   checkIns: CheckIn[];
   tasks: Task[];
+  postedDistributions: { id: string; posted_at: string }[];
   isLoading: boolean;
   // Computed values
   atRiskKrs: (AnnualKr & { progress: number; paceStatus: string })[];
@@ -54,8 +56,9 @@ export function DashboardDataProvider({
   const { data: annualKrs = [], isLoading: krsLoading } = useAnnualKrs(planId);
   const { data: checkIns = [], isLoading: checkInsLoading } = useCheckIns(planId);
   const { data: tasks = [], isLoading: tasksLoading } = useTasks(planId);
+  const { data: postedDistributions = [], isLoading: distributionsLoading } = usePostedDistributions(planId);
 
-  const isLoading = planLoading || objectivesLoading || krsLoading || checkInsLoading || tasksLoading;
+  const isLoading = planLoading || objectivesLoading || krsLoading || checkInsLoading || tasksLoading || distributionsLoading;
   const year = plan?.year || new Date().getFullYear();
 
   // Compute at-risk KRs
@@ -95,6 +98,7 @@ export function DashboardDataProvider({
     annualKrs,
     checkIns,
     tasks,
+    postedDistributions,
     isLoading,
     atRiskKrs,
     overallProgress,

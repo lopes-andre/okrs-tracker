@@ -604,6 +604,18 @@ export function useCalendarData(planId: string, startDate: string, endDate: stri
 }
 
 /**
+ * Get posted distributions for activity tracking
+ */
+export function usePostedDistributions(planId: string) {
+  return useQuery({
+    queryKey: queryKeys.content.distributions.posted(planId),
+    queryFn: () => api.getPostedDistributions(planId),
+    enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - doesn't change frequently
+  });
+}
+
+/**
  * Create a distribution
  */
 export function useCreateDistribution(_planId: string) {
