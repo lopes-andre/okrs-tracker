@@ -305,6 +305,7 @@ export function PendingMediaUpload({
                     src={previewUrl}
                     alt={file.name}
                     className="w-full h-24 object-cover"
+                    loading="lazy"
                     onLoad={() => URL.revokeObjectURL(previewUrl)}
                   />
                 ) : (

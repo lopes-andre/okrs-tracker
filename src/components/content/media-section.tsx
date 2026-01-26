@@ -165,6 +165,7 @@ function MediaThumbnail({
             src={imageUrl}
             alt={item.file_name}
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="flex flex-col items-center gap-1">

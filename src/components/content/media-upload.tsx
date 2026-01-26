@@ -100,6 +100,7 @@ function MediaThumbnail({ fileUrl, alt }: MediaThumbnailProps) {
       src={imageUrl}
       alt={alt}
       className="w-full h-24 object-cover"
+      loading="lazy"
     />
   );
 }
