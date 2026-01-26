@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { WebVitalsReporter } from "@/components/performance";
+import { AppProviders } from "@/components/providers/app-providers";
 
 // Load Plus Jakarta Sans for headings
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -56,13 +57,15 @@ export default function RootLayout({
     <html lang="en" className={`${plusJakartaSans.variable} ${inter.variable}`}>
       <body className="min-h-screen">
         <QueryProvider>
-          <TooltipProvider delayDuration={200}>
-            <ErrorBoundary>
-              {children}
-            </ErrorBoundary>
-          </TooltipProvider>
-          <Toaster />
-          <WebVitalsReporter />
+          <AppProviders>
+            <TooltipProvider delayDuration={200}>
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </TooltipProvider>
+            <Toaster />
+            <WebVitalsReporter />
+          </AppProviders>
         </QueryProvider>
       </body>
     </html>
