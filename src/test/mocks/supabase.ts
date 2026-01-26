@@ -48,6 +48,12 @@ export function createMockSupabase() {
   // Storage for mock errors by table
   const mockErrors: Record<string, Error | null> = {};
 
+  // Storage for RPC results
+  const mockRpcResults: Record<string, unknown> = {};
+
+  // Storage for RPC errors
+  const mockRpcErrors: Record<string, Error | null> = {};
+
   // Record of all calls made
   const mockCalls: MockCallRecord[] = [];
 
@@ -59,6 +65,16 @@ export function createMockSupabase() {
   // Helper to set mock error for a table
   function setMockError(table: string, error: Error | null) {
     mockErrors[table] = error;
+  }
+
+  // Helper to set mock RPC result
+  function setMockRpcResult(fnName: string, result: unknown) {
+    mockRpcResults[fnName] = result;
+  }
+
+  // Helper to set mock RPC error
+  function setMockRpcError(fnName: string, error: Error | null) {
+    mockRpcErrors[fnName] = error;
   }
 
   // Helper to get all calls for a table
@@ -73,6 +89,8 @@ export function createMockSupabase() {
   function clearMocks() {
     Object.keys(mockData).forEach((key) => delete mockData[key]);
     Object.keys(mockErrors).forEach((key) => delete mockErrors[key]);
+    Object.keys(mockRpcResults).forEach((key) => delete mockRpcResults[key]);
+    Object.keys(mockRpcErrors).forEach((key) => delete mockRpcErrors[key]);
     mockCalls.length = 0;
   }
 
@@ -326,10 +344,16 @@ export function createMockSupabase() {
         getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: "https://example.com/file" } }),
       }),
     },
-    rpc: vi.fn().mockImplementation((_fnName: string) => {
+    rpc: vi.fn().mockImplementation((fnName: string) => {
       return {
-        then: (resolve: (result: { data: unknown; error: null }) => void) => {
-          resolve({ data: null, error: null });
+        then: (resolve: (result: { data: unknown; error: Error | null }) => void) => {
+          const error = mockRpcErrors[fnName];
+          if (error) {
+            resolve({ data: null, error });
+          } else {
+            const data = mockRpcResults[fnName] ?? null;
+            resolve({ data, error: null });
+          }
         },
       };
     }),
@@ -339,6 +363,8 @@ export function createMockSupabase() {
     mockSupabase,
     setMockData,
     setMockError,
+    setMockRpcResult,
+    setMockRpcError,
     getMockCalls,
     clearMocks,
   };
