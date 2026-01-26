@@ -190,18 +190,31 @@ Activity events reference task_id. We have two options:
 
 ### 2.3 Files to Modify
 
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `supabase/migrations/027_task_visibility_by_role.sql` | CREATE | New migration for RLS policy |
-| `src/features/timeline/api.ts` | MODIFY | Filter activity by task visibility |
-| `src/components/tasks/TaskRow.tsx` | MINOR | Update empty state messaging |
-| `src/app/plans/[planId]/tasks/page.tsx` | MINOR | Update empty state for non-owners |
+| File | Change Type | Description | Status |
+|------|-------------|-------------|--------|
+| `supabase/migrations/027_task_visibility_by_role.sql` | CREATE | New migration for RLS policy | ✅ Done |
+| `src/features/timeline/api.ts` | MODIFY | Filter activity by task visibility | N/A (handled at RLS level) |
+| `src/components/tasks/TaskRow.tsx` | MINOR | Update empty state messaging | TODO |
+| `src/app/plans/[planId]/tasks/page.tsx` | MINOR | Update empty state for non-owners | TODO |
+
+### 2.3.1 Tables Updated in Migration
+
+| Table | Old Policy | New Policy |
+|-------|------------|------------|
+| `tasks` | "Tasks viewable by members" | "Tasks viewable by role" |
+| `task_assignees` | "Task assignees viewable by members" | "Task assignees viewable by role" |
+| `task_tags` | "Task tags viewable by members" | "Task tags viewable by role" |
+| `task_recurrence_rules` | "Recurrence rules viewable by members" | "Recurrence rules viewable by role" |
+| `task_recurrence_instances` | "Recurrence instances viewable by members" | "Recurrence instances viewable by role" |
+| `activity_events` | "Activity events viewable by members" | "Activity events viewable by role" |
+| `comments` | "Users can view comments in their plans" | "Comments viewable by task visibility" |
+| `comment_mentions` | "Users can view mentions in their plans" | "Mentions viewable by task visibility" |
 
 ### 2.4 Implementation Order
 
-1. **Create migration file** with new RLS policies
+1. ✅ **Create migration file** with new RLS policies (`027_task_visibility_by_role.sql`)
 2. **Test RLS in isolation** via Supabase SQL editor
-3. **Update activity log filtering** (if Option B chosen)
+3. ✅ **Update activity log filtering** (Option B implemented in migration)
 4. **Update UI empty states** (optional polish)
 5. **Run full test suite**
 6. **Manual testing with owner and member accounts**
