@@ -251,14 +251,13 @@ describe("Tags API", () => {
   // ============================================================================
 
   describe("getTagsWithUsage", () => {
-    it("should fetch tags with task counts", async () => {
-      const tag1 = createTagFactory({ id: "tag-1", name: "Tag A", plan_id: "plan-123" });
-      const tag2 = createTagFactory({ id: "tag-2", name: "Tag B", plan_id: "plan-123" });
-      getMock().setMockData("tags", [tag1, tag2]);
-      getMock().setMockData("task_tags", [
-        { tag_id: "tag-1" },
-        { tag_id: "tag-1" },
-        { tag_id: "tag-2" },
+    // Note: getTagsWithUsage now uses RPC function get_tags_with_usage
+    // which returns tags with aggregated task_count and kr_count
+
+    it("should fetch tags with task counts from RPC", async () => {
+      getMock().setMockRpcResult("get_tags_with_usage", [
+        { id: "tag-1", plan_id: "plan-123", name: "Tag A", kind: "custom", color: null, created_at: new Date().toISOString(), task_count: 2, kr_count: 0 },
+        { id: "tag-2", plan_id: "plan-123", name: "Tag B", kind: "custom", color: null, created_at: new Date().toISOString(), task_count: 1, kr_count: 0 },
       ]);
 
       const result = await tagsApi.getTagsWithUsage("plan-123");
@@ -268,15 +267,25 @@ describe("Tags API", () => {
       expect(result[1].task_count).toBe(1);
     });
 
-    it("should return 0 count for tags with no tasks", async () => {
-      const tag = createTagFactory({ id: "tag-1", plan_id: "plan-123" });
-      getMock().setMockData("tags", [tag]);
-      getMock().setMockData("task_tags", []);
+    it("should return 0 count for tags with no tasks from RPC", async () => {
+      getMock().setMockRpcResult("get_tags_with_usage", [
+        { id: "tag-1", plan_id: "plan-123", name: "Tag A", kind: "custom", color: null, created_at: new Date().toISOString(), task_count: 0, kr_count: 0 },
+      ]);
 
       const result = await tagsApi.getTagsWithUsage("plan-123");
 
       expect(result).toHaveLength(1);
       expect(result[0].task_count).toBe(0);
+    });
+
+    it("should include kr_count from RPC", async () => {
+      getMock().setMockRpcResult("get_tags_with_usage", [
+        { id: "tag-1", plan_id: "plan-123", name: "Tag A", kind: "custom", color: null, created_at: new Date().toISOString(), task_count: 2, kr_count: 3 },
+      ]);
+
+      const result = await tagsApi.getTagsWithUsage("plan-123");
+
+      expect(result[0].kr_count).toBe(3);
     });
   });
 });
