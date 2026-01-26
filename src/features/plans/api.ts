@@ -73,23 +73,43 @@ export async function getPlanRole(planId: string): Promise<OkrRole | null> {
 
 /**
  * Create a new plan
+ * Also adds the creator as an owner in plan_members
  */
 export async function createPlan(plan: Omit<PlanInsert, "created_by">): Promise<Plan> {
   const supabase = createClient();
 
   // Get current user
   const { data: { user }, error: authError } = await supabase.auth.getUser();
-  
+
   if (authError) throw new Error("Authentication failed");
   if (!user) throw new Error("Not authenticated");
 
-  return handleSupabaseError(
-    supabase
-      .from("plans")
-      .insert({ ...plan, created_by: user.id })
-      .select()
-      .single()
-  );
+  // Create the plan
+  const { data: newPlan, error: planError } = await supabase
+    .from("plans")
+    .insert({ ...plan, created_by: user.id })
+    .select()
+    .single();
+
+  if (planError) throw planError;
+  if (!newPlan) throw new Error("Failed to create plan");
+
+  // Add creator as owner in plan_members
+  const { error: memberError } = await supabase
+    .from("plan_members")
+    .insert({
+      plan_id: newPlan.id,
+      user_id: user.id,
+      role: "owner",
+    });
+
+  if (memberError) {
+    // If adding member fails, try to clean up the plan
+    await supabase.from("plans").delete().eq("id", newPlan.id);
+    throw new Error("Failed to set plan ownership");
+  }
+
+  return newPlan;
 }
 
 /**
