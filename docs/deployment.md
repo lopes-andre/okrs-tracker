@@ -2,6 +2,8 @@
 
 Production deployment guide for the OKRs Tracker application.
 
+> **Quick Reference**: See [Deployment Checklist](./deployment-checklist.md) for a step-by-step deployment verification list.
+
 ## Overview
 
 | Component | Recommended Platform |
@@ -236,6 +238,38 @@ For simple changes, use the Supabase Dashboard SQL Editor directly.
 3. **Use transactions**: Wrap changes in `BEGIN; ... COMMIT;`
 4. **Handle data**: Consider existing data in migrations
 5. **Test rollback**: Ensure you can revert if needed
+
+## Health Checks
+
+The application provides a health check endpoint for monitoring and deployment verification:
+
+```
+GET /api/health
+```
+
+**Response (200 - Healthy):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-01-26T12:00:00.000Z",
+  "version": "1.0.0",
+  "uptime": 3600,
+  "checks": {
+    "database": { "status": "pass", "latency_ms": 15 },
+    "storage": { "status": "pass", "latency_ms": 20 },
+    "auth": { "status": "pass", "latency_ms": 10 }
+  }
+}
+```
+
+**Response (503 - Unhealthy):**
+Returns when one or more dependencies fail their health check.
+
+**Use cases:**
+- Load balancer health probes
+- Deployment verification
+- Uptime monitoring (e.g., UptimeRobot, Pingdom)
+- Kubernetes readiness/liveness probes
 
 ## Monitoring
 
