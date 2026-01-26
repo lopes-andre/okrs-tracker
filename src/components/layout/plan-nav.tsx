@@ -100,6 +100,7 @@ export function PlanNav({ planId }: PlanNavProps) {
               size="icon"
               onClick={() => setSearchOpen(true)}
               className="sm:hidden"
+              aria-label="Search"
             >
               <Search className="w-4 h-4" />
             </Button>

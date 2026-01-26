@@ -176,6 +176,7 @@ export function CampaignCard({
                   size="icon"
                   className="shrink-0"
                   onClick={(e) => e.stopPropagation()}
+                  aria-label="Campaign options"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </Button>

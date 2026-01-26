@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -101,7 +100,6 @@ export function CommentCard({
   onEdit,
   onDelete,
 }: CommentCardProps) {
-  const [showActions, setShowActions] = useState(false);
   const canModify = currentUserId === comment.user_id || isOwner;
 
   const userInitials = comment.user?.full_name
@@ -114,11 +112,7 @@ export function CommentCard({
     : comment.user?.email?.slice(0, 2).toUpperCase() || "?";
 
   return (
-    <div
-      className="flex gap-3 group"
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
-    >
+    <div className="flex gap-3 group">
       {/* Avatar */}
       <Avatar className="h-8 w-8 shrink-0">
         {comment.user?.avatar_url && (
@@ -150,17 +144,14 @@ export function CommentCard({
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Actions - visible on hover and focus-within for keyboard accessibility */}
       {canModify && (
         <div
-          className={cn(
-            "shrink-0 transition-opacity",
-            showActions ? "opacity-100" : "opacity-0"
-          )}
+          className="shrink-0 transition-opacity opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
         >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Comment options">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

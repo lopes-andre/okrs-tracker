@@ -182,7 +182,7 @@ function MediaThumbnail({
           size="icon"
           className="h-8 w-8 text-white hover:bg-white/20"
           onClick={onClick}
-          title="Preview"
+          aria-label="Preview media"
         >
           <Eye className="w-4 h-4" />
         </Button>
@@ -195,7 +195,7 @@ function MediaThumbnail({
             onDelete();
           }}
           disabled={isDeleting}
-          title="Delete"
+          aria-label="Delete media"
         >
           {isDeleting ? (
             <Loader2 className="w-4 h-4 animate-spin" />
