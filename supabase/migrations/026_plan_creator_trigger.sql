@@ -1,10 +1,19 @@
 -- ============================================================================
--- Migration: Plan Creator Trigger
--- Description: Automatically add plan creator as owner when a plan is created
+-- Migration: Fix Plans SELECT Policy
+-- Description: Allow plan creators to view their plans immediately after creation
+--
+-- This fixes a chicken-and-egg RLS problem where:
+-- 1. User creates a plan
+-- 2. Trigger tries to add user to plan_members
+-- 3. The plan_members INSERT policy checks if plan exists via SELECT
+-- 4. But the plans SELECT policy required user to be a member first
+--
+-- The fix allows creators to SELECT their own plans even before being a member.
+-- The original trigger (on_plan_created -> handle_new_plan) in 003_core_tables.sql
+-- handles adding the creator as owner.
 -- ============================================================================
 
 -- Update plans SELECT policy to allow creators to view their plans
--- (needed for plan_members INSERT policy to work)
 DROP POLICY IF EXISTS "Plans are viewable by members" ON plans;
 DROP POLICY IF EXISTS "Plans are viewable by members or creator" ON plans;
 
@@ -15,25 +24,3 @@ CREATE POLICY "Plans are viewable by members or creator"
     has_plan_access(id, 'viewer')
     OR created_by = auth.uid()
   );
-
--- Create function to add plan creator as owner
-CREATE OR REPLACE FUNCTION add_plan_creator_as_owner()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-BEGIN
-  INSERT INTO public.plan_members (plan_id, user_id, role)
-  VALUES (NEW.id, NEW.created_by, 'owner');
-  RETURN NEW;
-END;
-$$;
-
--- Create trigger
-DROP TRIGGER IF EXISTS on_plan_created_add_owner ON plans;
-
-CREATE TRIGGER on_plan_created_add_owner
-  AFTER INSERT ON plans
-  FOR EACH ROW
-  EXECUTE FUNCTION add_plan_creator_as_owner();
