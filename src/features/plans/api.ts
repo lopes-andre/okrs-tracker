@@ -61,10 +61,15 @@ export async function getPlan(planId: string): Promise<Plan | null> {
 export async function getPlanRole(planId: string): Promise<OkrRole | null> {
   const supabase = createClient();
 
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const { data, error } = await supabase
     .from("plan_members")
     .select("role")
     .eq("plan_id", planId)
+    .eq("user_id", user.id)
     .single();
 
   if (error && error.code !== "PGRST116") throw error; // PGRST116 = no rows
