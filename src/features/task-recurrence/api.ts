@@ -484,6 +484,10 @@ export async function updateRecurringTask(
   } else if (scope === "future" || scope === "all") {
     const masterId = info.master_task_id;
 
+    // CRITICAL: For bulk updates, NEVER update due_date as each instance has its own unique date
+    // Also exclude due_time as it may be tied to the specific date
+    const { due_date: _dueDate, due_time: _dueTime, ...bulkUpdates } = updates;
+
     // Get the current task's instance date to use as the cutoff for "future"
     // If editing the master task, use its due_date; if editing an instance, use its instance_date
     let cutoffDate: string | null = null;
@@ -501,11 +505,16 @@ export async function updateRecurringTask(
       }
     }
 
+    // Only proceed if there are actual updates to apply (after excluding date fields)
+    if (Object.keys(bulkUpdates).length === 0) {
+      return; // Nothing to update in bulk
+    }
+
     // Update master task (for 'all' always, for 'future' only if editing the master or if master is in the future)
     if (scope === "all" || !info.instance_date) {
       const { error: masterError } = await supabase
         .from("tasks")
-        .update(updates)
+        .update(bulkUpdates)
         .eq("id", masterId);
       if (masterError) throw masterError;
     }
@@ -521,7 +530,7 @@ export async function updateRecurringTask(
 
       const { error } = await supabase
         .from("tasks")
-        .update(updates)
+        .update(bulkUpdates)
         .eq("id", instance.task_id);
       if (error) throw error;
     }
