@@ -40,7 +40,6 @@ function getDayLabel(date: Date): string {
 // ============================================================================
 
 export function CalendarListView({
-  currentDate: _currentDate,
   entriesByDay,
   onEntryClick,
 }: CalendarListViewProps) {

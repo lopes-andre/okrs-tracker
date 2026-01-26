@@ -255,7 +255,6 @@ function Recommendations({ krs, year }: { krs: KrPerformanceRow[]; year: number 
     
     // Count statuses
     const offTrackCount = krs.filter((kr) => kr.paceStatus === "off-track").length;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _atRiskCount = krs.filter((kr) => kr.paceStatus === "at-risk").length;
     const staleKrs = krs.filter((kr) => {
       if (!kr.lastCheckInDate) return true;

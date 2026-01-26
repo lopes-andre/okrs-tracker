@@ -3,17 +3,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Upload,
-  X,
   Image as ImageIcon,
   Video,
   FileText,
   Loader2,
-  Plus,
   Link2,
   Trash2,
   Eye,
-  GripVertical,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

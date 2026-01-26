@@ -102,7 +102,6 @@ export function SavedViews({
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [newViewName, setNewViewName] = useState("");
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _allViews = [...PRESET_VIEWS, ...savedViews];
 
   const handleSaveView = () => {

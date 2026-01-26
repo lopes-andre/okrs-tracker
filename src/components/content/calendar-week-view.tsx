@@ -179,7 +179,6 @@ function groupOverlappingEntries(entries: ContentCalendarEntry[]): PositionedEnt
 // ============================================================================
 
 export function CalendarWeekView({
-  currentDate: _currentDate,
   dateRange,
   entriesByDay,
   onEntryClick,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Search, SlidersHorizontal, X, Star, Image, Link2, Video } from "lucide-react";
+import { Search, SlidersHorizontal, X, Star, Image as ImageIcon, Link2, Video } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -266,7 +266,7 @@ export function KanbanFilters({
                       toggleHasMedia(checked ? true : null)
                     }
                   />
-                  <Image className="w-3.5 h-3.5" />
+                  <ImageIcon className="w-3.5 h-3.5" />
                   <span className="text-small">Has media files</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -411,7 +411,7 @@ export function KanbanFilters({
           )}
           {filters.hasMedia === true && (
             <Badge variant="secondary" className="gap-1">
-              <Image className="w-3 h-3" />
+              <ImageIcon className="w-3 h-3" />
               Has media
               <button
                 onClick={() => toggleHasMedia(null)}

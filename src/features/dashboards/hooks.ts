@@ -266,8 +266,8 @@ export function useEnsureDefaultDashboard(planId: string) {
 
         // Invalidate queries to refetch
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboards.list(planId) });
-      } catch (error) {
-        console.error("Failed to create default dashboard:", error);
+      } catch {
+        // Silent failure - dashboard will be created on next load attempt
       } finally {
         isCreating.current = false;
       }

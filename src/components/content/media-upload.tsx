@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Upload, X, Image, Video, FileText, Loader2 } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Video, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useUploadMedia, useDeleteMedia } from "@/features/content/hooks";
@@ -32,7 +32,7 @@ function getMediaIcon(fileType: string) {
   // file_type is stored as category: "image", "pdf", or "other"
   // Also support MIME type format for backwards compatibility
   if (fileType === "image" || fileType.startsWith("image/")) {
-    return Image;
+    return ImageIcon;
   } else if (fileType === "video" || fileType.startsWith("video/")) {
     return Video;
   }
@@ -90,7 +90,7 @@ function MediaThumbnail({ fileUrl, alt }: MediaThumbnailProps) {
   if (!imageUrl) {
     return (
       <div className="w-full h-24 flex items-center justify-center">
-        <Image className="w-8 h-8 text-text-muted" />
+        <ImageIcon className="w-8 h-8 text-text-muted" />
       </div>
     );
   }

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState, createContext, useContext } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { formatErrorMessage } from "@/lib/toast-utils";
+import { logger } from "@/lib/logger";
 import * as api from "./api";
 import type { TaskReminderSettingsUpdate } from "@/lib/supabase/types";
 
@@ -128,7 +129,7 @@ export function useServiceWorker() {
         setIsRegistered(true);
       })
       .catch((error) => {
-        console.error("Service worker registration failed:", error);
+        logger.error("Service worker registration failed", { error });
       });
   }, []);
 
@@ -175,7 +176,7 @@ export function useReminderSound() {
         playBeep(587.33, ctx.currentTime, 0.2, 0.2);
       }
     } catch (error) {
-      console.error("Failed to play notification sound:", error);
+      logger.error("Failed to play notification sound", { error });
     }
   }, []);
 
@@ -275,7 +276,7 @@ export function useNotificationSender() {
             new Notification(title, defaultOptions);
           }
         } catch (error) {
-          console.error("Failed to send system notification:", error);
+          logger.error("Failed to send system notification", { error });
         }
       }
 

@@ -40,10 +40,9 @@ import { PaceBadge } from "./pace-badge";
 import type { AnnualKr, OkrRole, QuarterTarget, CheckIn, Profile } from "@/lib/supabase/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { ProgressResult } from "@/lib/progress-engine";
-import { 
-  formatValueWithUnit, 
-  formatProgress, 
-  getCurrentQuarter,
+import {
+  formatValueWithUnit,
+  formatProgress,
   computeAllQuartersProgress,
   getQuarterProgressSummary,
 } from "@/lib/progress-engine";
@@ -70,7 +69,6 @@ interface AnnualKrCardProps {
 }
 
 // KR type labels (kept for future use)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _krTypeLabels: Record<string, string> = {
   metric: "Metric",
   count: "Count",
