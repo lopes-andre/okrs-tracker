@@ -45,6 +45,36 @@ export interface MarkdownEditorRef {
 // SIMPLE MARKDOWN RENDERER
 // ============================================================================
 
+/**
+ * Validate URL for safe protocols only.
+ * Blocks javascript:, data:, vbscript: and other dangerous protocols.
+ */
+function isSafeUrl(url: string): boolean {
+  const trimmed = url.trim().toLowerCase();
+  // Block dangerous protocols
+  if (
+    trimmed.startsWith("javascript:") ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("vbscript:") ||
+    trimmed.startsWith("file:")
+  ) {
+    return false;
+  }
+  // Allow http, https, mailto, tel, and relative URLs
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("mailto:") ||
+    trimmed.startsWith("tel:") ||
+    trimmed.startsWith("/") ||
+    trimmed.startsWith("#") ||
+    !trimmed.includes(":")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function renderMarkdown(text: string): string {
   if (!text) return "";
 
@@ -68,10 +98,16 @@ function renderMarkdown(text: string): string {
     .replace(/~~(.+?)~~/g, '<del class="text-text-muted">$1</del>')
     // Inline code
     .replace(/`([^`]+)`/g, '<code class="px-1.5 py-0.5 bg-bg-1 rounded text-sm font-mono">$1</code>')
-    // Links
+    // Links - with URL validation to prevent XSS
     .replace(
       /\[([^\]]+)\]\(([^)]+)\)/g,
-      '<a href="$2" class="text-accent hover:underline" target="_blank" rel="noopener">$1</a>'
+      (match, linkText, url) => {
+        if (isSafeUrl(url)) {
+          return `<a href="${url}" class="text-accent hover:underline" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+        }
+        // Unsafe URL - render as plain text
+        return linkText;
+      }
     )
     // Blockquotes
     .replace(
