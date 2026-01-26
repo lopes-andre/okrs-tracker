@@ -15,10 +15,12 @@ OKRs Tracker helps ambitious individuals and teams manage their goals using the 
 - Hierarchical goal structure: Plans → Objectives → Key Results → Quarterly Targets → Tasks
 - Multiple KR types: metric, count, milestone, rate, average
 - Progress tracking with pace analysis and forecasting
+- Content Planner with Kanban workflow, multi-platform scheduling, and campaign tracking
 - Team collaboration with role-based access control
 - Weekly review rituals with reflection prompts
 - Beautiful analytics dashboards with charts and heatmaps
 - Full data portability (JSON/Markdown export, cloud backups)
+- Accessibility-focused design with screen reader support
 
 ## Quick Start
 
@@ -75,6 +77,7 @@ okrs-tracker/
 │   │   └── plans/[planId]/     # Plan-specific routes
 │   │       ├── okrs/           # OKR management
 │   │       ├── tasks/          # Task management
+│   │       ├── content/        # Content Planner
 │   │       ├── analytics/      # Charts & insights
 │   │       ├── reviews/        # Weekly reviews
 │   │       ├── timeline/       # Activity feed
@@ -83,7 +86,7 @@ okrs-tracker/
 │   ├── features/               # Data layer (API + React Query hooks)
 │   └── lib/                    # Core utilities & business logic
 ├── supabase/
-│   └── migrations/             # Database migrations (14 files)
+│   └── migrations/             # Database migrations (25 files)
 └── docs/                       # Documentation
 ```
 
@@ -117,24 +120,31 @@ npm run test:coverage # Run tests with coverage
 
 ### Database Setup
 
-The project uses 14 consolidated migration files:
+The project uses 25 migration files organized into core OKR tables, content planner, and optimizations:
+
+**Core OKR Migrations (001-014):**
 
 | # | File | Description |
 |---|------|-------------|
-| 1 | `001_extensions_and_types.sql` | PostgreSQL extensions and enums |
-| 2 | `002_helper_functions.sql` | Trigger and utility functions |
-| 3 | `003_core_tables.sql` | profiles, plans, plan_members, invites |
-| 4 | `004_okr_tables.sql` | objectives, kr_groups, annual_krs, quarter_targets, tasks |
-| 5 | `005_tracking_tables.sql` | check_ins, tags, tag junctions |
-| 6 | `006_ui_tables.sql` | dashboards, dashboard_widgets |
-| 7 | `007_activity_events.sql` | activity_events + logging triggers |
-| 8 | `008_weekly_reviews.sql` | weekly_reviews tables + triggers |
-| 9 | `009_task_features.sql` | reminders, assignees, recurrence |
-| 10 | `010_communication.sql` | comments, mentions, notifications |
-| 11 | `011_rls_policies.sql` | Row Level Security policies |
-| 12 | `012_views.sql` | Database views |
-| 13 | `013_rpc_functions.sql` | Client-callable RPC functions |
-| 14 | `014_realtime.sql` | Supabase Realtime configuration |
+| 1-2 | `001-002` | Extensions, types, helper functions |
+| 3-5 | `003-005` | Core tables (profiles, plans, objectives, KRs, tasks, check-ins) |
+| 6-10 | `006-010` | UI tables, activity events, weekly reviews, task features, communication |
+| 11-14 | `011-014` | RLS policies, views, RPC functions, realtime |
+
+**Content Planner Migrations (015-022):**
+
+| # | File | Description |
+|---|------|-------------|
+| 15-17 | `015-017` | Content planner tables, functions, media storage |
+| 18-22 | `018-022` | Media triggers, favorites, video links, campaigns, event types |
+
+**Performance Migrations (023-025):**
+
+| # | File | Description |
+|---|------|-------------|
+| 23 | `023_performance_indexes.sql` | 30+ indexes on commonly queried columns |
+| 24 | `024_optimized_rpc_functions.sql` | Optimized RPC functions (batch operations, N+1 elimination) |
+| 25 | `025_rls_optimizations.sql` | RLS policy optimizations with helper functions |
 
 Run migrations in Supabase Dashboard → SQL Editor, or use the Supabase CLI:
 
@@ -178,11 +188,26 @@ supabase db reset  # Reset and run all migrations
 - Progress snapshots captured at completion
 - Review analytics and streaks
 
+### Content Planner
+- Kanban workflow: Backlog → Tagged → Ongoing → Complete
+- Multi-platform distribution scheduling
+- Media uploads with drag-drop support
+- Video link embedding (YouTube, Vimeo, Loom)
+- Calendar views (month/week/day/list)
+- Campaign tracking for paid advertising
+- Platform goals and metrics
+
 ### Data Portability
 - Export to JSON (full backup)
 - Export to Markdown (human-readable)
 - Import with validation and preview
 - Cloud backups to Supabase Storage
+
+### Accessibility
+- Skip-to-content link for keyboard navigation
+- ARIA labels on all interactive elements
+- Reduced motion support for animations
+- Screen reader optimized UI
 
 ## Contributing
 

@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+#### Content Planner Feature
+- Full content management system with Kanban workflow
+- Post status workflow: backlog → tagged → ongoing → complete
+- Distribution scheduling across multiple platform accounts
+- Media uploads with drag-drop support
+- Video link embedding (YouTube, Vimeo, Loom)
+- Content calendar with month/week/day/list views
+- Campaign tracking for paid advertising
+- Goals and metrics tracking per platform
+
+#### Accessibility Improvements
+- Added aria-labels to all icon-only buttons
+- Added prefers-reduced-motion support for animations
+- Added skip-to-content link for keyboard navigation
+- Added focus-within support for hover-only actions
+- Improved semantic HTML with main landmark
+
+#### Database & Query Optimizations
+- Added 30+ performance indexes on commonly queried columns
+- Added optimized RPC functions to eliminate N+1 patterns:
+  - `get_tags_with_usage` - Tag counts in single query
+  - `get_task_metrics` - Task completion metrics
+  - `get_checkin_streak` - Streak calculation
+  - `get_activity_stats` - Timeline analytics
+  - Batch update functions for widgets and tasks
+- Optimized RLS policies with helper functions
+
+#### Error Handling & Resilience
+- Added global error boundary with recovery actions
+- Added feature-level error boundaries
+- Added error logging service with structured errors
+- Added retry logic with exponential backoff for API calls
+- Added mutation retry patterns for transient failures
+- Added circuit breaker pattern for failing services
+- Added Web Vitals monitoring (LCP, FID, CLS, TTFB)
+
+#### Documentation
 - Comprehensive documentation suite
   - Developer documentation (architecture, database, API, deployment, testing)
   - End user features guide

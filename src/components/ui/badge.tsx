@@ -1,7 +1,27 @@
+/**
+ * Badge Component
+ *
+ * A small status indicator used for labels, counts, and status displays.
+ * Supports semantic color variants for different contexts.
+ *
+ * @example
+ * // Default badge
+ * <Badge>Label</Badge>
+ *
+ * @example
+ * // Status badges
+ * <Badge variant="success">Completed</Badge>
+ * <Badge variant="warning">At Risk</Badge>
+ * <Badge variant="danger">Overdue</Badge>
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+/**
+ * Badge style variants using class-variance-authority.
+ * Provides semantic color coding for status indicators.
+ */
 const badgeVariants = cva(
   "inline-flex items-center rounded-pill border px-2.5 py-0.5 text-small font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 focus:ring-offset-2",
   {
@@ -29,6 +49,11 @@ const badgeVariants = cva(
   }
 );
 
+/**
+ * Props for the Badge component.
+ *
+ * @property variant - Visual variant: "default" | "secondary" | "success" | "warning" | "danger" | "info" | "outline"
+ */
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
