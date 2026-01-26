@@ -16,6 +16,31 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": "warn",
     },
   },
+  // Security: Prevent admin client from being imported in client-side code
+  {
+    files: ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/lib/supabase/admin",
+              message:
+                "Admin client bypasses RLS and must NEVER be used in client components. Use client.ts or server.ts instead.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["**/supabase/admin*"],
+              message:
+                "Admin client bypasses RLS and must NEVER be used in client components.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;
