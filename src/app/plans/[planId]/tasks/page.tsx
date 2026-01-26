@@ -586,8 +586,8 @@ export default function TasksPage({
   return (
     <>
       <PageHeader
-        title="Tasks"
-        description={`Manage your deliverables and action items`}
+        title={isOwner ? "Tasks" : "My Tasks"}
+        description={isOwner ? "Manage your team's deliverables and action items" : "Your assigned tasks and action items"}
       >
         <Link href={`/plans/${planId}/tasks/logbook`}>
           <Button variant="secondary" className="gap-2">
@@ -755,33 +755,35 @@ export default function TasksPage({
             </TabsTrigger>
           </TabsList>
 
-          {/* My Tasks / All Tasks Filter */}
-          <div className="inline-flex h-9 items-center justify-center rounded-lg bg-bg-1 p-1 text-text-muted">
-            <button
-              onClick={() => setShowMyTasksOnly(false)}
-              className={cn(
-                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
-                !showMyTasksOnly
-                  ? "bg-white text-text-strong shadow"
-                  : "hover:bg-white/50 hover:text-text-strong"
-              )}
-            >
-              <Users className="w-4 h-4" />
-              All Tasks
-            </button>
-            <button
-              onClick={() => setShowMyTasksOnly(true)}
-              className={cn(
-                "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
-                showMyTasksOnly
-                  ? "bg-white text-text-strong shadow"
-                  : "hover:bg-white/50 hover:text-text-strong"
-              )}
-            >
-              <User className="w-4 h-4" />
-              My Tasks
-            </button>
-          </div>
+          {/* My Tasks / All Tasks Filter - Only shown for owners who can see all tasks */}
+          {isOwner && (
+            <div className="inline-flex h-9 items-center justify-center rounded-lg bg-bg-1 p-1 text-text-muted">
+              <button
+                onClick={() => setShowMyTasksOnly(false)}
+                className={cn(
+                  "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
+                  !showMyTasksOnly
+                    ? "bg-white text-text-strong shadow"
+                    : "hover:bg-white/50 hover:text-text-strong"
+                )}
+              >
+                <Users className="w-4 h-4" />
+                All Tasks
+              </button>
+              <button
+                onClick={() => setShowMyTasksOnly(true)}
+                className={cn(
+                  "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-white transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 gap-2",
+                  showMyTasksOnly
+                    ? "bg-white text-text-strong shadow"
+                    : "hover:bg-white/50 hover:text-text-strong"
+                )}
+              >
+                <User className="w-4 h-4" />
+                My Tasks
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Timeline (List) View */}
@@ -795,11 +797,13 @@ export default function TasksPage({
           ) : counts.active === 0 && displayCounts.completed === 0 ? (
             <EmptyState
               icon={ListTodo}
-              title="No tasks yet"
+              title={isOwner ? "No tasks yet" : "No tasks assigned to you"}
               description={
-                canEdit
-                  ? "Create tasks to track your progress and stay organized."
-                  : "No tasks have been created for this plan yet."
+                isOwner
+                  ? "Create tasks to track your team's progress and stay organized."
+                  : canEdit
+                  ? "You don't have any tasks assigned yet. Create a task or ask the plan owner to assign tasks to you."
+                  : "You don't have any tasks assigned yet. Ask the plan owner to assign tasks to you."
               }
               action={
                 canEdit
@@ -1065,8 +1069,14 @@ export default function TasksPage({
               ) && (
                 <EmptyState
                   icon={ListTodo}
-                  title="No active tasks"
-                  description="Create tasks to track your progress on OKRs."
+                  title={isOwner ? "No active tasks" : "No tasks assigned to you"}
+                  description={
+                    isOwner
+                      ? "Create tasks to track your team's progress on OKRs."
+                      : canEdit
+                      ? "You don't have any tasks assigned yet. Create a task or ask the plan owner to assign tasks to you."
+                      : "You don't have any tasks assigned yet."
+                  }
                   action={
                     canEdit
                       ? { label: "Create Task", onClick: openCreate }

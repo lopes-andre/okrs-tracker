@@ -83,6 +83,7 @@ export default function TasksLogbookPage({
   const { data: objectives = [] } = useObjectives(planId);
   const { data: role } = usePlanRole(planId);
   const userRole: OkrRole = role || "viewer";
+  const isOwner = userRole === "owner";
 
   // Mutations
   const updateTask = useUpdateTask(planId);
@@ -132,8 +133,8 @@ export default function TasksLogbookPage({
   return (
     <>
       <PageHeader
-        title="Tasks Logbook"
-        description={`${totalCount} completed tasks`}
+        title={isOwner ? "Tasks Logbook" : "My Completed Tasks"}
+        description={`${totalCount} completed task${totalCount !== 1 ? "s" : ""}`}
       >
         <Link href={`/plans/${planId}/tasks`}>
           <Button variant="secondary" className="gap-2">
@@ -267,8 +268,11 @@ export default function TasksLogbookPage({
       ) : completedTasks.length === 0 ? (
         <EmptyState
           icon={CheckCircle2}
-          title="No completed tasks"
-          description="Complete some tasks to see them here in your logbook."
+          title={isOwner ? "No completed tasks" : "No completed tasks assigned to you"}
+          description={isOwner
+            ? "Complete some tasks to see them here in your logbook."
+            : "Complete your assigned tasks to see them here."
+          }
           action={{
             label: "Go to Tasks",
             href: `/plans/${planId}/tasks`,
