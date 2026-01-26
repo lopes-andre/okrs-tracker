@@ -212,7 +212,8 @@ export async function getTasksWithDetails(
       quarter_target:quarter_targets(id, quarter, target_value),
       assigned_user:profiles(id, full_name, avatar_url),
       task_tags(tag:tags(*)),
-      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url))
+      task_assignees(id, task_id, user_id, assigned_at, assigned_by, user:profiles!task_assignees_user_id_fkey(id, full_name, email, avatar_url)),
+      recurrence_rule:task_recurrence_rules(id, task_id, rrule, frequency, interval_value)
     `)
     .eq("plan_id", planId);
 
@@ -226,11 +227,13 @@ export async function getTasksWithDetails(
   const { data, error } = await query;
   if (error) throw error;
 
-  // Transform to extract tags and assignees
+  // Transform to extract tags, assignees, and recurrence_rule
   return (data || []).map((task) => ({
     ...task,
     tags: task.task_tags?.map((t: { tag: unknown }) => t.tag) || [],
     assignees: task.task_assignees || [],
+    // recurrence_rule comes as an array from the join, take the first element
+    recurrence_rule: Array.isArray(task.recurrence_rule) ? task.recurrence_rule[0] : task.recurrence_rule,
     task_tags: undefined,
     task_assignees: undefined,
   })) as TaskWithDetails[];

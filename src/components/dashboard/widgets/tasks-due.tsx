@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useDashboardData } from "../dashboard-data-provider";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, isToday, isTomorrow, isThisWeek, startOfDay, isBefore } from "date-fns";
+import { formatDistanceToNow, isToday, isTomorrow, isThisWeek, startOfDay, isBefore, parseISO } from "date-fns";
 
 interface TasksDueWidgetProps {
   config: Record<string, unknown>;
@@ -25,16 +25,23 @@ export const TasksDueWidget = memo(function TasksDueWidget({ config }: TasksDueW
       task.due_date
     )
     .sort((a, b) => {
-      const dateA = new Date(a.due_date!);
-      const dateB = new Date(b.due_date!);
+      // Use parseISO to properly parse YYYY-MM-DD format without timezone issues
+      const dateA = parseISO(a.due_date!);
+      const dateB = parseISO(b.due_date!);
       return dateA.getTime() - dateB.getTime();
     });
 
-  // Separate overdue and upcoming using startOfDay for consistent comparison
-  // A task is only overdue if its due date is before today (not just before the current time)
+  // Separate overdue and upcoming - matching the same logic used in tasks API
+  // A task is only overdue if its due date is before today (not on today)
   const todayStart = startOfDay(new Date());
-  const overdueTasks = dueTasks.filter((t) => isBefore(startOfDay(new Date(t.due_date!)), todayStart));
-  const upcomingTasks = dueTasks.filter((t) => !isBefore(startOfDay(new Date(t.due_date!)), todayStart));
+  const overdueTasks = dueTasks.filter((t) => {
+    const dueDate = parseISO(t.due_date!);
+    return isBefore(dueDate, todayStart);
+  });
+  const upcomingTasks = dueTasks.filter((t) => {
+    const dueDate = parseISO(t.due_date!);
+    return !isBefore(dueDate, todayStart);
+  });
 
   // Combine with overdue first, then upcoming
   const sortedTasks = [...overdueTasks, ...upcomingTasks];
@@ -50,23 +57,23 @@ export const TasksDueWidget = memo(function TasksDueWidget({ config }: TasksDueW
     );
   }
 
-  function getDueDateLabel(dueDate: string) {
-    const date = new Date(dueDate);
-    const dateStart = startOfDay(date);
-    // Only overdue if the date is before today (using startOfDay for consistent comparison)
-    if (isBefore(dateStart, todayStart)) {
-      return { label: formatDistanceToNow(date, { addSuffix: true }), isOverdue: true };
+  function getDueDateLabel(dueDateStr: string) {
+    // Use parseISO to properly parse YYYY-MM-DD format without timezone issues
+    const dueDate = parseISO(dueDateStr);
+    // Only overdue if the date is before today (matching tasks API logic)
+    if (isBefore(dueDate, todayStart)) {
+      return { label: formatDistanceToNow(dueDate, { addSuffix: true }), isOverdue: true };
     }
-    if (isToday(date)) {
+    if (isToday(dueDate)) {
       return { label: "Today", isOverdue: false };
     }
-    if (isTomorrow(date)) {
+    if (isTomorrow(dueDate)) {
       return { label: "Tomorrow", isOverdue: false };
     }
-    if (isThisWeek(date)) {
-      return { label: formatDistanceToNow(date, { addSuffix: true }), isOverdue: false };
+    if (isThisWeek(dueDate)) {
+      return { label: formatDistanceToNow(dueDate, { addSuffix: true }), isOverdue: false };
     }
-    return { label: formatDistanceToNow(date, { addSuffix: true }), isOverdue: false };
+    return { label: formatDistanceToNow(dueDate, { addSuffix: true }), isOverdue: false };
   }
 
   return (
