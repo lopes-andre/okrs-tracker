@@ -188,22 +188,31 @@ describe("Analytics API", () => {
   // ============================================================================
 
   describe("getTaskMetrics", () => {
+    // Note: getTaskMetrics now uses RPC for basic counts + direct query for completed tasks
+
     it("should calculate metrics for tasks", async () => {
-      const activeTasks = [
-        createTask({ id: "t-1", status: "pending", plan_id: "plan-123" }),
-        createTask({ id: "t-2", status: "in_progress", plan_id: "plan-123" }),
-      ];
+      // Mock RPC result
+      getMock().setMockRpcResult("get_task_metrics", [{
+        total_tasks: 3,
+        completed_tasks: 1,
+        pending_tasks: 1,
+        in_progress_tasks: 1,
+        cancelled_tasks: 0,
+        overdue_tasks: 0,
+        quick_wins: 0,
+      }]);
+      // Mock completed tasks query
       const completedTask = createTask({
         id: "t-3",
         status: "completed",
         completed_at: new Date().toISOString(),
         plan_id: "plan-123"
       });
-      getMock().setMockData("tasks", [...activeTasks, completedTask]);
+      getMock().setMockData("tasks", [completedTask]);
 
       const result = await analyticsApi.getTaskMetrics("plan-123");
 
-      expect(result.totalActive).toBe(2);
+      expect(result.totalActive).toBe(2); // pending + in_progress
       expect(typeof result.completedThisWeek).toBe("number");
       expect(typeof result.completedThisMonth).toBe("number");
       expect(typeof result.overdueCount).toBe("number");
@@ -211,6 +220,15 @@ describe("Analytics API", () => {
     });
 
     it("should return zero metrics when no tasks", async () => {
+      getMock().setMockRpcResult("get_task_metrics", [{
+        total_tasks: 0,
+        completed_tasks: 0,
+        pending_tasks: 0,
+        in_progress_tasks: 0,
+        cancelled_tasks: 0,
+        overdue_tasks: 0,
+        quick_wins: 0,
+      }]);
       getMock().setMockData("tasks", []);
 
       const result = await analyticsApi.getTaskMetrics("plan-123");
@@ -221,41 +239,68 @@ describe("Analytics API", () => {
       expect(result.overdueCount).toBe(0);
     });
 
-    it("should count overdue tasks", async () => {
-      const overdueTask = createTask({
-        id: "t-1",
-        status: "pending",
-        due_date: "2020-01-01", // Past date
-        plan_id: "plan-123",
-      });
-      getMock().setMockData("tasks", [overdueTask]);
+    it("should count overdue tasks from RPC", async () => {
+      getMock().setMockRpcResult("get_task_metrics", [{
+        total_tasks: 1,
+        completed_tasks: 0,
+        pending_tasks: 1,
+        in_progress_tasks: 0,
+        cancelled_tasks: 0,
+        overdue_tasks: 1,
+        quick_wins: 0,
+      }]);
+      getMock().setMockData("tasks", []);
 
       const result = await analyticsApi.getTaskMetrics("plan-123");
 
       expect(result.overdueCount).toBe(1);
     });
 
-    it("should count tasks linked to KRs", async () => {
+    it("should count tasks linked to KRs from completed tasks query", async () => {
+      getMock().setMockRpcResult("get_task_metrics", [{
+        total_tasks: 2,
+        completed_tasks: 2,
+        pending_tasks: 0,
+        in_progress_tasks: 0,
+        cancelled_tasks: 0,
+        overdue_tasks: 0,
+        quick_wins: 0,
+      }]);
+      // Completed tasks with linking info
       const linkedTask = createTask({
         id: "t-1",
+        status: "completed",
         annual_kr_id: "kr-123",
         plan_id: "plan-123",
+        completed_at: new Date().toISOString(),
       });
       const orphanTask = createTask({
         id: "t-2",
+        status: "completed",
         annual_kr_id: null,
         objective_id: null,
         plan_id: "plan-123",
+        completed_at: new Date().toISOString(),
       });
       getMock().setMockData("tasks", [linkedTask, orphanTask]);
 
       const result = await analyticsApi.getTaskMetrics("plan-123");
 
       expect(result.tasksLinkedToKrs).toBe(1);
+      // orphanTasks = total_tasks - linked_count (from completed query)
       expect(result.orphanTasks).toBe(1);
     });
 
     it("should calculate average completion days", async () => {
+      getMock().setMockRpcResult("get_task_metrics", [{
+        total_tasks: 1,
+        completed_tasks: 1,
+        pending_tasks: 0,
+        in_progress_tasks: 0,
+        cancelled_tasks: 0,
+        overdue_tasks: 0,
+        quick_wins: 0,
+      }]);
       const task = createTask({
         id: "t-1",
         status: "completed",
@@ -276,8 +321,11 @@ describe("Analytics API", () => {
   // ============================================================================
 
   describe("getProductivityStats", () => {
+    // Note: getProductivityStats now uses RPC for streak + direct query for day-of-week analysis
+
     it("should return productivity statistics", async () => {
       getMock().setMockData("check_ins", []);
+      getMock().setMockRpcResult("get_checkin_streak", [{ current_streak: 0, longest_streak: 0, last_checkin_date: null }]);
 
       const result = await analyticsApi.getProductivityStats("plan-123");
 
@@ -289,6 +337,7 @@ describe("Analytics API", () => {
 
     it("should return all days of week in checkInsByDayOfWeek", async () => {
       getMock().setMockData("check_ins", []);
+      getMock().setMockRpcResult("get_checkin_streak", [{ current_streak: 0, longest_streak: 0, last_checkin_date: null }]);
 
       const result = await analyticsApi.getProductivityStats("plan-123");
 
@@ -303,27 +352,20 @@ describe("Analytics API", () => {
 
     it("should return zero streak when no check-ins", async () => {
       getMock().setMockData("check_ins", []);
+      getMock().setMockRpcResult("get_checkin_streak", [{ current_streak: 0, longest_streak: 0, last_checkin_date: null }]);
 
       const result = await analyticsApi.getProductivityStats("plan-123");
 
       expect(result.currentStreak).toBe(0);
     });
 
-    it("should calculate correct streak with recent check-ins", async () => {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-
-      const checkIns = [
-        createCheckIn({ recorded_at: today.toISOString() }),
-        createCheckIn({ recorded_at: yesterday.toISOString() }),
-      ];
-      getMock().setMockData("check_ins", checkIns);
+    it("should return streak from RPC function", async () => {
+      getMock().setMockData("check_ins", []);
+      getMock().setMockRpcResult("get_checkin_streak", [{ current_streak: 5, longest_streak: 10, last_checkin_date: "2025-01-20" }]);
 
       const result = await analyticsApi.getProductivityStats("plan-123");
 
-      // Should have at least some streak if check-ins are today
-      expect(result.currentStreak).toBeGreaterThanOrEqual(0);
+      expect(result.currentStreak).toBe(5);
     });
   });
 

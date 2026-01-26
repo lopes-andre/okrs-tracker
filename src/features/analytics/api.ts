@@ -194,47 +194,58 @@ export async function getKrCheckIns(
 }
 
 /**
- * Get task completion metrics
+ * Get task completion metrics.
+ * Uses optimized RPC function for basic metrics, with additional client-side
+ * calculations for time-sensitive data (this week/month).
  */
 export async function getTaskMetrics(planId: string): Promise<TaskMetrics> {
   const supabase = createClient();
 
+  // Use RPC for basic metrics (total counts, quick wins, overdue)
+  const { data: rpcData, error: rpcError } = await supabase.rpc("get_task_metrics", {
+    p_plan_id: planId,
+    p_start_date: null,
+    p_end_date: null,
+  });
+
+  if (rpcError) throw rpcError;
+
+  const metrics = rpcData?.[0] || {
+    total_tasks: 0,
+    completed_tasks: 0,
+    pending_tasks: 0,
+    in_progress_tasks: 0,
+    overdue_tasks: 0,
+    quick_wins: 0,
+  };
+
+  // For time-sensitive metrics (this week/month), query completed tasks
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - now.getDay());
   weekStart.setHours(0, 0, 0, 0);
-  
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const { data: tasks, error } = await supabase
+  const { data: completedTasks, error: completedError } = await supabase
     .from("tasks")
-    .select("*")
-    .eq("plan_id", planId);
+    .select("completed_at, created_at, annual_kr_id, objective_id")
+    .eq("plan_id", planId)
+    .eq("status", "completed");
 
-  if (error) throw error;
+  if (completedError) throw completedError;
 
-  const allTasks = tasks || [];
-  const activeTasks = allTasks.filter((t) => t.status !== "completed" && t.status !== "cancelled");
-  const completedTasks = allTasks.filter((t) => t.status === "completed");
-  const overdueTasks = activeTasks.filter((t) => {
-    if (!t.due_date) return false;
-    return new Date(t.due_date) < now;
-  });
-
-  const completedThisWeek = completedTasks.filter((t) => {
-    if (!t.completed_at) return false;
-    return new Date(t.completed_at) >= weekStart;
-  });
-
-  const completedThisMonth = completedTasks.filter((t) => {
-    if (!t.completed_at) return false;
-    return new Date(t.completed_at) >= monthStart;
-  });
+  const completed = completedTasks || [];
+  const completedThisWeek = completed.filter((t) =>
+    t.completed_at && new Date(t.completed_at) >= weekStart
+  );
+  const completedThisMonth = completed.filter((t) =>
+    t.completed_at && new Date(t.completed_at) >= monthStart
+  );
 
   // Calculate average completion time
   let totalCompletionDays = 0;
   let completedWithDates = 0;
-  completedTasks.forEach((t) => {
+  completed.forEach((t) => {
     if (t.completed_at && t.created_at) {
       const days = (new Date(t.completed_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24);
       totalCompletionDays += days;
@@ -242,56 +253,63 @@ export async function getTaskMetrics(planId: string): Promise<TaskMetrics> {
     }
   });
 
-  const quickWins = completedTasks.filter((t) => 
-    (t.priority === "high" || t.priority === "critical") && 
-    (t.effort === "light" || t.effort === "medium")
-  );
-
-  const linkedTasks = allTasks.filter((t) => t.annual_kr_id || t.objective_id);
+  // Count linked tasks
+  const linkedCount = completed.filter((t) => t.annual_kr_id || t.objective_id).length;
+  const krLinkedCount = completed.filter((t) => t.annual_kr_id).length;
 
   return {
-    totalActive: activeTasks.length,
+    totalActive: Number(metrics.pending_tasks) + Number(metrics.in_progress_tasks),
     completedThisWeek: completedThisWeek.length,
     completedThisMonth: completedThisMonth.length,
-    overdueCount: overdueTasks.length,
+    overdueCount: Number(metrics.overdue_tasks),
     avgCompletionDays: completedWithDates > 0 ? Math.round(totalCompletionDays / completedWithDates) : 0,
-    quickWinsCompleted: quickWins.length,
-    tasksLinkedToKrs: linkedTasks.filter((t) => t.annual_kr_id).length,
-    orphanTasks: allTasks.length - linkedTasks.length,
+    quickWinsCompleted: Number(metrics.quick_wins),
+    tasksLinkedToKrs: krLinkedCount,
+    orphanTasks: Number(metrics.total_tasks) - linkedCount,
   };
 }
 
 /**
- * Get productivity statistics from activity events
+ * Get productivity statistics from activity events.
+ * Uses optimized RPC function for streak calculation.
  */
 export async function getProductivityStats(planId: string): Promise<ProductivityStats> {
   const supabase = createClient();
 
-  // Get check-ins from the last 90 days
+  // Get check-ins from the last 90 days for day-of-week analysis
   const ninetyDaysAgo = new Date();
   ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-  // Check-ins don't have plan_id directly - query via annual_krs relationship
-  const { data: checkIns, error } = await supabase
-    .from("check_ins")
-    .select(`
-      recorded_at,
-      annual_krs!inner(
-        objectives!inner(plan_id)
-      )
-    `)
-    .eq("annual_krs.objectives.plan_id", planId)
-    .gte("recorded_at", ninetyDaysAgo.toISOString())
-    .order("recorded_at", { ascending: true });
+  // Run queries in parallel
+  const [checkInsResult, streakResult] = await Promise.all([
+    // Check-ins for day-of-week analysis
+    supabase
+      .from("check_ins")
+      .select(`
+        recorded_at,
+        annual_krs!inner(
+          objectives!inner(plan_id)
+        )
+      `)
+      .eq("annual_krs.objectives.plan_id", planId)
+      .gte("recorded_at", ninetyDaysAgo.toISOString())
+      .order("recorded_at", { ascending: true }),
+    // Use RPC for streak calculation
+    supabase.rpc("get_checkin_streak", { p_plan_id: planId }),
+  ]);
 
-  if (error) throw error;
+  if (checkInsResult.error) throw checkInsResult.error;
+  if (streakResult.error) throw streakResult.error;
+
+  const checkIns = checkInsResult.data || [];
+  const streakData = streakResult.data?.[0] || { current_streak: 0, longest_streak: 0 };
 
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const checkInsByDay: Record<string, number> = {
     Sunday: 0, Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0,
   };
 
-  (checkIns || []).forEach((c) => {
+  checkIns.forEach((c) => {
     const day = dayNames[new Date(c.recorded_at).getDay()];
     checkInsByDay[day]++;
   });
@@ -307,35 +325,13 @@ export async function getProductivityStats(planId: string): Promise<Productivity
   });
 
   // Calculate average per week (over 13 weeks = ~90 days)
-  const totalCheckIns = checkIns?.length || 0;
+  const totalCheckIns = checkIns.length;
   const avgPerWeek = Math.round((totalCheckIns / 13) * 10) / 10;
-
-  // Calculate current streak
-  let streak = 0;
-  if (checkIns && checkIns.length > 0) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const checkInDates = new Set(
-      checkIns.map((c) => new Date(c.recorded_at).toISOString().split("T")[0])
-    );
-    
-    const currentDate = new Date(today);
-    while (true) {
-      const dateStr = currentDate.toISOString().split("T")[0];
-      if (checkInDates.has(dateStr)) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
-      }
-    }
-  }
 
   return {
     mostProductiveDay: maxDay,
     avgCheckInsPerWeek: avgPerWeek,
-    currentStreak: streak,
+    currentStreak: Number(streakData.current_streak),
     checkInsByDayOfWeek: checkInsByDay,
   };
 }

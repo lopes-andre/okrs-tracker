@@ -111,42 +111,40 @@ export async function deleteTag(tagId: string): Promise<void> {
  */
 export interface TagWithUsage extends Tag {
   task_count: number;
+  kr_count?: number;
 }
 
 /**
- * Get all tags for a plan with task usage counts
+ * Get all tags for a plan with task and KR usage counts.
+ * Uses optimized RPC function that performs SQL aggregation in a single query.
  */
 export async function getTagsWithUsage(planId: string): Promise<TagWithUsage[]> {
   const supabase = createClient();
 
-  // Get all tags for the plan
-  const tags = await handleSupabaseError(
-    supabase
-      .from("tags")
-      .select("*")
-      .eq("plan_id", planId)
-      .order("kind", { ascending: true })
-      .order("name", { ascending: true })
-  );
-
-  // Get task counts for each tag
-  const { data: taskCounts, error } = await supabase
-    .from("task_tags")
-    .select("tag_id")
-    .in("tag_id", tags.map(t => t.id));
+  const { data, error } = await supabase.rpc("get_tags_with_usage", {
+    p_plan_id: planId,
+  });
 
   if (error) throw error;
 
-  // Count occurrences per tag
-  const countMap = new Map<string, number>();
-  for (const tc of taskCounts || []) {
-    countMap.set(tc.tag_id, (countMap.get(tc.tag_id) || 0) + 1);
-  }
-
-  // Merge counts into tags
-  return tags.map(tag => ({
-    ...tag,
-    task_count: countMap.get(tag.id) || 0,
+  return (data || []).map((row: {
+    id: string;
+    plan_id: string;
+    name: string;
+    kind: TagKind;
+    color: string | null;
+    created_at: string;
+    task_count: number;
+    kr_count: number;
+  }) => ({
+    id: row.id,
+    plan_id: row.plan_id,
+    name: row.name,
+    kind: row.kind,
+    color: row.color,
+    created_at: row.created_at,
+    task_count: Number(row.task_count),
+    kr_count: Number(row.kr_count),
   }));
 }
 
