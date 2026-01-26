@@ -1179,14 +1179,14 @@ export function computeQuarterProgress(
   const isFuture = quarter > currentQuarter;
   
   // Get baseline for the quarter
-  // For cumulative, start from year start or previous quarter end
-  // For reset quarterly, start from 0 or kr.start_value
+  // For cumulative, always use start_value as baseline (measuring total progress)
+  // For reset quarterly, each quarter starts fresh from 0
   const isCumulative = kr.aggregation === "cumulative";
-  
+
   let baseline: number;
-  if (isCumulative && quarter > 1) {
-    // For cumulative, baseline is cumulative target from previous quarters
-    // This means we're measuring total progress towards annual goal
+  if (isCumulative) {
+    // For cumulative, baseline is always the KR start value
+    // We're measuring total progress from the original starting point
     baseline = kr.start_value;
   } else {
     // For reset quarterly, each quarter starts fresh from 0
@@ -1224,25 +1224,29 @@ export function computeQuarterProgress(
     
     const checkInsInQuarter = filterCheckInsInWindow(checkIns, quarterWindow);
     
-    if (kr.kr_type === "metric" || kr.kr_type === "rate") {
-      // For metrics/rates, we need to calculate delta from quarter start
+    // For metrics/rates (and default), we need to calculate delta from quarter start
+    // For counts/milestones, sum up check-ins within the quarter
+    const krType = kr.kr_type || "metric"; // Default to metric if not set
+
+    if (krType === "count" || krType === "milestone") {
+      // For counts/milestones, sum up check-ins within the quarter
+      currentValue = computeCurrentValueFromCheckIns(kr, checkInsInQuarter);
+    } else {
+      // For metrics/rates/average (default), calculate delta from quarter start
       // Get value at start of quarter (last check-in before quarter, or kr.start_value)
       const checkInsBeforeQuarter = checkIns.filter((ci) => {
         const recordedAt = parseDate(ci.recorded_at);
         if (!recordedAt) return false;
         return recordedAt < quarterDates.start;
       }).sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
-      
+
       if (checkInsBeforeQuarter.length > 0) {
         quarterStartValue = checkInsBeforeQuarter[0].value;
-      } else if (quarter === 1) {
-        // For Q1, use kr.start_value as the baseline
-        quarterStartValue = kr.start_value;
       } else {
-        // For Q2+, use kr.start_value if no check-ins exist before
+        // Use kr.start_value as the baseline for any quarter if no check-ins exist before
         quarterStartValue = kr.start_value;
       }
-      
+
       // Get latest value in quarter
       if (checkInsInQuarter.length > 0) {
         const latestInQuarter = [...checkInsInQuarter].sort(
@@ -1252,9 +1256,6 @@ export function computeQuarterProgress(
       } else {
         currentValue = 0;
       }
-    } else {
-      // For counts/milestones, sum up check-ins within the quarter
-      currentValue = computeCurrentValueFromCheckIns(kr, checkInsInQuarter);
     }
   }
   
@@ -1272,8 +1273,14 @@ export function computeQuarterProgress(
     progress = currentValue > 0 ? 1 : 0;
   } else if (isCumulative) {
     // For cumulative, progress is how much of the cumulative target we've hit
-    // The target is cumulative (e.g., Q2 target might be 10k which includes Q1's 5k)
-    progress = clamp01((currentValue - baseline) / target);
+    // The target is cumulative/absolute (e.g., Q1 target = 7500 meaning "have 7500 by end of Q1")
+    // Progress = (current - start) / (target - start)
+    const effectiveRange = target - baseline;
+    if (effectiveRange <= 0) {
+      progress = currentValue >= target ? 1 : 0;
+    } else {
+      progress = clamp01((currentValue - baseline) / effectiveRange);
+    }
   } else {
     // For reset quarterly, currentValue is already the delta for this quarter
     progress = clamp01(currentValue / target);
@@ -1299,8 +1306,10 @@ export function computeQuarterProgress(
   
   // Expected value for this quarter at this point in time
   // For reset quarterly: expectedValue = target * expectedProgress
-  // For cumulative: similar logic but using the quarter's target portion
-  const expectedValue = target * expectedProgress;
+  // For cumulative: expectedValue = baseline + (target - baseline) * expectedProgress
+  const expectedValue = isCumulative
+    ? baseline + (target - baseline) * expectedProgress
+    : target * expectedProgress;
   
   // Pace calculations
   const paceRatio = computePaceRatio(progress, expectedProgress);
