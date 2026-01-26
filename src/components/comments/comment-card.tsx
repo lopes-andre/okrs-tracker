@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { CommentWithUser, Profile } from "@/lib/supabase/types";
-import { cn } from "@/lib/utils";
 
 interface CommentCardProps {
   comment: CommentWithUser;

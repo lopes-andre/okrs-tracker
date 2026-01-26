@@ -9,7 +9,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createMockSupabase } from "@/test/mocks/supabase";
 import {
   createObjective,
-  createAnnualKr,
   createCheckIn,
   createTask,
 } from "@/test/factories";
