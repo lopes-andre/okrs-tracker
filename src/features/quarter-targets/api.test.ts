@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createMockSupabase } from "@/test/mocks/supabase";
-import { createQuarterTarget as createQuarterTargetFactory, createAnnualKr } from "@/test/factories";
+import { createQuarterTarget as createQuarterTargetFactory } from "@/test/factories";
 
 // Use vi.hoisted to create a variable that exists at the hoisted scope
 const { mockRef } = vi.hoisted(() => ({
@@ -184,7 +184,7 @@ describe("Quarter Targets API", () => {
       ];
       getMock().setMockData("v_quarter_overview", overview);
 
-      const result = await quarterTargetsApi.getQuarterOverview("plan-123");
+      await quarterTargetsApi.getQuarterOverview("plan-123");
 
       // Verify order call was made
       const calls = getMock().getMockCalls("v_quarter_overview");

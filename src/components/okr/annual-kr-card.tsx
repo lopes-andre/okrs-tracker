@@ -191,13 +191,12 @@ export const AnnualKrCard = memo(function AnnualKrCard({
   const currentValue = hasProgressEngine ? progressResult.currentValue : kr.current_value;
 
   // Memoize progress calculation
-  const { progress, basicProgress } = useMemo(() => {
+  const { progress } = useMemo(() => {
     const range = kr.target_value - kr.start_value;
     const basic = range > 0
       ? Math.min(Math.max(((currentValue - kr.start_value) / range) * 100, 0), 100)
       : currentValue >= kr.target_value ? 100 : 0;
     return {
-      basicProgress: basic,
       progress: progressResult ? progressResult.progress * 100 : basic,
     };
   }, [kr.target_value, kr.start_value, currentValue, progressResult]);
