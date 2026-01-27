@@ -18,6 +18,8 @@ import { PlatformIcon } from "./platform-icon";
 import {
   getPlatformMetrics,
   formatMetricValue,
+  parseTimeToSeconds,
+  formatSecondsToTime,
   type MetricField,
 } from "./platform-metrics-config";
 import { useAddDistributionMetrics } from "@/features/content/hooks";
@@ -60,6 +62,12 @@ export function MetricsCheckInDialog({
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Get all fields for type checking
+  const allFieldsForInit = useMemo(() => {
+    const { common: c, specific: s } = getPlatformMetrics(platformName);
+    return [...c, ...s];
+  }, [platformName]);
+
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
@@ -67,21 +75,40 @@ export function MetricsCheckInDialog({
       const initialMetrics: Record<string, string> = {};
       if (previousMetrics) {
         Object.entries(previousMetrics).forEach(([key, value]) => {
-          initialMetrics[key] = value?.toString() || "";
+          if (value === undefined || value === null) return;
+
+          // Check if this is a time field
+          const field = allFieldsForInit.find((f) => f.key === key);
+          if (field?.type === "time") {
+            // Convert seconds to time format for display
+            initialMetrics[key] = formatSecondsToTime(value) || "";
+          } else {
+            initialMetrics[key] = value.toString();
+          }
         });
       }
       setMetrics(initialMetrics);
       setNotes("");
     }
-  }, [open, previousMetrics]);
+  }, [open, previousMetrics, allFieldsForInit]);
 
-  // Handle input change
+  // Handle input change for numeric fields
   const handleMetricChange = (key: string, value: string) => {
     // Allow empty or valid numbers
     if (value === "" || !isNaN(parseFloat(value))) {
       setMetrics((prev) => ({ ...prev, [key]: value }));
     }
   };
+
+  // Handle input change for time fields (HH:mm:ss or mm:ss format)
+  const handleTimeChange = (key: string, value: string) => {
+    // Allow empty, digits, and colons
+    const cleanValue = value.replace(/[^0-9:]/g, "");
+    setMetrics((prev) => ({ ...prev, [key]: cleanValue }));
+  };
+
+  // Get all metric fields to check their types
+  const allFields = useMemo(() => [...common, ...specific], [common, specific]);
 
   // Handle submit
   const handleSubmit = async () => {
@@ -97,7 +124,17 @@ export function MetricsCheckInDialog({
       // Convert string values to numbers, filtering out empty values
       const numericMetrics: Record<string, number> = {};
       Object.entries(metrics).forEach(([key, value]) => {
-        if (value !== "" && !isNaN(parseFloat(value))) {
+        if (value === "") return;
+
+        // Check if this is a time field
+        const field = allFields.find((f) => f.key === key);
+        if (field?.type === "time") {
+          // Convert time string to seconds
+          const seconds = parseTimeToSeconds(value);
+          if (seconds !== null) {
+            numericMetrics[key] = seconds;
+          }
+        } else if (!isNaN(parseFloat(value))) {
           numericMetrics[key] = parseFloat(value);
         }
       });
@@ -120,6 +157,36 @@ export function MetricsCheckInDialog({
   const renderMetricField = (field: MetricField) => {
     const value = metrics[field.key] || "";
     const prevValue = previousMetrics?.[field.key];
+
+    // Handle time fields differently
+    if (field.type === "time") {
+      return (
+        <div key={field.key} className="space-y-1">
+          <Label htmlFor={field.key} className="text-small">
+            {field.label}
+            {field.required && <span className="text-status-danger ml-1">*</span>}
+          </Label>
+          <div className="relative">
+            <Input
+              id={field.key}
+              type="text"
+              value={value}
+              onChange={(e) => handleTimeChange(field.key, e.target.value)}
+              placeholder={field.placeholder || "00:00:00"}
+              className="pr-20 font-mono"
+            />
+            {prevValue !== undefined && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-text-muted">
+                prev: {formatSecondsToTime(prevValue)}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-text-muted">
+            Format: {field.placeholder || "HH:mm:ss"} or mm:ss
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div key={field.key} className="space-y-1">

@@ -6,10 +6,70 @@
 export interface MetricField {
   key: string;
   label: string;
-  type: "count" | "percentage" | "duration" | "currency";
+  type: "count" | "percentage" | "duration" | "currency" | "time";
   placeholder?: string;
   description?: string;
   required?: boolean;
+}
+
+/**
+ * Parse HH:mm:ss or mm:ss format to total seconds
+ */
+export function parseTimeToSeconds(timeStr: string): number | null {
+  if (!timeStr || timeStr.trim() === "") return null;
+
+  const parts = timeStr.split(":").map((p) => parseInt(p, 10));
+
+  if (parts.some(isNaN)) return null;
+
+  if (parts.length === 3) {
+    // HH:mm:ss
+    const [hours, minutes, seconds] = parts;
+    return hours * 3600 + minutes * 60 + seconds;
+  } else if (parts.length === 2) {
+    // mm:ss
+    const [minutes, seconds] = parts;
+    return minutes * 60 + seconds;
+  } else if (parts.length === 1) {
+    // Just seconds
+    return parts[0];
+  }
+
+  return null;
+}
+
+/**
+ * Format seconds to HH:mm:ss or mm:ss
+ */
+export function formatSecondsToTime(totalSeconds: number | null | undefined): string {
+  if (totalSeconds === null || totalSeconds === undefined) return "";
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+/**
+ * Format seconds to human-readable duration (e.g., "2h 15m 30s")
+ */
+export function formatSecondsToReadable(totalSeconds: number | null | undefined): string {
+  if (totalSeconds === null || totalSeconds === undefined) return "-";
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+
+  const parts: string[] = [];
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+
+  return parts.join(" ");
 }
 
 export interface PlatformMetrics {
@@ -44,8 +104,8 @@ const platformSpecificMetrics: Record<string, MetricField[]> = {
   ],
   youtube: [
     { key: "views", label: "Views", type: "count", required: true },
-    { key: "watch_time_minutes", label: "Watch Time (minutes)", type: "duration" },
-    { key: "average_view_duration", label: "Avg View Duration (seconds)", type: "duration" },
+    { key: "watch_time_minutes", label: "Watch Time", type: "time", placeholder: "HH:mm:ss" },
+    { key: "average_view_duration", label: "Avg View Duration", type: "time", placeholder: "mm:ss" },
     { key: "average_view_percentage", label: "Avg View %", type: "percentage" },
     { key: "subscribers_gained", label: "Subscribers Gained", type: "count" },
     { key: "subscribers_lost", label: "Subscribers Lost", type: "count" },
@@ -53,7 +113,7 @@ const platformSpecificMetrics: Record<string, MetricField[]> = {
   tiktok: [
     { key: "video_views", label: "Video Views", type: "count", required: true },
     { key: "profile_views", label: "Profile Views", type: "count" },
-    { key: "average_watch_time", label: "Avg Watch Time (seconds)", type: "duration" },
+    { key: "average_watch_time", label: "Avg Watch Time", type: "time", placeholder: "mm:ss" },
     { key: "full_video_watched_percentage", label: "Full Video Watched %", type: "percentage" },
     { key: "reach", label: "Reach", type: "count" },
   ],
@@ -91,7 +151,7 @@ const platformSpecificMetrics: Record<string, MetricField[]> = {
   blog: [
     { key: "page_views", label: "Page Views", type: "count", required: true },
     { key: "unique_visitors", label: "Unique Visitors", type: "count" },
-    { key: "average_time_on_page", label: "Avg Time on Page (seconds)", type: "duration" },
+    { key: "average_time_on_page", label: "Avg Time on Page", type: "time", placeholder: "mm:ss" },
     { key: "bounce_rate", label: "Bounce Rate", type: "percentage" },
     { key: "scroll_depth", label: "Scroll Depth %", type: "percentage" },
   ],
@@ -119,13 +179,13 @@ const platformSpecificMetrics: Record<string, MetricField[]> = {
   spotify: [
     { key: "plays", label: "Plays", type: "count", required: true },
     { key: "unique_listeners", label: "Unique Listeners", type: "count" },
-    { key: "average_listen_duration", label: "Avg Listen Duration (seconds)", type: "duration" },
+    { key: "average_listen_duration", label: "Avg Listen Duration", type: "time", placeholder: "mm:ss" },
     { key: "followers_gained", label: "Followers Gained", type: "count" },
   ],
   podcast: [
     { key: "downloads", label: "Downloads", type: "count", required: true },
     { key: "unique_listeners", label: "Unique Listeners", type: "count" },
-    { key: "average_listen_duration", label: "Avg Listen Duration (minutes)", type: "duration" },
+    { key: "average_listen_duration", label: "Avg Listen Duration", type: "time", placeholder: "HH:mm:ss" },
     { key: "completion_rate", label: "Completion Rate", type: "percentage" },
   ],
 };
@@ -162,6 +222,8 @@ export function formatMetricValue(value: number | null | undefined, type: Metric
       return `${value.toFixed(1)}%`;
     case "duration":
       return value.toLocaleString();
+    case "time":
+      return formatSecondsToReadable(value);
     case "currency":
       return `$${value.toFixed(2)}`;
     case "count":
