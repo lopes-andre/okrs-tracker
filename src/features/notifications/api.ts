@@ -120,19 +120,20 @@ export async function createNotification(
 /**
  * Create multiple notifications at once
  * Used when an action affects multiple users (e.g., comment on task with multiple assignees)
+ * Note: Does not return created notifications because RLS prevents reading
+ * notifications for other users.
  */
 export async function createNotifications(
   data: NotificationInsert[]
-): Promise<Notification[]> {
-  if (data.length === 0) return [];
+): Promise<void> {
+  if (data.length === 0) return;
 
   const supabase = createClient();
 
-  const { data: notifications, error } = await supabase
+  // Don't use .select() - the creator can't read notifications for other users
+  const { error } = await supabase
     .from("notifications")
-    .insert(data)
-    .select();
+    .insert(data);
 
   if (error) throw error;
-  return (notifications || []) as Notification[];
 }

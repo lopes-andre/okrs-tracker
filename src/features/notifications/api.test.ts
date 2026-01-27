@@ -310,18 +310,16 @@ describe("Notifications API", () => {
       ];
       getMock().setMockData("notifications", []);
 
-      const result = await notificationsApi.createNotifications(notifications);
-
-      expect(result).toHaveLength(2);
+      // Function returns void, not the created notifications
+      await expect(notificationsApi.createNotifications(notifications)).resolves.toBeUndefined();
     });
 
-    it("should return empty array when input is empty", async () => {
-      const result = await notificationsApi.createNotifications([]);
-
-      expect(result).toEqual([]);
+    it("should return early when input is empty", async () => {
+      // Should not throw and return undefined
+      await expect(notificationsApi.createNotifications([])).resolves.toBeUndefined();
     });
 
-    it("should make insert and select calls", async () => {
+    it("should make insert call (not select, due to RLS)", async () => {
       const notifications = [
         { user_id: "user-1", type: "mention", title: "Test", message: "Test message" },
       ];
@@ -331,7 +329,8 @@ describe("Notifications API", () => {
 
       const calls = getMock().getMockCalls("notifications");
       expect(calls.some((c) => c.method === "insert")).toBe(true);
-      expect(calls.some((c) => c.method === "select")).toBe(true);
+      // No select call - RLS prevents reading notifications for other users
+      expect(calls.some((c) => c.method === "select")).toBe(false);
     });
   });
 
