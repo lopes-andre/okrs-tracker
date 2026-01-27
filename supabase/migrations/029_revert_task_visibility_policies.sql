@@ -6,7 +6,21 @@
 -- ============================================================================
 
 -- ============================================================================
--- DROP HELPER FUNCTIONS ADDED IN 027/028
+-- STEP 1: DROP ALL POLICIES THAT DEPEND ON THE HELPER FUNCTIONS
+-- ============================================================================
+-- Must drop policies BEFORE dropping functions they depend on
+
+DROP POLICY IF EXISTS "Tasks viewable by role" ON tasks;
+DROP POLICY IF EXISTS "Task assignees viewable by role" ON task_assignees;
+DROP POLICY IF EXISTS "Task tags viewable by role" ON task_tags;
+DROP POLICY IF EXISTS "Recurrence rules viewable by role" ON task_recurrence_rules;
+DROP POLICY IF EXISTS "Recurrence instances viewable by role" ON task_recurrence_instances;
+DROP POLICY IF EXISTS "Activity events viewable by role" ON activity_events;
+DROP POLICY IF EXISTS "Comments viewable by task visibility" ON comments;
+DROP POLICY IF EXISTS "Mentions viewable by task visibility" ON comment_mentions;
+
+-- ============================================================================
+-- STEP 2: DROP HELPER FUNCTIONS ADDED IN 027/028
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS can_view_task(UUID);
@@ -15,22 +29,16 @@ DROP FUNCTION IF EXISTS get_task_plan_id(UUID);
 DROP FUNCTION IF EXISTS is_plan_owner(UUID);
 
 -- ============================================================================
--- RESTORE TASKS SELECT POLICY
+-- STEP 3: RESTORE ORIGINAL POLICIES
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Tasks viewable by role" ON tasks;
-
+-- TASKS: All members can see all tasks
 CREATE POLICY "Tasks viewable by members"
   ON tasks FOR SELECT
   TO authenticated
   USING (has_plan_access(plan_id, 'viewer'));
 
--- ============================================================================
--- RESTORE TASK_ASSIGNEES SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Task assignees viewable by role" ON task_assignees;
-
+-- TASK_ASSIGNEES: All members can see assignees
 CREATE POLICY "Task assignees viewable by members"
   ON task_assignees FOR SELECT
   TO authenticated
@@ -42,12 +50,7 @@ CREATE POLICY "Task assignees viewable by members"
     )
   );
 
--- ============================================================================
--- RESTORE TASK_TAGS SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Task tags viewable by role" ON task_tags;
-
+-- TASK_TAGS: All members can see task tags
 CREATE POLICY "Task tags viewable by members"
   ON task_tags FOR SELECT
   TO authenticated
@@ -59,12 +62,7 @@ CREATE POLICY "Task tags viewable by members"
     )
   );
 
--- ============================================================================
--- RESTORE TASK_RECURRENCE_RULES SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Recurrence rules viewable by role" ON task_recurrence_rules;
-
+-- TASK_RECURRENCE_RULES: All members can see recurrence rules
 CREATE POLICY "Recurrence rules viewable by members"
   ON task_recurrence_rules FOR SELECT
   TO authenticated
@@ -76,12 +74,7 @@ CREATE POLICY "Recurrence rules viewable by members"
     )
   );
 
--- ============================================================================
--- RESTORE TASK_RECURRENCE_INSTANCES SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Recurrence instances viewable by role" ON task_recurrence_instances;
-
+-- TASK_RECURRENCE_INSTANCES: All members can see recurrence instances
 CREATE POLICY "Recurrence instances viewable by members"
   ON task_recurrence_instances FOR SELECT
   TO authenticated
@@ -94,23 +87,13 @@ CREATE POLICY "Recurrence instances viewable by members"
     )
   );
 
--- ============================================================================
--- RESTORE ACTIVITY_EVENTS SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Activity events viewable by role" ON activity_events;
-
+-- ACTIVITY_EVENTS: All members can see activity events
 CREATE POLICY "Activity events viewable by members"
   ON activity_events FOR SELECT
   TO authenticated
   USING (has_plan_access(plan_id, 'viewer'));
 
--- ============================================================================
--- RESTORE COMMENTS SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Comments viewable by task visibility" ON comments;
-
+-- COMMENTS: All members can see comments
 CREATE POLICY "Users can view comments in their plans"
   ON comments FOR SELECT
   USING (
@@ -119,12 +102,7 @@ CREATE POLICY "Users can view comments in their plans"
     )
   );
 
--- ============================================================================
--- RESTORE COMMENT_MENTIONS SELECT POLICY
--- ============================================================================
-
-DROP POLICY IF EXISTS "Mentions viewable by task visibility" ON comment_mentions;
-
+-- COMMENT_MENTIONS: All members can see mentions
 CREATE POLICY "Users can view mentions in their plans"
   ON comment_mentions FOR SELECT
   USING (

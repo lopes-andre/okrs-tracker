@@ -16,6 +16,7 @@ import {
   BatteryMedium,
   BatteryFull,
   MessageCircle,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -283,12 +284,24 @@ export const TaskRow = memo(function TaskRow({
 
       {/* Title & Description */}
       <div className="flex-1 min-w-0">
-        <p className={cn(
-          "text-body-sm font-medium text-text-strong truncate",
-          isCompleted && "line-through text-text-muted"
-        )}>
-          {task.title}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className={cn(
+            "text-body-sm font-medium text-text-strong truncate",
+            isCompleted && "line-through text-text-muted"
+          )}>
+            {task.title}
+          </p>
+          {task.is_private && (
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Lock className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Private - only visible to plan owners
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         {(() => {
           // Get objective from direct link OR from annual_kr's parent
           const objective = task.objective || task.annual_kr?.objective;
