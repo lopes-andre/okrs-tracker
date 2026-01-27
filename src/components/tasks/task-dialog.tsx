@@ -16,6 +16,7 @@ import {
   Users,
   ChevronDown,
   Check,
+  Lock,
 } from "lucide-react";
 import {
   Dialog,
@@ -133,6 +134,7 @@ export function TaskDialog({
   members = [],
   selectedAssignees: initialSelectedAssignees = [],
   currentUserId,
+  isOwner = false,
   onSubmit,
   onCreateTag,
 }: TaskDialogProps) {
@@ -162,6 +164,7 @@ export function TaskDialog({
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [recurrenceConfig, setRecurrenceConfig] = useState<RecurrenceConfig | null>(null);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   // Filter KRs based on selected objective
   const filteredKrs = useMemo(() => {
@@ -211,6 +214,7 @@ export function TaskDialog({
         setReminderEnabled(task.reminder_enabled ?? true);
         setSelectedAssigneeIds(initialSelectedAssignees);
         setRecurrenceConfig(null); // Don't show recurrence picker when editing
+        setIsPrivate(task.is_private ?? false);
       } else {
         setTitle("");
         setDescription("");
@@ -226,6 +230,7 @@ export function TaskDialog({
         setReminderEnabled(true);
         setSelectedAssigneeIds([]);
         setRecurrenceConfig(null);
+        setIsPrivate(false);
       }
       setNewTagName("");
     }
@@ -291,6 +296,7 @@ export function TaskDialog({
             objective_id: finalObjectiveId,
             annual_kr_id: finalAnnualKrId,
             reminder_enabled: reminderEnabled,
+            is_private: isPrivate,
           }
         : {
             // Don't include plan_id - the hook adds it automatically
@@ -307,6 +313,7 @@ export function TaskDialog({
             assigned_to: null,
             sort_order: 0,
             reminder_enabled: reminderEnabled,
+            is_private: isPrivate,
           };
 
       await onSubmit(data, selectedTagIds, selectedAssigneeIds, recurrenceConfig);
@@ -809,6 +816,31 @@ export function TaskDialog({
               </div>
             )}
           </div>
+
+          {/* Private Toggle - only visible to plan owners */}
+          {isOwner && (
+            <div className="flex items-center gap-3 p-3 rounded-card bg-bg-1/50 border border-border-soft">
+              <Checkbox
+                id="task-private"
+                checked={isPrivate}
+                onCheckedChange={(checked) => setIsPrivate(checked as boolean)}
+              />
+              <Label
+                htmlFor="task-private"
+                className="flex items-center gap-2 cursor-pointer flex-1"
+              >
+                <Lock className={cn("w-4 h-4", isPrivate ? "text-text-strong" : "text-text-muted")} />
+                <div>
+                  <span className="text-body-sm font-medium">
+                    Private task
+                  </span>
+                  <p className="text-xs text-text-muted">
+                    Only visible to plan owners
+                  </p>
+                </div>
+              </Label>
+            </div>
+          )}
 
           <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t border-border-soft">
             <Button 

@@ -139,6 +139,7 @@ export interface Task {
   sort_order: number;
   is_recurring: boolean;
   recurring_master_id: string | null;
+  is_private: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -571,9 +572,10 @@ export type AnnualKrUpdate = Partial<Omit<AnnualKr, 'id' | 'objective_id' | 'cre
 export type QuarterTargetInsert = Omit<QuarterTarget, 'id' | 'created_at' | 'updated_at'>;
 export type QuarterTargetUpdate = Partial<Omit<QuarterTarget, 'id' | 'annual_kr_id' | 'quarter' | 'created_at' | 'updated_at'>>;
 
-export type TaskInsert = Omit<Task, 'id' | 'completed_at' | 'created_at' | 'updated_at' | 'is_recurring' | 'recurring_master_id'> & {
+export type TaskInsert = Omit<Task, 'id' | 'completed_at' | 'created_at' | 'updated_at' | 'is_recurring' | 'recurring_master_id' | 'is_private'> & {
   is_recurring?: boolean;
   recurring_master_id?: string | null;
+  is_private?: boolean;
 };
 export type TaskUpdate = Partial<Omit<Task, 'id' | 'plan_id' | 'completed_at' | 'created_at' | 'updated_at'>>;
 

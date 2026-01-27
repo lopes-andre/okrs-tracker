@@ -376,6 +376,7 @@ export function createTask(options: CreateTaskOptions = {}): Task {
     due_date: merged.due_date ?? null,
     due_time: merged.due_time ?? null,
     completed_at: merged.completed_at ?? null,
+    is_private: overrides.is_private ?? false,
   };
 }
 
