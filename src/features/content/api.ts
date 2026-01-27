@@ -643,8 +643,9 @@ export async function getCalendarData(
   const entries = result.data || [];
   if (entries.length === 0) return [];
 
-  // Get distribution IDs from entries
+  // Get distribution IDs and unique post IDs from entries
   const distributionIds = entries.map((e: ContentCalendarEntry) => e.distribution_id);
+  const postIds = [...new Set(entries.map((e: ContentCalendarEntry) => e.post_id))];
 
   // Get campaign links for these distributions
   const { data: campaignLinks } = await supabase
@@ -654,6 +655,15 @@ export async function getCalendarData(
       campaign:content_campaigns(id, name)
     `)
     .in("distribution_id", distributionIds);
+
+  // Get goals for the posts
+  const { data: postGoals } = await supabase
+    .from("content_post_goals")
+    .select(`
+      post_id,
+      goal:content_goals(id, name, color)
+    `)
+    .in("post_id", postIds);
 
   // Build map of distribution_id -> campaign info
   const campaignMap = new Map<string, { id: string; name: string }>();
@@ -670,13 +680,34 @@ export async function getCalendarData(
     }
   }
 
-  // Add campaign info to entries
+  // Build map of post_id -> goals
+  const goalsMap = new Map<string, Array<{ id: string; name: string; color: string | null }>>();
+  if (postGoals) {
+    for (const pg of postGoals) {
+      if (pg.goal) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const goal = pg.goal as any;
+        if (!goalsMap.has(pg.post_id)) {
+          goalsMap.set(pg.post_id, []);
+        }
+        goalsMap.get(pg.post_id)!.push({
+          id: goal.id,
+          name: goal.name,
+          color: goal.color,
+        });
+      }
+    }
+  }
+
+  // Add campaign info and goals to entries
   return entries.map((entry: ContentCalendarEntry) => {
     const campaign = campaignMap.get(entry.distribution_id);
+    const goals = goalsMap.get(entry.post_id) || [];
     return {
       ...entry,
       campaign_id: campaign?.id || null,
       campaign_name: campaign?.name || null,
+      goals,
     };
   });
 }

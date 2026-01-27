@@ -142,7 +142,7 @@ export function CalendarEntry({
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <p className="font-medium">{entry.post_title}</p>
             <div className="flex items-center gap-2 text-small">
               <PlatformIcon
@@ -162,6 +162,24 @@ export function CalendarEntry({
                 <Megaphone className="w-3 h-3" />
                 {entry.campaign_name}
               </p>
+            )}
+            {/* Content Goals */}
+            {entry.goals && entry.goals.length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-0.5">
+                {entry.goals.map((goal) => (
+                  <Badge
+                    key={goal.id}
+                    variant="outline"
+                    className="text-[10px] px-1.5 py-0"
+                    style={{
+                      borderColor: goal.color || undefined,
+                      color: goal.color || undefined,
+                    }}
+                  >
+                    {goal.name}
+                  </Badge>
+                ))}
+              </div>
             )}
             <Badge
               variant={status === "posted" ? "default" : "outline"}

@@ -834,6 +834,7 @@ export interface ContentCalendarEntry {
   posted_at: string | null;
   campaign_id: string | null;
   campaign_name: string | null;
+  goals: Array<{ id: string; name: string; color: string | null }>;
 }
 
 // Distribution with campaign info
