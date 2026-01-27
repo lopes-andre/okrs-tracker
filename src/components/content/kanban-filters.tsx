@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Search, SlidersHorizontal, X, Star, Image as ImageIcon, Link2, Video } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { Search, SlidersHorizontal, X, Star, Image as ImageIcon, Link2, Video, Calendar, Send, FileEdit } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { PlatformIcon } from "./platform-icon";
 import { cn } from "@/lib/utils";
-import type { ContentGoal, ContentAccountWithPlatform } from "@/lib/supabase/types";
+import type { ContentGoal, ContentAccountWithPlatform, ContentDistributionStatus } from "@/lib/supabase/types";
 
 // ============================================================================
 // TYPES
@@ -29,6 +29,8 @@ export interface KanbanFilters {
   hasMedia: boolean | null;
   hasVideoLinks: boolean | null;
   hasLinks: boolean | null;
+  distributionStatuses: ContentDistributionStatus[];
+  formats: string[];
 }
 
 interface KanbanFiltersProps {
@@ -47,7 +49,34 @@ export const defaultFilters: KanbanFilters = {
   hasMedia: null,
   hasVideoLinks: null,
   hasLinks: null,
+  distributionStatuses: [],
+  formats: [],
 };
+
+// All available distribution formats with labels
+const ALL_FORMATS: { value: string; label: string }[] = [
+  { value: "post", label: "Feed Post" },
+  { value: "story", label: "Story" },
+  { value: "reel", label: "Reel" },
+  { value: "carousel", label: "Carousel" },
+  { value: "article", label: "Article" },
+  { value: "document", label: "Document" },
+  { value: "video", label: "Video" },
+  { value: "short", label: "Short" },
+  { value: "tweet", label: "Tweet" },
+  { value: "thread", label: "Thread" },
+  { value: "newsletter", label: "Newsletter" },
+  { value: "episode", label: "Episode" },
+  { value: "clip", label: "Clip" },
+  { value: "poll", label: "Poll" },
+];
+
+// Distribution status config
+const DISTRIBUTION_STATUS_CONFIG: { value: ContentDistributionStatus; label: string; icon: typeof FileEdit }[] = [
+  { value: "draft", label: "Draft", icon: FileEdit },
+  { value: "scheduled", label: "Scheduled", icon: Calendar },
+  { value: "posted", label: "Posted", icon: Send },
+];
 
 // ============================================================================
 // COMPONENT
@@ -92,7 +121,9 @@ export function KanbanFilters({
     (filters.isFavorite === true ? 1 : 0) +
     (filters.hasMedia !== null ? 1 : 0) +
     (filters.hasVideoLinks !== null ? 1 : 0) +
-    (filters.hasLinks !== null ? 1 : 0);
+    (filters.hasLinks !== null ? 1 : 0) +
+    filters.distributionStatuses.length +
+    filters.formats.length;
 
   // Handle search change (updates local state, debounced to parent)
   const handleSearchChange = useCallback((value: string) => {
@@ -167,10 +198,49 @@ export function KanbanFilters({
     [filters, onFiltersChange]
   );
 
+  // Toggle distribution status filter
+  const toggleDistributionStatus = useCallback(
+    (status: ContentDistributionStatus) => {
+      const newStatuses = filters.distributionStatuses.includes(status)
+        ? filters.distributionStatuses.filter((s) => s !== status)
+        : [...filters.distributionStatuses, status];
+      onFiltersChange({ ...filters, distributionStatuses: newStatuses });
+    },
+    [filters, onFiltersChange]
+  );
+
+  // Toggle format filter
+  const toggleFormat = useCallback(
+    (format: string) => {
+      const newFormats = filters.formats.includes(format)
+        ? filters.formats.filter((f) => f !== format)
+        : [...filters.formats, format];
+      onFiltersChange({ ...filters, formats: newFormats });
+    },
+    [filters, onFiltersChange]
+  );
+
   // Clear all filters
   const clearFilters = useCallback(() => {
     onFiltersChange(defaultFilters);
   }, [onFiltersChange]);
+
+  // Get relevant formats based on selected accounts
+  const relevantFormats = useMemo(() => {
+    // If no accounts selected, show all formats
+    if (filters.accountIds.length === 0) {
+      return ALL_FORMATS;
+    }
+    // Get unique platform names from selected accounts
+    const selectedPlatforms = new Set(
+      filters.accountIds
+        .map((id) => accounts.find((a) => a.id === id)?.platform?.name)
+        .filter(Boolean)
+    );
+    // Filter formats to only those available for selected platforms
+    // This is a simplification - in practice, we just show all formats
+    return ALL_FORMATS;
+  }, [filters.accountIds, accounts]);
 
   // Group accounts by platform
   const accountsByPlatform = accounts.reduce((acc, account) => {
@@ -327,6 +397,46 @@ export function KanbanFilters({
                   />
                   <span className="text-small">No distributions</span>
                 </label>
+                <div className="border-t border-border-soft my-2 pt-2">
+                  <p className="text-xs text-text-muted mb-1.5">By Status</p>
+                  {DISTRIBUTION_STATUS_CONFIG.map(({ value, label, icon: Icon }) => (
+                    <label key={value} className="flex items-center gap-2 cursor-pointer mb-1.5">
+                      <Checkbox
+                        checked={filters.distributionStatuses.includes(value)}
+                        onCheckedChange={() => toggleDistributionStatus(value)}
+                      />
+                      <Icon className={cn(
+                        "w-3.5 h-3.5",
+                        value === "draft" && "text-text-muted",
+                        value === "scheduled" && "text-amber-600",
+                        value === "posted" && "text-green-600"
+                      )} />
+                      <span className="text-small">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Format Filter */}
+            <div className="space-y-2">
+              <Label className="text-small font-medium">Format</Label>
+              <div
+                className="space-y-1.5 max-h-32 overflow-y-auto overscroll-contain"
+                onWheel={(e) => e.stopPropagation()}
+              >
+                {relevantFormats.map((format) => (
+                  <label
+                    key={format.value}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={filters.formats.includes(format.value)}
+                      onCheckedChange={() => toggleFormat(format.value)}
+                    />
+                    <span className="text-small">{format.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -469,6 +579,42 @@ export function KanbanFilters({
               </button>
             </Badge>
           )}
+          {filters.distributionStatuses.map((status) => {
+            const config = DISTRIBUTION_STATUS_CONFIG.find((c) => c.value === status);
+            if (!config) return null;
+            const Icon = config.icon;
+            return (
+              <Badge key={status} variant="secondary" className="gap-1">
+                <Icon className={cn(
+                  "w-3 h-3",
+                  status === "draft" && "text-text-muted",
+                  status === "scheduled" && "text-amber-600",
+                  status === "posted" && "text-green-600"
+                )} />
+                {config.label}
+                <button
+                  onClick={() => toggleDistributionStatus(status)}
+                  className="ml-1 hover:text-status-danger"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            );
+          })}
+          {filters.formats.map((format) => {
+            const formatConfig = ALL_FORMATS.find((f) => f.value === format);
+            return (
+              <Badge key={format} variant="secondary" className="gap-1">
+                {formatConfig?.label || format}
+                <button
+                  onClick={() => toggleFormat(format)}
+                  className="ml-1 hover:text-status-danger"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            );
+          })}
           {filters.goalIds.map((goalId) => {
             const goal = goals.find((g) => g.id === goalId);
             if (!goal) return null;

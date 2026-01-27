@@ -331,6 +331,26 @@ export function KanbanBoard({ planId, goals }: KanbanBoardProps) {
         if (!filters.hasLinks && linkCount > 0) return false;
       }
 
+      // Distribution status filter
+      if (filters.distributionStatuses.length > 0) {
+        const postDistStatuses = post.distributions?.map((d) => d.status) || [];
+        const hasMatchingStatus = filters.distributionStatuses.some((status) =>
+          postDistStatuses.includes(status)
+        );
+        if (!hasMatchingStatus) return false;
+      }
+
+      // Format filter
+      if (filters.formats.length > 0) {
+        const postFormats = post.distributions
+          ?.map((d) => d.format)
+          .filter(Boolean) || [];
+        const hasMatchingFormat = filters.formats.some((format) =>
+          postFormats.includes(format)
+        );
+        if (!hasMatchingFormat) return false;
+      }
+
       return true;
     });
   }, [posts, filters]);

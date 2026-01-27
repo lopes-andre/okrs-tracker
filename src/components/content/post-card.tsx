@@ -253,22 +253,66 @@ const CoverImage = memo(function CoverImage({ post }: { post: ContentPostWithDet
 // PLATFORM ICON WITH COUNT BADGE
 // ============================================================================
 
+interface PlatformDistribution {
+  accountName: string;
+  status: string;
+}
+
 function PlatformIconWithBadge({
   platformName,
   count,
+  distributions,
 }: {
   platformName: string;
   count: number;
+  distributions: PlatformDistribution[];
 }) {
+  // Check if all distributions are drafts (for visual distinction)
+  const allDrafts = distributions.every((d) => d.status === "draft");
+
+  // Build tooltip content
+  const tooltipContent = distributions
+    .map((d) => {
+      const statusLabel =
+        d.status === "draft"
+          ? "(Draft)"
+          : d.status === "scheduled"
+            ? "(Scheduled)"
+            : "(Posted)";
+      return `${d.accountName} ${statusLabel}`;
+    })
+    .join("\n");
+
   return (
-    <div className="relative">
-      <PlatformIcon platformName={platformName} size="sm" />
-      {count > 1 && (
-        <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-accent text-white text-[9px] font-medium rounded-full flex items-center justify-center px-0.5">
-          {count}
-        </span>
-      )}
-    </div>
+    <TooltipProvider>
+      <Tooltip delayDuration={200}>
+        <TooltipTrigger asChild>
+          <div
+            className={cn(
+              "relative",
+              // Gray out if all distributions are drafts
+              allDrafts && "opacity-40 grayscale"
+            )}
+          >
+            <PlatformIcon platformName={platformName} size="sm" />
+            {count > 1 && (
+              <span
+                className={cn(
+                  "absolute -top-1 -right-1 min-w-[14px] h-[14px] text-white text-[9px] font-medium rounded-full flex items-center justify-center px-0.5",
+                  // Use muted color for draft-only badges
+                  allDrafts ? "bg-text-muted" : "bg-accent"
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[200px]">
+          <p className="text-xs whitespace-pre-line">{tooltipContent}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -347,18 +391,22 @@ export const PostCard = memo(function PostCard({
   onToggleFavorite,
   onToggleSelect,
 }: PostCardProps) {
-  // Count distributions by platform
+  // Count distributions by platform and collect account info
   const platformCounts = post.distributions?.reduce(
     (acc, dist) => {
       const platformId = dist.account?.platform?.id || "unknown";
       const platformName = dist.account?.platform?.name || "blog";
+      const accountName = dist.account?.account_name || "Unknown Account";
+      const status = dist.status || "draft";
+
       if (!acc[platformId]) {
-        acc[platformId] = { name: platformName, count: 0 };
+        acc[platformId] = { name: platformName, count: 0, distributions: [] };
       }
       acc[platformId].count += 1;
+      acc[platformId].distributions.push({ accountName, status });
       return acc;
     },
-    {} as Record<string, { name: string; count: number }>
+    {} as Record<string, { name: string; count: number; distributions: PlatformDistribution[] }>
   ) || {};
 
   const platforms = Object.values(platformCounts);
@@ -518,6 +566,7 @@ export const PostCard = memo(function PostCard({
                   key={index}
                   platformName={platform.name}
                   count={platform.count}
+                  distributions={platform.distributions}
                 />
               ))}
               {platforms.length > 4 && (
