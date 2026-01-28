@@ -94,15 +94,23 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
     }
   }, [settings]);
 
-  // Track changes
+  // Track changes - compute hasChanges whenever any value or settings change
   useEffect(() => {
-    if (!settings) return;
+    if (!settings) {
+      setHasChanges(false);
+      return;
+    }
+
+    // Compare arrays without mutating state (spread to create copies before sorting)
+    const localDaysSorted = JSON.stringify([...businessDays].sort());
+    const settingsDaysSorted = JSON.stringify([...settings.business_days].sort());
+
     const changed =
       remindersEnabled !== settings.reminders_enabled ||
       businessHoursEnabled !== settings.business_hours_enabled ||
       businessHoursStart !== settings.business_hours_start ||
       businessHoursEnd !== settings.business_hours_end ||
-      JSON.stringify(businessDays.sort()) !== JSON.stringify([...settings.business_days].sort()) ||
+      localDaysSorted !== settingsDaysSorted ||
       soundEnabled !== settings.sound_enabled ||
       dailySummaryEnabled !== settings.daily_summary_enabled ||
       dailySummaryTime !== settings.daily_summary_time ||
