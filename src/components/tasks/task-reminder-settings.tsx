@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -71,7 +71,6 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
   const [timeReminder5min, setTimeReminder5min] = useState(true);
   const [timeReminderOnTime, setTimeReminderOnTime] = useState(true);
   const [timeReminderOverdue30min, setTimeReminderOverdue30min] = useState(true);
-  const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize form when settings load
   useEffect(() => {
@@ -90,22 +89,18 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       setTimeReminder5min(settings.time_reminder_5min);
       setTimeReminderOnTime(settings.time_reminder_on_time ?? true);
       setTimeReminderOverdue30min(settings.time_reminder_overdue_30min);
-      setHasChanges(false);
     }
   }, [settings]);
 
-  // Track changes - compute hasChanges whenever any value or settings change
-  useEffect(() => {
-    if (!settings) {
-      setHasChanges(false);
-      return;
-    }
+  // Derive hasChanges from current state vs saved settings (useMemo eliminates race conditions)
+  const hasChanges = useMemo(() => {
+    if (!settings) return false;
 
     // Compare arrays without mutating state (spread to create copies before sorting)
     const localDaysSorted = JSON.stringify([...businessDays].sort());
     const settingsDaysSorted = JSON.stringify([...settings.business_days].sort());
 
-    const changed =
+    return (
       remindersEnabled !== settings.reminders_enabled ||
       businessHoursEnabled !== settings.business_hours_enabled ||
       businessHoursStart !== settings.business_hours_start ||
@@ -119,8 +114,8 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       timeReminder10min !== settings.time_reminder_10min ||
       timeReminder5min !== settings.time_reminder_5min ||
       timeReminderOnTime !== (settings.time_reminder_on_time ?? true) ||
-      timeReminderOverdue30min !== settings.time_reminder_overdue_30min;
-    setHasChanges(changed);
+      timeReminderOverdue30min !== settings.time_reminder_overdue_30min
+    );
   }, [
     settings,
     remindersEnabled,
@@ -162,7 +157,8 @@ export function TaskReminderSettings({ planId, isOwner }: TaskReminderSettingsPr
       time_reminder_on_time: timeReminderOnTime,
       time_reminder_overdue_30min: timeReminderOverdue30min,
     });
-    setHasChanges(false);
+    // After successful mutation, React Query invalidates and refetches settings
+    // which will update the settings object, and useMemo will recompute hasChanges to false
   };
 
   if (isLoadingSettings) {
