@@ -616,6 +616,18 @@ export function usePostedDistributions(planId: string) {
 }
 
 /**
+ * Get distribution metrics for a plan (for activity heatmap)
+ */
+export function useDistributionMetricsForPlan(planId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.content.distributions.all, "metricsForPlan", planId],
+    queryFn: () => api.getDistributionMetricsForPlan(planId),
+    enabled: !!planId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - doesn't change frequently
+  });
+}
+
+/**
  * Create a distribution
  */
 export function useCreateDistribution(_planId: string) {

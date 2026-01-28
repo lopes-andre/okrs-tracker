@@ -806,6 +806,29 @@ export async function addDistributionMetrics(
   );
 }
 
+/**
+ * Get all distribution metrics for a plan (for activity heatmap)
+ * Returns just the id and checked_at date for counting purposes
+ */
+export async function getDistributionMetricsForPlan(
+  planId: string
+): Promise<{ id: string; checked_at: string }[]> {
+  const supabase = createClient();
+  return handleSupabaseError(
+    supabase
+      .from("content_distribution_metrics")
+      .select(`
+        id,
+        checked_at,
+        distribution:content_distributions!inner(
+          post:content_posts!inner(plan_id)
+        )
+      `)
+      .eq("distribution.post.plan_id", planId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) as Promise<any[]>;
+}
+
 // ============================================================================
 // CAMPAIGNS API
 // ============================================================================

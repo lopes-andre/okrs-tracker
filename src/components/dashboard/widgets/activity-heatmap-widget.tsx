@@ -23,6 +23,15 @@ interface ActivityHeatmapWidgetProps {
   config: Record<string, unknown>;
 }
 
+// Activity breakdown for a single day
+interface DayActivity {
+  okrCheckIns: number;
+  tasksCompleted: number;
+  postsShared: number;
+  postCheckIns: number;
+  total: number;
+}
+
 // GitHub-style color scale
 const getColor = (count: number, maxCount: number): string => {
   if (count === 0) return "bg-bg-1";
@@ -33,36 +42,80 @@ const getColor = (count: number, maxCount: number): string => {
   return "bg-status-success";
 };
 
+// Format activity breakdown for tooltip
+const formatActivityBreakdown = (activity: DayActivity): string => {
+  const parts: string[] = [];
+  if (activity.okrCheckIns > 0) {
+    parts.push(`${activity.okrCheckIns} OKR check-in${activity.okrCheckIns !== 1 ? "s" : ""}`);
+  }
+  if (activity.tasksCompleted > 0) {
+    parts.push(`${activity.tasksCompleted} Task${activity.tasksCompleted !== 1 ? "s" : ""} completed`);
+  }
+  if (activity.postsShared > 0) {
+    parts.push(`${activity.postsShared} Post${activity.postsShared !== 1 ? "s" : ""} shared`);
+  }
+  if (activity.postCheckIns > 0) {
+    parts.push(`${activity.postCheckIns} Post check-in${activity.postCheckIns !== 1 ? "s" : ""}`);
+  }
+  return parts.join(" | ");
+};
+
 export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ config }: ActivityHeatmapWidgetProps) {
-  const { checkIns, tasks, postedDistributions, year } = useDashboardData();
+  const { checkIns, tasks, postedDistributions, distributionMetrics, year } = useDashboardData();
   const compact = (config.compact as boolean) ?? true;
 
   const { grid, maxCount, totalActivity, activeDays, longestStreak } = useMemo(() => {
-    // Aggregate activity by date from all sources:
-    // 1. Check-ins (by recorded_at)
+    // Aggregate activity by date from all sources with breakdown:
+    // 1. OKR Check-ins (by recorded_at)
     // 2. Completed tasks (by completed_at)
-    // 3. Posted distributions (by posted_at)
-    const activityByDate = new Map<string, number>();
+    // 3. Posted distributions (by posted_at) - "Posts shared"
+    // 4. Distribution metrics (by checked_at) - "Post check-ins"
+    const activityByDate = new Map<string, DayActivity>();
 
-    // Count check-ins
+    const getOrCreate = (date: string): DayActivity => {
+      let activity = activityByDate.get(date);
+      if (!activity) {
+        activity = { okrCheckIns: 0, tasksCompleted: 0, postsShared: 0, postCheckIns: 0, total: 0 };
+        activityByDate.set(date, activity);
+      }
+      return activity;
+    };
+
+    // Count OKR check-ins
     checkIns.forEach((ci) => {
       const date = ci.recorded_at.split("T")[0];
-      activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+      const activity = getOrCreate(date);
+      activity.okrCheckIns++;
+      activity.total++;
     });
 
     // Count completed tasks
     tasks.forEach((task) => {
       if (task.completed_at) {
         const date = task.completed_at.split("T")[0];
-        activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+        const activity = getOrCreate(date);
+        activity.tasksCompleted++;
+        activity.total++;
       }
     });
 
-    // Count posted distributions
+    // Count posted distributions (posts shared)
     postedDistributions.forEach((dist) => {
       if (dist.posted_at) {
         const date = dist.posted_at.split("T")[0];
-        activityByDate.set(date, (activityByDate.get(date) || 0) + 1);
+        const activity = getOrCreate(date);
+        activity.postsShared++;
+        activity.total++;
+      }
+    });
+
+    // Count distribution metrics (post check-ins)
+    distributionMetrics.forEach((metric) => {
+      if (metric.checked_at) {
+        const date = metric.checked_at.split("T")[0];
+        const activity = getOrCreate(date);
+        activity.postCheckIns++;
+        activity.total++;
       }
     });
 
@@ -75,8 +128,9 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
     const gridStart = startOfWeek(yearStart, { weekStartsOn: 0 });
 
     // Build grid structure (53 weeks × 7 days)
-    const weeks: { date: Date; count: number; isYear: boolean; isFuture: boolean }[][] = [];
-    let currentWeek: { date: Date; count: number; isYear: boolean; isFuture: boolean }[] = [];
+    const emptyActivity: DayActivity = { okrCheckIns: 0, tasksCompleted: 0, postsShared: 0, postCheckIns: 0, total: 0 };
+    const weeks: { date: Date; activity: DayActivity; isYear: boolean; isFuture: boolean }[][] = [];
+    let currentWeek: { date: Date; activity: DayActivity; isYear: boolean; isFuture: boolean }[] = [];
 
     // Add padding days before year start
     const paddingDays = getDay(yearStart);
@@ -85,7 +139,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
       paddingDate.setDate(gridStart.getDate() + i);
       currentWeek.push({
         date: paddingDate,
-        count: 0,
+        activity: emptyActivity,
         isYear: false,
         isFuture: false,
       });
@@ -100,13 +154,13 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
 
     allDays.forEach((day) => {
       const dateStr = format(day, "yyyy-MM-dd");
-      const count = activityByDate.get(dateStr) || 0;
+      const activity = activityByDate.get(dateStr) || emptyActivity;
       const isFutureDay = isFuture(day);
 
       if (!isFutureDay) {
-        if (count > max) max = count;
-        total += count;
-        if (count > 0) {
+        if (activity.total > max) max = activity.total;
+        total += activity.total;
+        if (activity.total > 0) {
           active++;
           currentStreak++;
           if (currentStreak > maxStreak) maxStreak = currentStreak;
@@ -117,7 +171,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
 
       currentWeek.push({
         date: day,
-        count,
+        activity,
         isYear: true,
         isFuture: isFutureDay,
       });
@@ -136,7 +190,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
         nextDate.setDate(nextDate.getDate() + 1);
         currentWeek.push({
           date: nextDate,
-          count: 0,
+          activity: emptyActivity,
           isYear: false,
           isFuture: true,
         });
@@ -151,7 +205,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
       activeDays: active,
       longestStreak: maxStreak,
     };
-  }, [checkIns, tasks, postedDistributions, year]);
+  }, [checkIns, tasks, postedDistributions, distributionMetrics, year]);
 
   // Month labels
   const monthLabels = useMemo(() => {
@@ -241,6 +295,7 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
                 <div key={weekIndex} className="flex flex-col gap-[2px]">
                   {week.map((day, dayIndex) => {
                     const isCurrentDay = isToday(day.date);
+                    const breakdown = formatActivityBreakdown(day.activity);
 
                     return (
                       <Tooltip key={dayIndex} delayDuration={100}>
@@ -252,17 +307,22 @@ export const ActivityHeatmapWidget = memo(function ActivityHeatmapWidget({ confi
                                 ? "bg-bg-1/50"
                                 : !day.isYear
                                   ? "bg-transparent"
-                                  : getColor(day.count, maxCount),
+                                  : getColor(day.activity.total, maxCount),
                               isCurrentDay && "ring-1 ring-accent ring-offset-1"
                             )}
                           />
                         </TooltipTrigger>
                         {day.isYear && !day.isFuture && (
-                          <TooltipContent side="top" className="text-xs">
+                          <TooltipContent side="top" className="text-xs max-w-xs">
                             <p className="font-medium">
-                              {day.count} activit{day.count !== 1 ? "ies" : "y"}
+                              {day.activity.total} activit{day.activity.total !== 1 ? "ies" : "y"}
                             </p>
-                            <p className="text-text-muted">
+                            {breakdown && (
+                              <p className="text-text-muted text-[10px]">
+                                {breakdown}
+                              </p>
+                            )}
+                            <p className="text-text-muted mt-1">
                               {format(day.date, "MMM d, yyyy")}
                             </p>
                           </TooltipContent>

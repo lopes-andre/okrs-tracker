@@ -17,7 +17,6 @@ import { useCheckIns } from "@/features/check-ins/hooks";
 import {
   useAnalyticsSummary,
   useKrPerformanceData,
-  useCheckInsByDay,
   useTaskMetrics,
   useProductivityStats,
   useAnalyticsData,
@@ -27,6 +26,11 @@ import {
   useTeamSummary,
   useTeamContributions,
 } from "@/features/team-analytics/hooks";
+import {
+  usePostedDistributions,
+  useDistributionMetricsForPlan,
+} from "@/features/content/hooks";
+import { useTasks } from "@/features/tasks/hooks";
 import { useState } from "react";
 import {
   SummaryCards,
@@ -85,7 +89,9 @@ export default function AnalyticsPage({
   const { data: summary, isLoading: isLoadingSummary } = useAnalyticsSummary(planId, planYear);
   const { data: krPerformanceData, isLoading: isLoadingPerformance } = useKrPerformanceData(planId, planYear);
   const { data: allCheckIns = [], isLoading: isLoadingCheckIns } = useCheckIns(planId);
-  const { data: checkInsByDay = [] } = useCheckInsByDay(planId);
+  const { data: allTasks = [] } = useTasks(planId);
+  const { data: postedDistributions = [] } = usePostedDistributions(planId);
+  const { data: distributionMetrics = [] } = useDistributionMetricsForPlan(planId);
   const { data: taskMetrics } = useTaskMetrics(planId);
   const { data: productivityStats } = useProductivityStats(planId);
   const { data: analyticsData } = useAnalyticsData(planId, planYear);
@@ -295,7 +301,13 @@ export default function AnalyticsPage({
         <TabsContent value="heatmap">
           <div className="space-y-6">
             {/* Heatmap Calendar */}
-            <ActivityHeatmap data={checkInsByDay} year={planYear} />
+            <ActivityHeatmap
+              checkIns={allCheckIns}
+              tasks={allTasks}
+              postedDistributions={postedDistributions}
+              distributionMetrics={distributionMetrics}
+              year={planYear}
+            />
             
             {/* Task Metrics & Productivity */}
             <div className="grid lg:grid-cols-2 gap-6">
