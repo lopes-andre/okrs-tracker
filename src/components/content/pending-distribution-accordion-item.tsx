@@ -390,7 +390,7 @@ export function PendingDistributionAccordionItem({
                   onChange={(e) => onUpdate({ caption: e.target.value || null })}
                   placeholder="Preview text shown in email clients..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
             </>
@@ -413,7 +413,7 @@ export function PendingDistributionAccordionItem({
                   onChange={(e) => onUpdate({ platformData: { ...distribution.platformData, meta_description: e.target.value || undefined } })}
                   placeholder="SEO meta description for the blog post..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
             </>
@@ -436,7 +436,7 @@ export function PendingDistributionAccordionItem({
                   onChange={(e) => onUpdate({ caption: e.target.value || null })}
                   placeholder="Video description..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
               {/* Detected Hashtags */}
@@ -490,7 +490,7 @@ export function PendingDistributionAccordionItem({
                   onChange={(e) => onUpdate({ caption: e.target.value || null })}
                   placeholder="Episode description..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
               {/* Detected Hashtags */}
@@ -543,7 +543,7 @@ export function PendingDistributionAccordionItem({
                   placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
                   rows={3}
                   maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
                 {(platformName === "twitter" || platformName === "x") && (
                   <p className="text-xs text-text-muted text-right">{(distribution.caption || "").length}/280</p>

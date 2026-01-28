@@ -669,7 +669,7 @@ export const DistributionAccordionItem = memo(function DistributionAccordionItem
                   onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
                   placeholder="Preview text shown in email clients..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
             </>
@@ -692,7 +692,7 @@ export const DistributionAccordionItem = memo(function DistributionAccordionItem
                   onChange={(e) => handleFieldUpdate({ platformData: { ...platformData, meta_description: e.target.value } })}
                   placeholder="SEO meta description for the blog post..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
             </>
@@ -715,7 +715,7 @@ export const DistributionAccordionItem = memo(function DistributionAccordionItem
                   onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
                   placeholder="Video description..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
               {/* Detected Hashtags */}
@@ -769,7 +769,7 @@ export const DistributionAccordionItem = memo(function DistributionAccordionItem
                   onChange={(e) => handleFieldUpdate({ caption: e.target.value })}
                   placeholder="Episode description..."
                   rows={3}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
               </div>
               {/* Detected Hashtags */}
@@ -822,7 +822,7 @@ export const DistributionAccordionItem = memo(function DistributionAccordionItem
                   placeholder={`Enter ${platformName === "twitter" || platformName === "x" ? "tweet" : "caption"}...`}
                   rows={3}
                   maxLength={platformName === "twitter" || platformName === "x" ? 280 : undefined}
-                  className="bg-bg-0"
+                  className="bg-bg-0 resize-y min-h-[72px] max-h-[200px]"
                 />
                 {(platformName === "twitter" || platformName === "x") && (
                   <p className="text-xs text-text-muted text-right">{caption.length}/280</p>
