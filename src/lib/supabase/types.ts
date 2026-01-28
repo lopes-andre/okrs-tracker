@@ -824,6 +824,7 @@ export interface ContentCalendarEntry {
   distribution_id: string;
   post_id: string;
   post_title: string;
+  post_description: string | null;
   account_id: string;
   account_name: string;
   platform_name: string;
@@ -835,6 +836,8 @@ export interface ContentCalendarEntry {
   campaign_id: string | null;
   campaign_name: string | null;
   goals: Array<{ id: string; name: string; color: string | null }>;
+  media_count: number;
+  link_count: number;
 }
 
 // Distribution with campaign info

@@ -665,6 +665,48 @@ export async function getCalendarData(
     `)
     .in("post_id", postIds);
 
+  // Get post details (description) for the posts
+  const { data: postDetails } = await supabase
+    .from("content_posts")
+    .select("id, description")
+    .in("id", postIds);
+
+  // Get media counts for the posts
+  const { data: mediaCounts } = await supabase
+    .from("content_post_media")
+    .select("post_id")
+    .in("post_id", postIds);
+
+  // Get link counts for the posts
+  const { data: linkCounts } = await supabase
+    .from("content_post_links")
+    .select("post_id")
+    .in("post_id", postIds);
+
+  // Build map of post_id -> description
+  const descriptionMap = new Map<string, string | null>();
+  if (postDetails) {
+    for (const post of postDetails) {
+      descriptionMap.set(post.id, post.description);
+    }
+  }
+
+  // Build map of post_id -> media count
+  const mediaCountMap = new Map<string, number>();
+  if (mediaCounts) {
+    for (const media of mediaCounts) {
+      mediaCountMap.set(media.post_id, (mediaCountMap.get(media.post_id) || 0) + 1);
+    }
+  }
+
+  // Build map of post_id -> link count
+  const linkCountMap = new Map<string, number>();
+  if (linkCounts) {
+    for (const link of linkCounts) {
+      linkCountMap.set(link.post_id, (linkCountMap.get(link.post_id) || 0) + 1);
+    }
+  }
+
   // Build map of distribution_id -> campaign info
   const campaignMap = new Map<string, { id: string; name: string }>();
   if (campaignLinks) {
@@ -699,15 +741,21 @@ export async function getCalendarData(
     }
   }
 
-  // Add campaign info and goals to entries
+  // Add campaign info, goals, and post details to entries
   return entries.map((entry: ContentCalendarEntry) => {
     const campaign = campaignMap.get(entry.distribution_id);
     const goals = goalsMap.get(entry.post_id) || [];
+    const description = descriptionMap.get(entry.post_id) || null;
+    const mediaCount = mediaCountMap.get(entry.post_id) || 0;
+    const linkCount = linkCountMap.get(entry.post_id) || 0;
     return {
       ...entry,
       campaign_id: campaign?.id || null,
       campaign_name: campaign?.name || null,
       goals,
+      post_description: description,
+      media_count: mediaCount,
+      link_count: linkCount,
     };
   });
 }

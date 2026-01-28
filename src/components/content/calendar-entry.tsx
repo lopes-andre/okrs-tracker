@@ -1,7 +1,7 @@
 "use client";
 
 import { format, parseISO, isPast, isToday } from "date-fns";
-import { Check, Clock, Megaphone } from "lucide-react";
+import { Check, Clock, Megaphone, Image as ImageIcon, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -12,6 +12,28 @@ import {
 import { PlatformIcon } from "./platform-icon";
 import { cn } from "@/lib/utils";
 import type { ContentCalendarEntry } from "@/lib/supabase/types";
+
+// ============================================================================
+// FORMAT LABELS
+// ============================================================================
+
+const FORMAT_LABELS: Record<string, string> = {
+  post: "Feed Post",
+  story: "Story",
+  reel: "Reel",
+  carousel: "Carousel",
+  article: "Article",
+  event: "Event",
+  document: "Document",
+  video: "Video",
+  short: "Short",
+  tweet: "Tweet",
+  thread: "Thread",
+  newsletter: "Newsletter",
+  episode: "Episode",
+  clip: "Clip",
+  poll: "Poll",
+};
 
 // ============================================================================
 // TYPES
@@ -141,31 +163,72 @@ export function CalendarEntry({
     <TooltipProvider>
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <div className="space-y-1.5">
+        <TooltipContent side="top" className="max-w-sm">
+          <div className="space-y-2">
+            {/* Title */}
             <p className="font-medium">{entry.post_title}</p>
+
+            {/* Description */}
+            {entry.post_description && (
+              <p className="text-small text-text-muted line-clamp-2">
+                {entry.post_description}
+              </p>
+            )}
+
+            {/* Platform, Account & Format */}
             <div className="flex items-center gap-2 text-small">
               <PlatformIcon
                 platformName={entry.platform_name}
                 size="sm"
               />
               <span>{entry.account_name}</span>
+              {entry.format && (
+                <>
+                  <span className="text-text-muted">•</span>
+                  <span className="text-text-muted">
+                    {FORMAT_LABELS[entry.format] || entry.format}
+                  </span>
+                </>
+              )}
             </div>
+
+            {/* Time */}
             {time && (
               <p className="text-small text-text-muted flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {time}
               </p>
             )}
+
+            {/* Campaign */}
             {entry.campaign_name && (
               <p className="text-small text-accent flex items-center gap-1">
                 <Megaphone className="w-3 h-3" />
                 {entry.campaign_name}
               </p>
             )}
+
+            {/* Media & Links counts */}
+            {(entry.media_count > 0 || entry.link_count > 0) && (
+              <div className="flex items-center gap-3 text-small text-text-muted">
+                {entry.media_count > 0 && (
+                  <div className="flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    <span>{entry.media_count}</span>
+                  </div>
+                )}
+                {entry.link_count > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Link2 className="w-3 h-3" />
+                    <span>{entry.link_count}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Content Goals */}
             {entry.goals && entry.goals.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-0.5">
+              <div className="flex flex-wrap gap-1">
                 {entry.goals.map((goal) => (
                   <Badge
                     key={goal.id}
@@ -181,6 +244,8 @@ export function CalendarEntry({
                 ))}
               </div>
             )}
+
+            {/* Status Badge */}
             <Badge
               variant={status === "posted" ? "default" : "outline"}
               className={cn(
