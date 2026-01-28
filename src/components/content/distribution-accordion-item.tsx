@@ -155,6 +155,7 @@ const formatOptions: Record<string, { value: string; label: string }[]> = {
   ],
   blog: [
     { value: "article", label: "Article" },
+    { value: "event", label: "Event" },
   ],
   newsletter: [
     { value: "newsletter", label: "Newsletter" },

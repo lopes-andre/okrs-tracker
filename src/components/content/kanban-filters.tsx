@@ -69,6 +69,7 @@ const ALL_FORMATS: { value: string; label: string }[] = [
   { value: "episode", label: "Episode" },
   { value: "clip", label: "Clip" },
   { value: "poll", label: "Poll" },
+  { value: "event", label: "Event" },
 ];
 
 // Distribution status config
